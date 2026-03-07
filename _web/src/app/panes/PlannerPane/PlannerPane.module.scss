@@ -1,0 +1,971 @@
+@use "sass:color";
+
+// ─── SEARCH PANEL ───────────────────────────────────
+.searchPanel {
+  border-radius: 16px;
+  padding: 1.5rem;
+  border: 1px solid;
+  margin-bottom: 1rem;
+  backdrop-filter: blur(12px);
+
+  :global(.dark) & {
+    background: linear-gradient(135deg, rgba(17, 26, 34, 0.9), rgba(11, 17, 21, 0.95));
+    border-color: $dark-border;
+  }
+  :global(.light) & {
+    background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(246,244,241,0.9));
+    border-color: $light-border;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+  }
+}
+
+.searchRow {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.optionsRow {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.datePickerWrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.calendarPopup {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 100;
+  border-radius: 12px;
+  border: 1px solid;
+  padding: 0.75rem;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+  min-width: 280px;
+
+  :global(.dark) & { background: $dark-bg-secondary; border-color: $dark-border; }
+  :global(.light) & { background: #fff; border-color: $light-border; box-shadow: 0 12px 40px rgba(0,0,0,0.1); }
+}
+
+.calendarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+}
+
+.calMonthYear {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.calNavBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  font-weight: 600;
+  transition: all 0.15s;
+
+  :global(.dark) & { background: transparent; color: $dark-text-secondary; &:hover { background: rgba(255,255,255,0.06); color: $dark-text-primary; } }
+  :global(.light) & { background: transparent; color: $light-text-secondary; &:hover { background: rgba(0,0,0,0.05); color: $light-text-primary; } }
+}
+
+.calendarGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.calDayLabel {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-align: center;
+  padding: 0.25rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  :global(.dark) & { color: $dark-text-tertiary; }
+  :global(.light) & { color: $light-text-tertiary; }
+}
+
+.calDay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 500;
+  transition: all 0.12s;
+  margin: 0 auto;
+
+  :global(.dark) & {
+    background: transparent;
+    color: $dark-text-primary;
+    &:hover { background: rgba(255,255,255,0.06); }
+  }
+  :global(.light) & {
+    background: transparent;
+    color: $light-text-primary;
+    &:hover { background: rgba(0,0,0,0.05); }
+  }
+
+  &.calSelected {
+    background: $brand-color !important;
+    color: #fff !important;
+    font-weight: 700;
+  }
+
+  &.calToday:not(.calSelected) {
+    border: 1.5px solid $brand-color;
+    font-weight: 700;
+  }
+
+  &.calPast:not(.calSelected) {
+    opacity: 0.3;
+  }
+}
+
+.dateButton {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+
+  :global(.dark) & {
+    background-color: $dark-bg;
+    border-color: $dark-border;
+    color: $dark-text-primary;
+    &:hover { border-color: $brand-color; }
+  }
+  :global(.light) & {
+    background-color: $light-bg-secondary;
+    border-color: $light-border;
+    color: $light-text-primary;
+    &:hover { border-color: $brand-color; }
+  }
+
+  svg:first-child {
+    color: $brand-color;
+    flex-shrink: 0;
+  }
+}
+
+.optionItem {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  position: relative;
+}
+
+.optionIcon {
+  position: absolute;
+  left: 0.6rem;
+  z-index: 1;
+  opacity: 0.5;
+}
+
+.optionInput {
+  padding: 0.5rem 0.7rem 0.5rem 2rem;
+  border-radius: 8px;
+  border: 1px solid;
+  font-size: 0.82rem;
+  outline: none;
+  transition: all 0.2s;
+  min-width: 0;
+  cursor: pointer;
+
+  :global(.dark) & {
+    background-color: $dark-bg;
+    border-color: $dark-border;
+    color: $dark-text-primary;
+    &:focus { border-color: $brand-color; box-shadow: 0 0 0 2px rgba($brand-color, 0.12); }
+  }
+  :global(.light) & {
+    background-color: $light-bg-secondary;
+    border-color: $light-border;
+    color: $light-text-primary;
+    &:focus { border-color: $brand-color; box-shadow: 0 0 0 2px rgba($brand-color, 0.08); }
+  }
+}
+
+.inputGroup {
+  flex: 1;
+  min-width: 200px;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.inputIcon {
+  position: absolute;
+  left: 0.875rem;
+  z-index: 1;
+  font-size: 1rem;
+  :global(.dark) & { color: $brand-color; }
+  :global(.light) & { color: $brand-color; }
+}
+
+.searchInput {
+  width: 100%;
+  padding: 0.75rem 2.2rem 0.75rem 2.5rem;
+  border-radius: 10px;
+  border: 1px solid;
+  font-size: 0.92rem;
+  outline: none;
+  transition: all 0.2s;
+
+  :global(.dark) & {
+    background-color: $dark-bg;
+    border-color: $dark-border;
+    color: $dark-text-primary;
+    &::placeholder { color: $dark-text-tertiary; }
+    &:focus { border-color: $brand-color; box-shadow: 0 0 0 3px rgba($brand-color, 0.15); }
+  }
+  :global(.light) & {
+    background-color: $light-bg-secondary;
+    border-color: $light-border;
+    color: $light-text-primary;
+    &::placeholder { color: $light-text-tertiary; }
+    &:focus { border-color: $brand-color; box-shadow: 0 0 0 3px rgba($brand-color, 0.12); }
+  }
+}
+
+.clearBtn {
+  position: absolute;
+  right: 0.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  z-index: 2;
+  :global(.dark) & { background: $dark-border; color: $dark-text-secondary; &:hover { background: color.adjust($dark-border, $lightness: 10%); } }
+  :global(.light) & { background: $light-border; color: $light-text-secondary; &:hover { background: color.adjust($light-border, $lightness: -8%); } }
+}
+
+.swapButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+
+  :global(.dark) & { background-color: $dark-bg-secondary; border-color: $dark-border; color: $dark-text-secondary; &:hover { background-color: $dark-border; color: $brand-color; } }
+  :global(.light) & { background-color: $light-bg-secondary; border-color: $light-border; color: $light-text-secondary; &:hover { background-color: $light-border; color: $brand-color; } }
+}
+
+.searchButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1.15rem;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  background-color: $brand-color;
+  color: #fff;
+  transition: background-color 0.2s, transform 0.1s;
+  white-space: nowrap;
+  margin-left: auto;
+  &:hover { background-color: $brand-color-hover; }
+  &:active { transform: scale(0.97); }
+}
+
+// ─── PASSENGER POPUP ─────────────────────────────────
+.paxPopup {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 100;
+  border-radius: 12px;
+  border: 1px solid;
+  padding: 0.75rem;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+  min-width: 280px;
+
+  :global(.dark) & { background: $dark-bg-secondary; border-color: $dark-border; }
+  :global(.light) & { background: #fff; border-color: $light-border; box-shadow: 0 12px 40px rgba(0,0,0,0.1); }
+}
+
+.paxRow {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.5rem 0;
+  & + & { border-top: 1px solid; :global(.dark) & { border-color: rgba(255,255,255,0.04); } :global(.light) & { border-color: rgba(0,0,0,0.04); } }
+}
+
+.paxRowInfo { display: flex; flex-direction: column; }
+.paxLabel { font-size: 0.85rem; font-weight: 600; }
+.paxDesc { font-size: 0.68rem; :global(.dark) & { color: $dark-text-tertiary; } :global(.light) & { color: $light-text-tertiary; } }
+
+.paxControls { display: flex; align-items: center; gap: 0.5rem; }
+
+.paxBtn {
+  width: 30px; height: 30px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid; cursor: pointer; font-size: 1rem; font-weight: 600;
+  transition: all 0.15s;
+
+  :global(.dark) & { background: transparent; border-color: $dark-border; color: $dark-text-primary; &:hover:not(:disabled) { border-color: $brand-color; color: $brand-color; } }
+  :global(.light) & { background: transparent; border-color: $light-border; color: $light-text-primary; &:hover:not(:disabled) { border-color: $brand-color; color: $brand-color; } }
+  &:disabled { opacity: 0.2; cursor: default; }
+}
+
+.paxCount {
+  font-size: 0.9rem; font-weight: 700; min-width: 20px; text-align: center;
+}
+
+.paxSep {
+  height: 1px; margin: 0.35rem 0;
+  :global(.dark) & { background: rgba(255,255,255,0.06); }
+  :global(.light) & { background: rgba(0,0,0,0.06); }
+}
+
+.cabinSection { padding: 0.35rem 0 0; }
+.cabinLabel { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 0.35rem;
+  :global(.dark) & { color: $dark-text-tertiary; } :global(.light) & { color: $light-text-tertiary; }
+}
+
+.cabinOptions { display: flex; gap: 0.3rem; }
+
+.cabinBtn {
+  flex: 1; padding: 0.4rem 0.5rem; border-radius: 8px;
+  border: 1px solid; cursor: pointer; font-size: 0.78rem; font-weight: 500;
+  text-align: center; transition: all 0.15s;
+
+  :global(.dark) & { background: transparent; border-color: $dark-border; color: $dark-text-secondary; &:hover { border-color: rgba($brand-color, 0.3); } }
+  :global(.light) & { background: transparent; border-color: $light-border; color: $light-text-secondary; &:hover { border-color: rgba($brand-color, 0.2); } }
+
+  &.cabinActive {
+    background-color: rgba($brand-color, 0.1) !important;
+    border-color: $brand-color !important;
+    color: $brand-color !important;
+    font-weight: 600;
+  }
+}
+
+// ─── AUTOCOMPLETE DROPDOWN ──────────────────────────
+.autocompleteDropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  border-radius: 10px;
+  border: 1px solid;
+  overflow: hidden;
+  margin-top: 4px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+
+  :global(.dark) & { background: $dark-bg-secondary; border-color: $dark-border; }
+  :global(.light) & { background: #fff; border-color: $light-border; }
+}
+
+.autocompleteItem {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 0.85rem;
+  width: 100%;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s;
+
+  :global(.dark) & { background: none; color: $dark-text-primary; &:hover { background: rgba(255,255,255,0.04); } }
+  :global(.light) & { background: none; color: $light-text-primary; &:hover { background: rgba(0,0,0,0.03); } }
+
+  & + & {
+    border-top: 1px solid;
+    :global(.dark) & { border-color: rgba(255,255,255,0.04); }
+    :global(.light) & { border-color: rgba(0,0,0,0.04); }
+  }
+}
+
+.placeIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  :global(.dark) & { background: rgba(255,255,255,0.05); }
+  :global(.light) & { background: rgba(0,0,0,0.04); }
+}
+
+.placeText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.placeName {
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.placeDesc {
+  font-size: 0.72rem;
+  :global(.dark) & { color: $dark-text-tertiary; }
+  :global(.light) & { color: $light-text-tertiary; }
+}
+
+.placeType {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 0.12rem 0.4rem;
+  border-radius: 4px;
+  flex-shrink: 0;
+  :global(.dark) & { background: rgba(255,255,255,0.05); color: $dark-text-tertiary; }
+  :global(.light) & { background: rgba(0,0,0,0.04); color: $light-text-tertiary; }
+}
+
+.poweredBy {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.62rem;
+  text-align: right;
+  font-weight: 500;
+  :global(.dark) & { color: $dark-text-tertiary; background: rgba(255,255,255,0.02); }
+  :global(.light) & { color: $light-text-tertiary; background: rgba(0,0,0,0.015); }
+}
+
+// ─── FILTER BOX ──────────────────────────────────────
+.filterBox {
+  border-radius: 12px;
+  border: 1px solid;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+
+  :global(.dark) & { background: $dark-bg-secondary; border-color: $dark-border; }
+  :global(.light) & { background: $light-bg-secondary; border-color: $light-border; }
+}
+
+.filterHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 0.55rem;
+  :global(.dark) & { color: $dark-text-secondary; }
+  :global(.light) & { color: $light-text-secondary; }
+}
+
+.resultCount {
+  margin-left: auto;
+  font-weight: 400;
+  font-size: 0.75rem;
+  :global(.dark) & { color: $dark-text-tertiary; }
+  :global(.light) & { color: $light-text-tertiary; }
+}
+
+.filterContent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.filterChips {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.filterChip {
+  padding: 0.3rem 0.7rem;
+  border-radius: 20px;
+  border: 1px solid;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+
+  :global(.dark) & {
+    background-color: transparent;
+    border-color: $dark-border;
+    color: $dark-text-secondary;
+    &:hover, &.active { border-color: $brand-color; color: $brand-color; background-color: rgba($brand-color, 0.08); }
+  }
+  :global(.light) & {
+    background-color: transparent;
+    border-color: $light-border;
+    color: $light-text-secondary;
+    &:hover, &.active { border-color: $brand-color; color: $brand-color; background-color: rgba($brand-color, 0.05); }
+  }
+}
+
+.sortGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.sortLabel {
+  font-size: 0.72rem;
+  font-weight: 500;
+  margin-right: 0.2rem;
+  :global(.dark) & { color: $dark-text-tertiary; }
+  :global(.light) & { color: $light-text-tertiary; }
+}
+
+.sortChip {
+  composes: filterChip;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.7rem;
+  border-radius: 6px;
+}
+
+// ─── RESULT CARDS ────────────────────────────────────
+.resultsGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.resultCard {
+  padding: 1rem 1.25rem;
+  border-radius: 14px;
+  border: 1px solid;
+  transition: all 0.25s;
+  cursor: pointer;
+
+  :global(.dark) & {
+    background-color: $dark-bg-secondary;
+    border-color: $dark-border;
+    &:hover { border-color: rgba($brand-color, 0.4); box-shadow: 0 0 0 1px rgba($brand-color, 0.15), 0 8px 24px rgba(0,0,0,0.2); }
+  }
+  :global(.light) & {
+    background-color: $light-bg-secondary;
+    border-color: $light-border;
+    &:hover { border-color: rgba($brand-color, 0.3); box-shadow: 0 0 0 1px rgba($brand-color, 0.1), 0 8px 24px rgba(0,0,0,0.08); }
+  }
+
+  &.recommended {
+    :global(.dark) & { border-color: rgba($brand-color, 0.3); }
+    :global(.light) & { border-color: rgba($brand-color, 0.2); }
+  }
+}
+
+.cardTags {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.tagRecommended, .tagFastest, .tagCheapest, .tagGreenest {
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+.tagRecommended { background: rgba($brand-color, 0.1); color: $brand-color; }
+.tagFastest { background: rgba(#3b82f6, 0.1); color: #3b82f6; }
+.tagCheapest { background: rgba(#22c55e, 0.1); color: #22c55e; }
+.tagGreenest { background: rgba(#10b981, 0.1); color: #10b981; }
+
+.cardTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+}
+
+.cardSummary {
+  h3 {
+    margin: 0 0 0.2rem 0;
+    font-size: 0.92rem;
+    font-weight: 600;
+  }
+}
+
+.cardMeta {
+  font-size: 0.75rem;
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  :global(.dark) & { color: $dark-text-secondary; }
+  :global(.light) & { color: $light-text-secondary; }
+  span { display: flex; align-items: center; gap: 0.2rem; }
+}
+
+.cardPricing {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.price {
+  font-size: 1.25rem;
+  font-weight: 700;
+  :global(.dark) & { color: $dark-text-primary; }
+  :global(.light) & { color: $light-text-primary; }
+}
+
+.co2Badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.65rem;
+  padding: 1px 6px;
+  border-radius: 10px;
+  margin-top: 0.15rem;
+  background-color: rgba($dark-success, 0.12);
+  color: $dark-success;
+  font-weight: 500;
+}
+
+// ─── SEGMENT TIMELINE ────────────────────────────────
+.segmentTimeline {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0.2rem 0;
+}
+
+.segmentDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  z-index: 1;
+  border: 2px solid;
+  background-color: transparent;
+}
+
+.segmentLine {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  margin: 0 1px;
+}
+
+.segmentDetails {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.4rem;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.segmentInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  :global(.dark) & { color: $dark-text-secondary; }
+  :global(.light) & { color: $light-text-secondary; }
+}
+
+.segmentModeIcon {
+  display: flex;
+  font-size: 0.85rem;
+}
+
+.segmentLabel {
+  font-weight: 600;
+  font-size: 0.72rem;
+  :global(.dark) & { color: $dark-text-primary; }
+  :global(.light) & { color: $light-text-primary; }
+}
+
+.segmentDuration {
+  font-size: 0.65rem;
+  :global(.dark) & { color: $dark-text-tertiary; }
+  :global(.light) & { color: $light-text-tertiary; }
+}
+
+.providerTag {
+  display: inline-flex;
+  font-size: 0.62rem;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-weight: 500;
+  :global(.dark) & { background-color: rgba($brand-color, 0.08); color: rgba($brand-color, 0.7); }
+  :global(.light) & { background-color: rgba($brand-color, 0.06); color: $brand-color; }
+}
+
+// ─── EXPANDED DETAILS ────────────────────────────────
+.expandedDetails {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid;
+  :global(.dark) & { border-color: $dark-border; }
+  :global(.light) & { border-color: $light-border; }
+}
+
+.expandedTitle {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+  :global(.dark) & { color: $dark-text-tertiary; }
+  :global(.light) & { color: $light-text-tertiary; }
+}
+
+.expandedRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.45rem 0;
+
+  & + & {
+    border-top: 1px dashed;
+    :global(.dark) & { border-color: rgba(255,255,255,0.04); }
+    :global(.light) & { border-color: rgba(0,0,0,0.05); }
+  }
+}
+
+.expandedIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.expandedInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.expandedRoute {
+  font-size: 0.82rem;
+  line-height: 1.3;
+  strong { font-weight: 600; }
+}
+
+.expandedMeta {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.15rem;
+  font-size: 0.72rem;
+  flex-wrap: wrap;
+  :global(.dark) & { color: $dark-text-tertiary; }
+  :global(.light) & { color: $light-text-tertiary; }
+}
+
+.serviceCode {
+  font-family: monospace;
+  font-weight: 600;
+  font-size: 0.72rem;
+  padding: 0 0.3rem;
+  border-radius: 3px;
+  :global(.dark) & { background: rgba(255,255,255,0.04); color: $dark-text-secondary; }
+  :global(.light) & { background: rgba(0,0,0,0.04); color: $light-text-secondary; }
+}
+
+// ─── EMPTY STATE ─────────────────────────────────────
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+
+  h3 {
+    margin: 0 0 0.5rem 0;
+    font-weight: 600;
+    font-size: 1.1rem;
+  }
+  p {
+    margin: 0 0 1.25rem;
+    font-size: 0.88rem;
+    max-width: 420px;
+    line-height: 1.5;
+    :global(.dark) & { color: $dark-text-secondary; }
+    :global(.light) & { color: $light-text-secondary; }
+  }
+}
+
+.emptyIcon {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+  :global(.dark) & { background: rgba($brand-color, 0.1); color: $brand-color; }
+  :global(.light) & { background: rgba($brand-color, 0.08); color: $brand-color; }
+}
+
+.emptyHints {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  span {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.65rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    :global(.dark) & { background: rgba(255,255,255,0.04); color: $dark-text-secondary; }
+    :global(.light) & { background: rgba(0,0,0,0.04); color: $light-text-secondary; }
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   VIEW TOGGLE (list / graph)
+   ═══════════════════════════════════════════════ */
+.viewToggle {
+  display: flex;
+  gap: 2px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid;
+  :global(.dark) & { border-color: rgba(255,255,255,0.08); }
+  :global(.light) & { border-color: rgba(0,0,0,0.1); }
+}
+
+.viewBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.65rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s;
+  :global(.dark) & {
+    background: transparent;
+    color: rgba(255,255,255,0.45);
+    &.active { background: rgba(200,16,46,0.2); color: #fca5a5; }
+    &:hover:not(.active) { background: rgba(255,255,255,0.04); }
+  }
+  :global(.light) & {
+    background: transparent;
+    color: rgba(0,0,0,0.4);
+    &.active { background: rgba(200,16,46,0.1); color: $brand-color; }
+    &:hover:not(.active) { background: rgba(0,0,0,0.03); }
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   JOURNEY GRAPH VIEW
+   ═══════════════════════════════════════════════ */
+.journeyGraphWrap {
+  width: 100%;
+  height: 200px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid;
+  margin-bottom: 0.75rem;
+  :global(.dark) & {
+    border-color: rgba(255,255,255,0.06);
+    background: rgba(15,23,42,0.6);
+  }
+  :global(.light) & {
+    border-color: rgba(0,0,0,0.08);
+    background: rgba(255,255,255,0.8);
+  }
+}
+
+.jgNode {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  border: 2px solid;
+  min-width: 140px;
+  backdrop-filter: blur(8px);
+  :global(.dark) & { background: rgba(30,41,59,0.9); }
+  :global(.light) & { background: rgba(255,255,255,0.95); }
+}
+
+.jgHandle {
+  width: 8px;
+  height: 8px;
+  background: $brand-color !important;
+  border: none !important;
+}
+
+.jgModeIcon {
+  font-size: 1.2rem;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.jgInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  strong {
+    font-size: 0.85rem;
+    :global(.dark) & { color: #f1f5f9; }
+    :global(.light) & { color: #1e293b; }
+  }
+}
+
+.jgLabel {
+  font-size: 0.7rem;
+  :global(.dark) & { color: rgba(255,255,255,0.5); }
+  :global(.light) & { color: rgba(0,0,0,0.5); }
+}
+
+.jgDuration {
+  font-size: 0.65rem;
+  font-weight: 600;
+  :global(.dark) & { color: rgba(255,255,255,0.7); }
+  :global(.light) & { color: rgba(0,0,0,0.65); }
+}
+
+.jgProvider {
+  font-size: 0.6rem;
+  padding: 0.05rem 0.3rem;
+  border-radius: 4px;
+  width: fit-content;
+  :global(.dark) & { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.5); }
+  :global(.light) & { background: rgba(0,0,0,0.04); color: rgba(0,0,0,0.5); }
+}

@@ -1,0 +1,986 @@
+@use "sass:color";
+
+/* ═══════════════════════════════════════════════════
+   Route Policy Builder — FlowStudioPane Styles
+   ═══════════════════════════════════════════════════ */
+
+/* ── Wrapper ── */
+.studioWrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* ═══════════ TOP BAR ═══════════ */
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 1.2rem;
+  border-bottom: 1px solid;
+  flex-shrink: 0;
+  z-index: 20;
+  :global(.dark) & {
+    border-color: $dark-border;
+    background: rgba(15, 23, 30, 0.95);
+  }
+  :global(.light) & {
+    border-color: $light-border;
+    background: rgba(255, 255, 255, 0.98);
+  }
+}
+
+.topBarLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.topBarCenter {
+  flex: 1;
+  display: flex;
+  justify-content: stretch;
+}
+
+.topBarRight {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.policyNameInput {
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 0.35rem 0.6rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  background: transparent;
+  min-width: 180px;
+  transition: border-color 0.2s;
+  :global(.dark) & {
+    color: $dark-text-primary;
+    &:focus, &:hover {
+      border-color: $dark-border;
+      background: rgba(255,255,255,0.04);
+    }
+  }
+  :global(.light) & {
+    color: $light-text-primary;
+    &:focus, &:hover {
+      border-color: $light-border;
+      background: rgba(0,0,0,0.02);
+    }
+  }
+  &:focus {
+    outline: none;
+  }
+}
+
+.statusBadge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+}
+.draft {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+}
+.active {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+}
+.deprecated {
+  background: rgba(107, 114, 128, 0.15);
+  color: #9ca3af;
+}
+
+/* ═══════════ AIRPORT SELECTOR ═══════════ */
+.airportSelector {
+  position: relative;
+  flex: 1;
+}
+
+.airportButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid;
+  border-radius: 10px;
+  padding: 0.45rem 0.85rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  background: transparent;
+  transition: border-color 0.2s;
+  width: 100%;
+  :global(.dark) & {
+    border-color: $dark-border;
+    color: $dark-text-primary;
+    background-color: $dark-bg;
+    &:hover { border-color: $brand-color; }
+  }
+  :global(.light) & {
+    border-color: $light-border;
+    color: $light-text-primary;
+    background-color: $light-bg-secondary;
+    &:hover { border-color: $brand-color; }
+  }
+}
+
+.airportDropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  min-width: 380px;
+  border-radius: 14px;
+  padding: 0.75rem;
+  border: 1px solid;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+  z-index: 100;
+  :global(.dark) & {
+    background: $dark-bg-secondary;
+    border-color: $dark-border;
+  }
+  :global(.light) & {
+    background: #fff;
+    border-color: $light-border;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.12);
+  }
+}
+
+.airportSearchWrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid;
+  border-radius: 10px;
+  padding: 0.4rem 0.6rem;
+  margin-bottom: 0.6rem;
+  :global(.dark) & {
+    border-color: $dark-border;
+    background: $dark-bg;
+    color: $dark-text-secondary;
+  }
+  :global(.light) & {
+    border-color: $light-border;
+    background: $light-bg;
+    color: $light-text-secondary;
+  }
+  input {
+    border: none;
+    background: transparent;
+    width: 100%;
+    outline: none;
+    font-size: 0.85rem;
+    :global(.dark) & { color: $dark-text-primary; }
+    :global(.light) & { color: $light-text-primary; }
+  }
+}
+
+.airportList {
+  max-height: 260px;
+  overflow: auto;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.airportItem {
+  display: grid;
+  grid-template-columns: 42px 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+  background: transparent;
+  :global(.dark) & {
+    color: $dark-text-primary;
+    &:hover { background: rgba(200, 16, 46, 0.1); }
+  }
+  :global(.light) & {
+    color: $light-text-primary;
+    &:hover { background: rgba(200, 16, 46, 0.06); }
+  }
+  strong {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: $brand-color;
+  }
+  span {
+    font-size: 0.8rem;
+  }
+}
+
+.airportCity {
+  font-size: 0.7rem !important;
+  :global(.dark) & { color: $dark-text-tertiary; }
+  :global(.light) & { color: $light-text-tertiary; }
+}
+
+.airportActive {
+  :global(.dark) & { background: rgba(200, 16, 46, 0.12); }
+  :global(.light) & { background: rgba(200, 16, 46, 0.08); }
+  border-left: 3px solid $brand-color;
+}
+
+/* ═══════════ TOOLBAR BUTTONS ═══════════ */
+.toolBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  background: transparent;
+  transition: border-color 0.2s, background 0.2s;
+  :global(.dark) & {
+    border-color: $dark-border;
+    color: $dark-text-primary;
+    &:hover { border-color: color.adjust($dark-border, $lightness: 10%); background: rgba(255,255,255,0.04); }
+  }
+  :global(.light) & {
+    border-color: $light-border;
+    color: $light-text-primary;
+    &:hover { border-color: color.adjust($light-border, $lightness: -10%); background: rgba(0,0,0,0.03); }
+  }
+}
+
+.toolBtn.primary {
+  background: $brand-color;
+  border-color: $brand-color;
+  color: #fff;
+  &:hover { background: $brand-color-hover; }
+}
+
+/* ═══════════ CANVAS ROW ═══════════ */
+.canvasRow {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.canvasArea {
+  position: absolute;
+  inset: 0;
+  transition: margin-right 0.25s ease;
+  :global(.dark) & {
+    background:
+      radial-gradient(1200px 700px at 50% -10%, rgba(200, 16, 46, 0.10), transparent 60%),
+      radial-gradient(900px 600px at 80% 10%, rgba(34, 197, 94, 0.05), transparent 55%),
+      #0b1117;
+  }
+  :global(.light) & {
+    background:
+      radial-gradient(1200px 700px at 50% -10%, rgba(200, 16, 46, 0.06), transparent 60%),
+      rgba(255, 255, 255, 0.85);
+  }
+}
+
+.canvasArea :global(.react-flow__node) { background: transparent; border: none; }
+.canvasArea :global(.react-flow__node.selected) { box-shadow: none; outline: none; }
+.canvasArea :global(.react-flow__edge-path) { stroke-width: 2; stroke-linecap: round; pointer-events: stroke; transition: stroke 0.2s; }
+.canvasArea :global(.react-flow__edge) { cursor: pointer; pointer-events: all; }
+.canvasArea :global(.react-flow__edge-text) { font-size: 0.72rem; }
+.canvasArea :global(.react-flow__edge-textbg) { fill: transparent; }
+
+/* ── React Flow Controls ── */
+.canvasArea :global(.react-flow__controls) {
+  box-shadow: none;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid;
+  gap: 0;
+  :global(.dark) & {
+    background: rgba(15, 23, 30, 0.9);
+    border-color: $dark-border;
+  }
+  :global(.light) & {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: $light-border;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  }
+}
+.canvasArea :global(.react-flow__controls-button) {
+  border: none;
+  border-radius: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  :global(.dark) & {
+    background: transparent;
+    fill: $dark-text-secondary;
+    color: $dark-text-secondary;
+    &:hover {
+      background: rgba(255, 255, 255, 0.08);
+      fill: $dark-text-primary;
+    }
+  }
+  :global(.light) & {
+    background: transparent;
+    fill: $light-text-secondary;
+    color: $light-text-secondary;
+    &:hover {
+      background: rgba(0, 0, 0, 0.04);
+      fill: $light-text-primary;
+    }
+  }
+  svg {
+    max-width: 14px;
+    max-height: 14px;
+  }
+}
+.canvasArea :global(.react-flow__controls-button) + :global(.react-flow__controls-button) {
+  border-top: 1px solid;
+  :global(.dark) & { border-color: $dark-border; }
+  :global(.light) & { border-color: $light-border; }
+}
+
+/* ── MiniMap ── */
+.canvasArea :global(.react-flow__minimap) {
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid;
+  :global(.dark) & {
+    background: rgba(15, 23, 30, 0.8);
+    border-color: $dark-border;
+  }
+  :global(.light) & {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: $light-border;
+  }
+}
+.canvasArea :global(.react-flow__panel) { background: transparent; }
+.canvasArea :global(.react-flow__attribution) { display: none; }
+
+/* ═══════════ ADD NODE FAB ═══════════ */
+.addNodeFab {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 20;
+}
+
+.fabButton {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  border: none;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  font-size: 1.25rem;
+  box-shadow: 0 6px 24px rgba(200, 16, 46, 0.35);
+  background: $brand-color;
+  color: #fff;
+  transition: transform 0.2s, background 0.2s;
+  &:hover {
+    background: $brand-color-hover;
+    transform: scale(1.06);
+  }
+}
+
+.nodeLibrary {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 10px);
+  transform: translateY(-50%);
+  width: 280px;
+  border-radius: 14px;
+  padding: 0.85rem;
+  border: 1px solid;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  :global(.dark) & {
+    background: #0f1720;
+    border-color: $dark-border;
+  }
+  :global(.light) & {
+    background: #fff;
+    border-color: $light-border;
+  }
+  h4 {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 0.6rem;
+    :global(.dark) & { color: $dark-text-tertiary; }
+    :global(.light) & { color: $light-text-tertiary; }
+  }
+}
+
+.libraryItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.55rem 0.6rem;
+  border: 1px solid;
+  border-radius: 12px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  margin-bottom: 0.35rem;
+  transition: border-color 0.2s;
+  :global(.dark) & {
+    border-color: $dark-border;
+    color: $dark-text-primary;
+    &:hover { border-color: $brand-color; }
+  }
+  :global(.light) & {
+    border-color: $light-border;
+    color: $light-text-primary;
+    &:hover { border-color: $brand-color; }
+  }
+  div {
+    display: flex;
+    flex-direction: column;
+    strong { font-size: 0.85rem; }
+    span {
+      font-size: 0.72rem;
+      :global(.dark) & { color: $dark-text-secondary; }
+      :global(.light) & { color: $light-text-secondary; }
+    }
+  }
+}
+
+.libraryItemDisabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+  &:hover { border-color: inherit !important; }
+}
+
+.libraryIcon {
+  font-size: 1.15rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: rgba(200, 16, 46, 0.08);
+  flex-shrink: 0;
+}
+
+/* ═══════════ ROUTE NODES ═══════════ */
+.nodeCard {
+  border: 2px solid;
+  border-radius: 14px;
+  padding: 0.65rem 0.85rem;
+  min-width: 160px;
+  max-width: 210px;
+  cursor: pointer;
+  transition: box-shadow 0.2s, border-color 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  strong {
+    font-size: 0.9rem;
+    display: block;
+  }
+}
+
+.nodeActive {
+  box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.3);
+}
+
+.nodeHandle {
+  width: 10px;
+  height: 10px;
+  border: 2px solid;
+  border-radius: 50%;
+  :global(.dark) & {
+    background: $dark-bg-secondary;
+    border-color: $brand-color;
+  }
+  :global(.light) & {
+    background: $light-bg-secondary;
+    border-color: $brand-color;
+  }
+}
+
+.nodeHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.phaseTag {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid;
+}
+
+.modeIcons {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin-top: 0.15rem;
+}
+
+.modeIcon {
+  font-size: 0.95rem;
+  display: inline-flex;
+  align-items: center;
+}
+
+.visitsBadge {
+  font-size: 0.65rem;
+  font-weight: 500;
+  opacity: 0.7;
+}
+
+/* ── Uber-style Mode Config Cards ── */
+.modeCardList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.modeCard {
+  border-radius: 8px;
+  border: 1px solid;
+  overflow: hidden;
+  transition: all 0.15s;
+  :global(.dark) & {
+    border-color: rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.02);
+    &.modeCardEnabled { border-color: rgba(255,255,255,0.12); background: rgba(255,255,255,0.04); }
+  }
+  :global(.light) & {
+    border-color: rgba(0,0,0,0.06);
+    background: rgba(0,0,0,0.01);
+    &.modeCardEnabled { border-color: rgba(0,0,0,0.1); background: rgba(0,0,0,0.02); }
+  }
+}
+
+.modeCardHeader {
+  padding: 0.4rem 0.6rem;
+}
+
+.modeToggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.82rem;
+  input[type="checkbox"] {
+    accent-color: $brand-color;
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+}
+
+.modeToggleIcon {
+  font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  opacity: 0.5;
+  .modeCardEnabled & { opacity: 1; }
+}
+
+.modeToggleLabel {
+  font-weight: 500;
+  :global(.dark) & { color: $dark-text-primary; }
+  :global(.light) & { color: $light-text-primary; }
+  .modeCard:not(.modeCardEnabled) & { opacity: 0.5; }
+}
+
+.modeCardBody {
+  padding: 0.35rem 0.6rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  border-top: 1px solid;
+  :global(.dark) & { border-color: rgba(255,255,255,0.06); }
+  :global(.light) & { border-color: rgba(0,0,0,0.06); }
+}
+
+.modeField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  > span {
+    font-size: 0.7rem;
+    font-weight: 500;
+    :global(.dark) & { color: $dark-text-secondary; }
+    :global(.light) & { color: $light-text-secondary; }
+  }
+}
+
+/* ═══════════ INSPECTOR ═══════════ */
+.inspector {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  border-left: 1px solid;
+  display: flex;
+  flex-direction: column;
+  z-index: 10;
+  overflow: hidden;
+  transition: width 0.25s ease;
+  :global(.dark) & {
+    background: rgba(15, 23, 30, 0.96);
+    border-color: $dark-border;
+  }
+  :global(.light) & {
+    background: rgba(255, 255, 255, 0.98);
+    border-color: $light-border;
+  }
+}
+
+.inspectorCollapsed {
+  border-left: none;
+  .inspectorContent { display: none; }
+}
+
+.collapsedPanel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  cursor: pointer;
+  gap: 0.75rem;
+  padding: 1rem 0;
+}
+
+.collapsedLabel {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+  :global(.dark) & { color: $dark-text-tertiary; }
+  :global(.light) & { color: $light-text-tertiary; }
+}
+
+.inspectorHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid;
+  :global(.dark) & { border-color: $dark-border; }
+  :global(.light) & { border-color: $light-border; }
+  h3 { padding-bottom: 0; border-bottom: none; margin: 0; }
+}
+
+.collapseBtn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  background: transparent;
+  flex-shrink: 0;
+  :global(.dark) & {
+    border-color: $dark-border;
+    color: $dark-text-secondary;
+    &:hover { background: rgba(255,255,255,0.05); }
+  }
+  :global(.light) & {
+    border-color: $light-border;
+    color: $light-text-secondary;
+    &:hover { background: rgba(0,0,0,0.04); }
+  }
+}
+
+.inspectorContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.inspectorTitle {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  margin: 0;
+  :global(.dark) & { color: $dark-text-tertiary; }
+  :global(.light) & { color: $light-text-tertiary; }
+}
+
+.inspectorSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  > label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    :global(.dark) & { color: $dark-text-tertiary; }
+    :global(.light) & { color: $light-text-tertiary; }
+  }
+}
+
+.inspInput {
+  border: 1px solid;
+  border-radius: 8px;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  width: 100%;
+  :global(.dark) & {
+    background-color: $dark-bg;
+    border-color: $dark-border;
+    color: $dark-text-primary;
+    &:focus { border-color: $brand-color; box-shadow: 0 0 0 2px rgba($brand-color, 0.12); }
+  }
+  :global(.light) & {
+    background-color: $light-bg-secondary;
+    border-color: $light-border;
+    color: $light-text-primary;
+    &:focus { border-color: $brand-color; box-shadow: 0 0 0 2px rgba($brand-color, 0.08); }
+  }
+  &[type="number"] {
+    max-width: 120px;
+  }
+}
+
+select.inspInput {
+  cursor: pointer;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  padding-right: 1.5rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%236b7280' d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  :global(.dark) & { background-color: $dark-bg; }
+  :global(.light) & { background-color: $light-bg-secondary; }
+}
+
+/* ── Custom InspSelect ── */
+.inspSelect {
+  position: relative;
+  width: 100%;
+}
+
+.inspSelectTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  background: transparent;
+  text-align: left;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  :global(.dark) & {
+    background-color: $dark-bg;
+    border-color: $dark-border;
+    color: $dark-text-primary;
+    &:hover { border-color: rgba($brand-color, 0.4); }
+  }
+  :global(.light) & {
+    background-color: $light-bg-secondary;
+    border-color: $light-border;
+    color: $light-text-primary;
+    &:hover { border-color: rgba($brand-color, 0.3); }
+  }
+  svg {
+    flex-shrink: 0;
+    transition: transform 0.15s;
+    opacity: 0.5;
+  }
+}
+
+.inspSelectArrowOpen {
+  transform: rotate(180deg);
+}
+
+.inspSelectDropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  border-radius: 10px;
+  padding: 0.3rem;
+  border: 1px solid;
+  z-index: 50;
+  animation: dropdownIn 0.1s ease;
+  :global(.dark) & {
+    background: $dark-bg-secondary;
+    border-color: $dark-border;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+  }
+  :global(.light) & {
+    background: #fff;
+    border-color: $light-border;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.1);
+  }
+}
+
+.inspSelectOption {
+  display: block;
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.82rem;
+  text-align: left;
+  transition: background 0.1s;
+  :global(.dark) & {
+    color: $dark-text-primary;
+    &:hover { background: rgba(255, 255, 255, 0.06); }
+  }
+  :global(.light) & {
+    color: $light-text-primary;
+    &:hover { background: rgba(0, 0, 0, 0.04); }
+  }
+}
+
+.inspSelectOptionActive {
+  font-weight: 600;
+  :global(.dark) & {
+    color: $brand-color;
+    background: rgba($brand-color, 0.08);
+  }
+  :global(.light) & {
+    color: $brand-color;
+    background: rgba($brand-color, 0.06);
+  }
+}
+
+.inspTextarea {
+  border: 1px solid;
+  border-radius: 8px;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.82rem;
+  outline: none;
+  resize: vertical;
+  font-family: inherit;
+  width: 100%;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  :global(.dark) & {
+    background-color: $dark-bg;
+    border-color: $dark-border;
+    color: $dark-text-primary;
+    &:focus { border-color: $brand-color; box-shadow: 0 0 0 2px rgba($brand-color, 0.12); }
+  }
+  :global(.light) & {
+    background-color: $light-bg-secondary;
+    border-color: $light-border;
+    color: $light-text-primary;
+    &:focus { border-color: $brand-color; box-shadow: 0 0 0 2px rgba($brand-color, 0.08); }
+  }
+}
+
+.phaseTagInsp {
+  display: inline-block;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid;
+  width: fit-content;
+}
+
+
+
+
+.visitsRow {
+  display: flex;
+  gap: 1rem;
+  > div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+    span {
+      font-size: 0.62rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      :global(.dark) & { color: $dark-text-tertiary; }
+      :global(.light) & { color: $light-text-tertiary; }
+    }
+    input {
+      width: 100%;
+    }
+  }
+}
+
+.edgeEndpoints {
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  :global(.dark) & {
+    color: $dark-text-primary;
+    background: rgba(255, 255, 255, 0.04);
+  }
+  :global(.light) & {
+    color: $light-text-primary;
+    background: rgba(0, 0, 0, 0.02);
+  }
+}
+
+.toggleRow {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.82rem;
+  text-transform: none;
+  font-weight: 500;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  transition: background 0.12s;
+  :global(.dark) & {
+    color: $dark-text-primary;
+    &:hover { background: rgba(255, 255, 255, 0.04); }
+  }
+  :global(.light) & {
+    color: $light-text-primary;
+    &:hover { background: rgba(0, 0, 0, 0.03); }
+  }
+  input[type="checkbox"] {
+    accent-color: $brand-color;
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+}

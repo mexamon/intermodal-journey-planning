@@ -1,0 +1,4 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+  com.thy.cloud.base.core.localization.CommonMessageSourceConfiguration,\
+  com.thy.cloud.base.core.localization.LocaleResolverInterceptor,\
+  com.thy.cloud.base.core.serialize.SerializationConfig

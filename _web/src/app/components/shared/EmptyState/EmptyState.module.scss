@@ -1,0 +1,36 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1rem;
+  text-align: center;
+  gap: 0.5rem;
+}
+
+.icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  :global(.dark) & { color: rgba(255,255,255,0.2); }
+  :global(.light) & { color: rgba(0,0,0,0.15); }
+}
+
+.title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  :global(.dark) & { color: rgba(255,255,255,0.5); }
+  :global(.light) & { color: rgba(0,0,0,0.45); }
+}
+
+.desc {
+  font-size: 0.82rem;
+  margin: 0;
+  max-width: 280px;
+  :global(.dark) & { color: rgba(255,255,255,0.3); }
+  :global(.light) & { color: rgba(0,0,0,0.35); }
+}
+
+.action {
+  margin-top: 0.75rem;
+}

@@ -1,0 +1,242 @@
+@use "sass:color";
+
+/* ═══════════ TOP BAR ═══════════ */
+.topBar {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.searchWrap {
+  flex: 1;
+  min-width: 200px;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 0.75rem;
+  z-index: 1;
+  :global(.dark) & { color: $brand-color; }
+  :global(.light) & { color: $brand-color; }
+}
+
+.searchInput {
+  width: 100%;
+  padding: 0.5rem 0.85rem 0.5rem 2.15rem;
+  border-radius: 10px;
+  border: 1px solid;
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  :global(.dark) & {
+    background: $dark-bg;
+    border-color: $dark-border;
+    color: $dark-text-primary;
+    &::placeholder { color: $dark-text-tertiary; }
+    &:focus { border-color: $brand-color; box-shadow: 0 0 0 2px rgba($brand-color, 0.12); }
+  }
+  :global(.light) & {
+    background: $light-bg-secondary;
+    border-color: $light-border;
+    color: $light-text-primary;
+    &::placeholder { color: $light-text-tertiary; }
+    &:focus { border-color: $brand-color; box-shadow: 0 0 0 2px rgba($brand-color, 0.08); }
+  }
+}
+
+.filterGroup {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.2rem;
+  border-radius: 10px;
+  border: 1px solid;
+  :global(.dark) & { background: $dark-bg-secondary; border-color: $dark-border; }
+  :global(.light) & { background: $light-bg-secondary; border-color: $light-border; }
+}
+
+.filterBtn {
+  padding: 0.4rem 0.85rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: all 0.15s;
+  :global(.dark) & { color: $dark-text-secondary; }
+  :global(.light) & { color: $light-text-secondary; }
+  &.active {
+    background: $brand-color;
+    color: #fff;
+  }
+}
+
+/* ═══════════ ROUTE LIST ═══════════ */
+.routeList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.routeCard {
+  border-radius: 12px;
+  border: 1px solid;
+  padding: 1rem 1.15rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  :global(.dark) & {
+    background: $dark-bg-secondary;
+    border-color: $dark-border;
+    &:hover { border-color: rgba($brand-color, 0.25); box-shadow: 0 4px 20px rgba(0,0,0,0.12); }
+  }
+  :global(.light) & {
+    background: $light-bg-secondary;
+    border-color: $light-border;
+    &:hover { border-color: rgba($brand-color, 0.15); box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+  }
+}
+
+.cardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.routeEndpoints {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.endpoint {
+  display: flex;
+  flex-direction: column;
+}
+
+.endpointCode {
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.endpointName {
+  font-size: 0.7rem;
+  :global(.dark) & { color: $dark-text-tertiary; }
+  :global(.light) & { color: $light-text-tertiary; }
+}
+
+.routeArrow {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: $brand-color;
+}
+
+.arrowLine {
+  width: 20px;
+  height: 1px;
+  :global(.dark) & { background: $dark-border; }
+  :global(.light) & { background: $light-border; }
+}
+
+.cardActions {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.favBtn, .deleteBtn {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  :global(.dark) & {
+    color: $dark-text-secondary;
+    &:hover { background: rgba(255,255,255,0.06); }
+  }
+  :global(.light) & {
+    color: $light-text-secondary;
+    &:hover { background: rgba(0,0,0,0.05); }
+  }
+}
+
+.deleteBtn {
+  :global(.dark) &:hover { color: #ef4444; background: rgba(#ef4444, 0.1); }
+  :global(.light) &:hover { color: #ef4444; background: rgba(#ef4444, 0.08); }
+}
+
+/* ── Segment Chain ── */
+.segmentChain {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.segmentPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid;
+  font-size: 0.72rem;
+  font-weight: 600;
+  :global(.dark) & { background: rgba(255,255,255,0.03); }
+  :global(.light) & { background: rgba(0,0,0,0.02); }
+}
+
+.segmentDot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  :global(.dark) & { background: $dark-text-tertiary; }
+  :global(.light) & { background: $light-text-tertiary; }
+}
+
+/* ── Stats Row ── */
+.cardStats {
+  display: flex;
+  gap: 1.25rem;
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.78rem;
+    :global(.dark) & { color: $dark-text-secondary; }
+    :global(.light) & { color: $light-text-secondary; }
+  }
+}
+
+/* ── Empty State ── */
+.emptyState {
+  text-align: center;
+  padding: 3rem 1rem;
+  svg {
+    margin-bottom: 0.5rem;
+    :global(.dark) & { color: $dark-text-tertiary; }
+    :global(.light) & { color: $light-text-tertiary; }
+  }
+  p {
+    font-size: 0.85rem;
+    margin: 0;
+    :global(.dark) & { color: $dark-text-secondary; }
+    :global(.light) & { color: $light-text-secondary; }
+  }
+}

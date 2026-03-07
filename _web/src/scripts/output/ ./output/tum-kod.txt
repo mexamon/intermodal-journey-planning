@@ -1,0 +1,5027 @@
+--- File: babel.config.js ---
+// File: babel.config.js (DÜZELTİLMİŞ)
+module.exports = {
+  presets: [
+    "@babel/preset-env",
+    ["@babel/preset-react", { runtime: "automatic" }],
+    "@babel/preset-typescript",
+  ],
+  plugins: [
+    ["@babel/plugin-proposal-decorators", { legacy: true }],
+    ["@babel/plugin-proposal-class-properties", { loose: true }],
+    // DÜZELTME: Bu satır, async/await gibi modern JS özelliklerinin
+    // doğru çalışması için gereklidir.
+    "@babel/plugin-transform-runtime",
+  ],
+};
+
+--- File: config/paths.js ---
+const path = require("path");
+const fs = require("fs");
+
+// Projenin ana dizinini güvenli bir şekilde bulur
+const appDirectory = fs.realpathSync(process.cwd());
+const resolveApp = (relativePath) => path.resolve(appDirectory, relativePath);
+
+module.exports = {
+  // Source Files
+  appSrc: resolveApp("src"),
+
+  // Production Build Files
+  appBuild: resolveApp("build"),
+
+  // Static files that get copied to build folder
+  appPublic: resolveApp("public"),
+
+  // Diğer MFE'lerle tutarlılık için ek yollar
+  appHtml: resolveApp("public/index.html"),
+  appIndexJs: resolveApp("src/index.js"),
+  appPackageJson: resolveApp("package.json"),
+};
+
+
+--- File: config/webpack.common.js ---
+// File: config/webpack.common.js
+const path                  = require('path');
+const paths                 = require('./paths');
+const { CleanWebpackPlugin }= require('clean-webpack-plugin');
+const CopyWebpackPlugin     = require('copy-webpack-plugin');
+const HtmlWebpackPlugin     = require('html-webpack-plugin');
+const MiniCssExtractPlugin  = require('mini-css-extract-plugin');
+const autoprefixer          = require('autoprefixer');
+
+module.exports = {
+  entry: [paths.appIndexJs],
+
+  output: {
+    path: paths.appBuild,
+    filename: '[name].bundle.js',
+  },
+
+  plugins: [
+    new CleanWebpackPlugin(),
+    new MiniCssExtractPlugin({
+      filename: 'styles/[name].[contenthash].css',
+      chunkFilename: '[id].[contenthash].css',
+    }),
+    new CopyWebpackPlugin({
+      patterns: [
+        {
+          from: `${paths.appPublic}/assets`,
+          to: 'assets',
+          globOptions: { ignore: ['*.DS_Store'] },
+          noErrorOnMissing: true,
+        },
+      ],
+    }),
+    new HtmlWebpackPlugin({
+      title: 'THY Intermodal Planner',
+      favicon: `${paths.appPublic}/favicon.png`,
+      template: paths.appHtml,
+      filename: 'index.html',
+    }),
+  ],
+
+  module: {
+    rules: [
+      {
+        test: /\.(ts|tsx|js|jsx)$/,
+        exclude: /node_modules/,
+        use: 'babel-loader',
+      },
+
+      /* ---------- 1. Sadece *.module.(s)css  =  CSS Modules ---------- */
+      {
+        test: /\.module\.(css|scss|sass)$/,
+        use: [
+          MiniCssExtractPlugin.loader,
+          {
+            loader: 'css-loader',
+            options: {
+              /* *** BURASI ÖNEMLİ *** */
+              modules: {
+                namedExport: true,                        // <‑‑  bütün class’ları named export olarak çıkar
+                exportLocalsConvention: 'camelCase',      //    .foo-bar -> fooBar
+                localIdentName: '[name]__[local]--[hash:base64:5]',
+              },
+              esModule: true,                              // esm gerekiyorsa
+              sourceMap: true,
+            },
+          },
+          {
+            loader: 'postcss-loader',
+            options: {
+              postcssOptions: { plugins: [autoprefixer()] },
+            },
+          },
+          {
+            loader: 'sass-loader',
+            options: {
+              additionalData: `@use "${path
+                .resolve(__dirname, '../src/styles/variables.scss')
+                .replace(/\\/g, '/')}" as *;`,
+            },
+          },
+        ],
+      },
+
+      /* ---------- 2. Diğer tüm (s)css dosyaları ---------- */
+      {
+        test: /\.(css|scss|sass)$/,
+        exclude: /\.module\.(css|scss|sass)$/,
+        use: [
+          MiniCssExtractPlugin.loader,
+          'css-loader',
+          {
+            loader: 'postcss-loader',
+            options: {
+              postcssOptions: { plugins: [autoprefixer()] },
+            },
+          },
+          'sass-loader',
+        ],
+      },
+
+      { test: /\.svg$/, use: ['@svgr/webpack'] },
+      { test: /\.(?:ico|gif|png|jpg|jpeg)$/i, type: 'asset/resource' },
+      { test: /\.(woff2?|eot|ttf|otf)$/, type: 'asset/inline' },
+    ],
+  },
+
+  resolve: {
+    extensions: ['.tsx', '.ts', '.jsx', '.js', '.json'],
+  },
+};
+
+
+--- File: config/webpack.dev.js ---
+// File: config/webpack.dev.js (DÜZELTİLMİŞ)
+// devServer.static yolu düzeltildi.
+const { merge } = require("webpack-merge");
+const common = require("./webpack.common.js");
+const paths = require("./paths");
+const Dotenv = require("dotenv-webpack");
+const ReactRefreshWebpackPlugin = require("@pmmmwh/react-refresh-webpack-plugin");
+const ModuleFederationPlugin = require("webpack/lib/container/ModuleFederationPlugin");
+const deps = require("../package.json").dependencies;
+
+module.exports = merge(common, {
+  mode: "development",
+  output: {
+    publicPath: "http://localhost:3031/",
+  },
+  devtool: "inline-source-map",
+  devServer: {
+    historyApiFallback: true,
+    static: paths.appPublic, // Düzeltildi
+    open: false,
+    compress: true,
+    hot: true,
+    port: 3031,
+  },
+  plugins: [
+    new Dotenv(),
+    new ReactRefreshWebpackPlugin(),
+    new ModuleFederationPlugin({
+      name: "boilerrumHub",
+      filename: "remoteEntry.js",
+      exposes: {
+        "./HubPage": `${paths.appSrc}/app/App.tsx`,
+      },
+      shared: {
+        ...deps,
+        react: {
+          singleton: true,
+          requiredVersion: deps.react,
+        },
+        "react-dom": {
+          singleton: true,
+          requiredVersion: deps["react-dom"],
+        },
+        "react-router-dom": {
+          singleton: true,
+          requiredVersion: deps["react-router-dom"],
+        },
+      },
+    }),
+  ].filter(Boolean),
+});
+
+
+--- File: config/webpack.prod.js ---
+// File: config/webpack.prod.js (Değişiklik Gerekmiyor, paths.js ile uyumlu)
+const { merge } = require("webpack-merge");
+const common = require("./webpack.common.js");
+const paths = require("./paths");
+const Dotenv = require("dotenv-webpack");
+const CssMinimizerPlugin = require("css-minimizer-webpack-plugin");
+const TerserPlugin = require("terser-webpack-plugin");
+const ModuleFederationPlugin = require("webpack/lib/container/ModuleFederationPlugin");
+const deps = require("../package.json").dependencies;
+
+module.exports = merge(common, {
+  mode: "production",
+  devtool: false,
+  output: {
+    path: paths.appBuild,
+    publicPath: "/",
+    filename: "js/[name].[contenthash].bundle.js",
+  },
+  plugins: [
+    new Dotenv(),
+    new ModuleFederationPlugin({
+      name: "boilerrumHub",
+      filename: "remoteEntry.js",
+      exposes: {
+        "./HubPage": `${paths.appSrc}/app/App.tsx`,
+      },
+      shared: {
+        ...deps,
+        react: {
+          singleton: true,
+          requiredVersion: deps.react,
+        },
+        "react-dom": {
+          singleton: true,
+          requiredVersion: deps["react-dom"],
+        },
+        "react-router-dom": {
+          singleton: true,
+          requiredVersion: deps["react-router-dom"],
+        },
+      },
+    }),
+  ],
+  optimization: {
+    minimize: true,
+    minimizer: [new TerserPlugin(), new CssMinimizerPlugin(), `...`],
+  },
+  performance: {
+    hints: false,
+    maxEntrypointSize: 512000,
+    maxAssetSize: 512000,
+  },
+});
+
+
+--- File: package.json ---
+{
+  "name": "boilerrum-hub",
+  "version": "1.0.0",
+  "description": "Workspace management hub for Boilerrum.",
+  "main": "index.js",
+  "scripts": {
+    "start": "webpack serve --config config/webpack.dev.js",
+    "build": "cross-env NODE_ENV=production webpack --config config/webpack.prod.js"
+  },
+  "keywords": [
+    "microfrontend",
+    "boilerrum",
+    "hub"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@babel/runtime": "^7.24.7",
+    "@radix-ui/react-collapsible": "^1.1.0",
+    "@radix-ui/react-dialog": "^1.1.1",
+    "@radix-ui/react-dropdown-menu": "^2.1.1",
+    "@radix-ui/react-popover": "^1.1.1",
+    "@radix-ui/react-scroll-area": "^1.1.0",
+    "@radix-ui/react-toast": "^1.2.1",
+    "@radix-ui/react-toggle-group": "^1.1.0",
+    "@radix-ui/react-tooltip": "^1.1.1",
+    "@reduxjs/toolkit": "^2.2.5",
+    "axios": "^1.7.2",
+    "classnames": "^2.5.1",
+    "cookies-js": "^1.2.3",
+    "dayjs": "^1.11.11",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-icons": "^5.2.1",
+    "react-intl": "^6.6.8",
+    "react-redux": "^9.1.2",
+    "react-router-dom": "^6.23.1",
+    "redux": "^5.0.1",
+    "redux-saga": "^1.3.0",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.24.7",
+    "@babel/plugin-proposal-class-properties": "^7.18.6",
+    "@babel/plugin-proposal-decorators": "^7.24.7",
+    "@babel/plugin-transform-runtime": "^7.24.7",
+    "@babel/preset-env": "^7.24.7",
+    "@babel/preset-react": "^7.24.7",
+    "@babel/preset-typescript": "^7.24.7",
+    "@pmmmwh/react-refresh-webpack-plugin": "^0.5.15",
+    "@svgr/webpack": "^8.1.0",
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.14.9",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@types/react-router-dom": "^5.3.3",
+    "@types/uuid": "^9.0.8",
+    "autoprefixer": "^10.4.19",
+    "babel-loader": "^10.0.0",
+    "clean-webpack-plugin": "^4.0.0",
+    "copy-webpack-plugin": "^12.0.2",
+    "cross-env": "^7.0.3",
+    "css-loader": "^7.1.2",
+    "css-minimizer-webpack-plugin": "^7.0.0",
+    "dotenv-webpack": "^8.1.0",
+    "html-webpack-plugin": "^5.6.3",
+    "mini-css-extract-plugin": "^2.9.2",
+    "postcss": "^8.5.6",
+    "postcss-loader": "^8.1.1",
+    "react-refresh": "^0.14.2",
+    "sass": "^1.89.2",
+    "sass-loader": "^16.0.5",
+    "style-loader": "^4.0.0",
+    "terser-webpack-plugin": "^5.3.10",
+    "typescript": "^5.5.2",
+    "webpack": "^5.92.1",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^5.0.4",
+    "webpack-merge": "^5.10.0"
+  },
+  "packageManager": "yarn@4.9.2+sha512.1fc009bc09d13cfd0e19efa44cbfc2b9cf6ca61482725eb35bbc5e257e093ebf4130db6dfe15d604ff4b79efd8e1e8e99b25fa7d0a6197c9f9826358d4d65c3c"
+}
+
+
+--- File: src/EntryPoint.tsx ---
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import App from './app/App';
+
+// DÜZELTME: Ana stil dosyasını buraya import ederek
+// tüm uygulamanın stilleri yüklemesini sağlıyoruz.
+import './styles/main.scss';
+
+const container = document.getElementById('root');
+
+if (container) {
+  const root = createRoot(container);
+  root.render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
+  );
+} else {
+    console.error("Root element with id 'root' not found in the DOM.");
+}
+
+--- File: src/app/App.tsx ---
+// File: src/app/App.tsx
+import React from 'react';
+import { BrowserRouter } from 'react-router-dom';
+import { HubPage } from './HubPage';
+import { ThemeContextProvider } from './contexts/ThemeContext'; // Eklendi
+import '../styles/main.scss';
+
+const App = () => {
+  return (
+    <ThemeContextProvider> {/* Eklendi */}
+      <BrowserRouter>
+        <HubPage />
+      </BrowserRouter>
+    </ThemeContextProvider> /* Eklendi */
+  );
+};
+
+export default App;
+
+--- File: src/app/HubPage.module.scss ---
+.appContainer {
+  display: flex;
+  height: 100vh;
+  // Arka plan rengini en dış sarmalayıcıya veriyoruz.
+  // Bu, tüm ekranın temanın arka plan rengine sahip olmasını sağlar.
+  :global(.dark) & {
+    background-color: $dark-bg;
+  }
+  :global(.light) & {
+    background-color: $light-bg;
+  }
+}
+
+.mainContent {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  transition: margin-left 0.2s ease-in-out;
+  margin-left: 280px; // Genişletilmiş drawer genişliği
+
+  &.collapsed {
+    margin-left: 80px; // Daraltılmış drawer genişliği
+  }
+}
+
+.scrollableArea {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 2rem;
+  
+  // TEMA RENKLERİ BU ALANA UYGULANIYOR
+  // Bu, drawer menüden bağımsız olarak sadece kaydırılabilir içeriğin
+  // kendi tema rengine ve metin rengine sahip olmasını sağlar.
+  :global(.dark) & {
+    color: $dark-text-primary;
+  }
+  :global(.light) & {
+    color: $light-text-primary;
+  }
+}
+
+// contentArea artık sadece iç boşluk ve esneme sağlıyor.
+// Renk ve arkaplanı üst elementten alıyor.
+.contentArea {
+  padding: 2.5rem;
+  overflow-y: auto;
+  flex-grow: 1;
+  width: 100%; // İçeriğin tam genişliği kaplamasını sağlar
+}
+
+--- File: src/app/HubPage.tsx ---
+import React, { useState } from 'react';
+import * as styles from './HubPage.module.scss';
+import { mockWorkspaces } from './data/mockData';
+import { Workspace } from './types';
+import { useThemeContext } from './contexts/ThemeContext';
+import { DrawerMenu } from './components/layout/DrawerMenu';
+import { AppHeader } from './components/layout/AppHeader';
+import { WorkspaceList } from './components/workspace/WorkspaceList';
+import { WorkspaceSearchBar } from './components/workspace/WorkspaceSearchBar';
+import { HubLayout } from './components/layout/HubLayout';
+import { 
+    SettingsPane, PlansPane, UsersPane, InvitationsPane, BillingPane, 
+    InvoicesPane, ApiKeysPane, SecurityPane, AccountSettingsPane, DataPrivacyPane 
+} from './panes';
+// İkonları import ediyoruz
+import {
+    FiSettings, FiUsers, FiMail, FiPackage, FiCreditCard, FiFileText,
+    FiKey, FiShield, FiDatabase
+} from 'react-icons/fi';
+
+// Menü listesini ikonlarla birlikte TEK BİR YERDE tanımlıyoruz
+const navItems = [
+    { id: 'settings', label: 'Workspace Settings', icon: <FiSettings /> },
+    { id: 'users', label: 'Workspace Users', icon: <FiUsers /> },
+    { id: 'invitations', label: 'Invitations', icon: <FiMail /> },
+    { id: 'api_keys', label: 'API Keys', icon: <FiKey /> },
+    { id: 'security', label: 'Security', icon: <FiShield /> },
+    { id: 'plans', label: 'Plans', icon: <FiPackage /> },
+    { id: 'billing', label: 'Billing', icon: <FiCreditCard /> },
+    { id: 'invoices', label: 'Invoices', icon: <FiFileText /> },
+    { id: 'data_privacy', label: 'Data & Privacy', icon: <FiDatabase /> },
+];
+
+export const HubPage = () => {
+    useThemeContext();
+    const [isDrawerCollapsed, setDrawerCollapsed] = useState(false);
+    const [currentView, setCurrentView] = useState<'workspace' | 'account'>('workspace');
+    const [activeTab, setActiveTab] = useState('settings');
+    const [selectedWorkspace, setSelectedWorkspace] = useState(mockWorkspaces[0]);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const filteredWorkspaces = mockWorkspaces.filter(ws =>
+        ws.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const handleWorkspaceNavigation = (tabId: string) => {
+        setActiveTab(tabId);
+        setCurrentView('workspace');
+    };
+
+    const renderWorkspaceContent = () => {
+        switch (activeTab) {
+            case 'settings': return <SettingsPane workspace={selectedWorkspace} />;
+            case 'users': return <UsersPane />;
+            case 'invitations': return <InvitationsPane workspace={selectedWorkspace} />;
+            case 'api_keys': return <ApiKeysPane workspaceId={selectedWorkspace.id} />;
+            case 'security': return <SecurityPane />;
+            case 'plans': return <PlansPane />;
+            case 'billing': return <BillingPane />;
+            case 'invoices': return <InvoicesPane />;
+            case 'data_privacy': return <DataPrivacyPane workspace={selectedWorkspace} />;
+            default: return null;
+        }
+    };
+    
+    const activeTabLabel = navItems.find(item => item.id === activeTab)?.label || '';
+
+    return (
+        <div className={styles.appContainer}>
+            <DrawerMenu
+                isCollapsed={isDrawerCollapsed}
+                activeTab={activeTab}
+                onWorkspaceTabSelect={handleWorkspaceNavigation}
+                onNavigateToAccount={() => setCurrentView('account')}
+                navItems={navItems} // YENİ: navItems listesini prop olarak geçiyoruz
+            />
+            <div className={`${styles.mainContent} ${isDrawerCollapsed ? styles.collapsed : ''}`}>
+                <AppHeader 
+                    toggleDrawer={() => setDrawerCollapsed(p => !p)}
+                    activeTabLabel={activeTabLabel}
+                    activeView={currentView}
+                    onNavigate={setCurrentView}
+                />
+                <div className={styles.scrollableArea}>
+                    {currentView === 'workspace' ? (
+                        <>
+                            <WorkspaceSearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+                            <WorkspaceList
+                                workspaces={filteredWorkspaces}
+                                onManageClick={(workspace: Workspace) => setSelectedWorkspace(workspace)}
+                            />
+                            <HubLayout>
+                                <main className={styles.contentArea}>
+                                    {renderWorkspaceContent()}
+                                </main>
+                            </HubLayout>
+                        </>
+                    ) : (
+                        <AccountSettingsPane />
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+--- File: src/app/Routes.tsx ---
+import { Navigate, Route, Routes as Switch } from "react-router-dom";
+import { RoadMapScreen } from "./pages";
+
+const Routes = () => {
+  return (
+    <Switch>
+      <Route path="/" element={<Navigate to="/roadmap" replace />} />
+      <Route path="/roadmap" element={<RoadMapScreen />} />
+    </Switch>
+  );
+};
+
+export default Routes;
+
+
+--- File: src/app/components/index.ts ---
+
+
+--- File: src/app/components/layout/AppHeader.module.scss ---
+.appHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+  padding: 0 1.5rem;
+  flex-shrink: 0;
+  
+  :global(.dark) & {
+    background-color: $dark-bg-secondary;
+    border-bottom: 1px solid $dark-border;
+  }
+  :global(.light) & {
+    background-color: $light-bg-secondary;
+    border-bottom: 1px solid $light-border;
+  }
+}
+
+.headerLeft, .headerRight {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.headerButton {
+  display: flex;
+  padding: 0.5rem;
+  border-radius: 50%;
+  border:none; background:none; cursor:pointer;
+  font-size: 1.25rem;
+  transition: background-color 0.2s;
+  :global(.dark) & { color: $dark-text-secondary; &:hover { background-color: $dark-border; } }
+  :global(.light) & { color: $light-text-secondary; &:hover { background-color: $light-border; } }
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  font-size: 0.9rem;
+  :global(.dark) & { color: $dark-text-secondary; }
+  :global(.light) & { color: $light-text-secondary; }
+  
+  .activeCrumb {
+    :global(.dark) & { color: $dark-text-primary; }
+    :global(.light) & { color: $light-text-primary; }
+  }
+}
+
+.crumbLink {
+  cursor: pointer;
+  transition: color 0.2s;
+  &:hover {
+    :global(.dark) & { color: $dark-text-primary; }
+    :global(.light) & { color: $light-text-primary; }
+  }
+}
+
+.actionButton {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: 1px solid;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background-color 0.2s;
+
+  :global(.dark) & {
+    background-color: $dark-bg;
+    border-color: $dark-border;
+    color: $dark-text-primary;
+    &:hover { background-color: $dark-border; }
+    &.primary {
+      background-color: $brand-color;
+      border-color: $brand-color;
+      color: white;
+      &:hover { background-color: darken($brand-color, 5%); }
+    }
+  }
+   :global(.light) & {
+    background-color: $light-bg;
+    border-color: $light-border;
+    color: $light-text-primary;
+    &:hover { background-color: $light-border; }
+     &.primary {
+      background-color: $brand-color;
+      border-color: $brand-color;
+      color: white;
+      &:hover { background-color: darken($brand-color, 5%); }
+    }
+  }
+}
+
+--- File: src/app/components/layout/AppHeader.tsx ---
+import React from 'react';
+import * as styles from './AppHeader.module.scss';
+import { FiMenu, FiBell, FiPlus, FiChevronRight } from 'react-icons/fi';
+
+interface AppHeaderProps {
+    toggleDrawer: () => void;
+    activeView: 'workspace' | 'account';
+    onNavigate: (view: 'workspace' | 'account') => void;
+    activeTabLabel: string;
+}
+
+export const AppHeader: React.FC<AppHeaderProps> = ({ toggleDrawer, activeView, onNavigate, activeTabLabel }) => {
+    return (
+        <header className={styles.appHeader}>
+            <div className={styles.headerLeft}>
+                <button onClick={toggleDrawer} className={styles.headerButton}>
+                    <FiMenu />
+                </button>
+                <nav className={styles.breadcrumb}>
+                    {activeView === 'account' ? (
+                        <>
+                            {/* DÜZELTME: "Workspaces" yerine "Account" yazıldı ve tıklama özelliği kaldırıldı. */}
+                            <span>Account</span>
+                            <FiChevronRight size={16} />
+                            <span className={styles.activeCrumb}>Account Settings</span>
+                        </>
+                    ) : (
+                        <>
+                            {/* Workspace görünümü için breadcrumb aynı kalıyor */}
+                            <span>Workspaces</span>
+                            <FiChevronRight size={16} />
+                            <span className={styles.activeCrumb}>{activeTabLabel}</span>
+                        </>
+                    )}
+                </nav>
+            </div>
+            <div className={styles.headerRight}>
+                <button className={`${styles.actionButton} ${styles.primary}`}>
+                    <FiPlus />
+                    <span>Invite Members</span>
+                </button>
+                <button className={styles.actionButton}>Upgrade</button>
+                <button className={styles.headerButton}>
+                    <FiBell />
+                </button>
+            </div>
+        </header>
+    );
+};
+
+--- File: src/app/components/layout/BoilerrumLogo.tsx ---
+import React from "react";
+import { useThemeContext } from "../../contexts/ThemeContext";
+
+interface BoilerrumLogoProps {
+  size?: string | number;
+  className?: string;
+}
+
+// DÜZELTME: "export" anahtar kelimesi eklendi.
+export const BoilerrumLogo: React.FC<BoilerrumLogoProps> = ({
+  size = 32, // Kare olması için artık sadece size alıyor
+  className
+}) => {
+  const { theme } = useThemeContext();
+  const fillColor = theme.variant === 'light' ? '#111827' : '#FFFFFF';
+
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 129.34 149.86" // Sadece simgeyi içeren yeni viewBox
+      height={size}
+      width={size}
+      className={className}
+    >
+      {/* DÜZELTME: SVG path'i sadece yazısız simgeyi içerecek şekilde güncellendi */}
+      <path
+        d="M24.7 98.7.5 112.67c-.48.28-.64.89-.36 1.37 12.99 21.78 36.65 36.46 63.78 36.81.55 0 1.01-.45 1.01-1v-27.94c-17.19 0-32.2-9.34-40.23-23.21Zm104.64-60.41-24.21 13.97c3.96 6.83 6.22 14.76 6.22 23.21s-2.25 16.34-6.18 23.16l24.21 13.98c.48.28 1.1.11 1.36-.37 6.08-10.88 9.55-23.41 9.55-36.76s-3.48-25.93-9.59-36.82a.999.999 0 0 0-1.36-.37Zm-24.21 13.97C97.11 38.38 82.1 29.05 64.92 29.05V75.4L24.73 52.2c-3.97 6.84-6.25 14.8-6.25 23.28s2.27 16.39 6.21 23.22l40.23-23.22v46.44c17.21 0 32.24-9.37 40.25-23.28l-40.18-23.2 40.14-23.18ZM64.92 29.05V1.11c0-.55-.45-1-1.01-1-27.09.36-50.73 15-63.73 36.75a1 1 0 0 0 .36 1.37L24.73 52.2c8.04-13.84 23.03-23.15 40.19-23.15Z"
+        style={{ fill: fillColor }}
+      />
+    </svg>
+  );
+};
+
+--- File: src/app/components/layout/DrawerMenu.module.scss ---
+/* ======================================================================== */
+/* 1. Ana Konteyner Stilleri                                                */
+/* ======================================================================== */
+.drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  transition: width 0.2s ease-in-out;
+  z-index: 10;
+  :global(.dark) & { background-color: $dark-bg; border-right: 1px solid $dark-border; }
+  :global(.light) & { background-color: white; border-right: 1px solid $light-border; }
+}
+
+.collapsed {
+  width: 80px;
+
+  // Tüm metinleri gizle
+  .headerText, .workspaceChevron, .userName, .navLabel, .footerActions {
+    display: none; // Opacity yerine display:none ile tamamen yok edelim.
+  }
+
+  /* ============ HİZALAMA DÜZELTMESİ (YENİ YAKLAŞIM) ============ */
+
+  .header {
+    padding: 0; // İç boşluğu tamamen kaldır.
+    justify-content: center; // Logoyu yatayda ortala.
+  }
+  
+  .drawerNav {
+    padding: 0.75rem; // Navigasyonun genel iç boşluğu
+  }
+
+  .navButton {
+    padding: 0; // Butonun kendi iç boşluğunu kaldır.
+    justify-content: center; // İçindeki ikonu ortala.
+    width: 100%; // Kapsayıcısını doldur.
+    aspect-ratio: 1 / 1; // BUTONU TAM BİR KARE YAPAR.
+    height: auto; // Yüksekliği en-boy oranına bırak.
+  }
+  
+  .navIcon {
+    margin: 0; // İkonun tüm marjinlerini sıfırla.
+  }
+  
+  .footer {
+    padding: 0.75rem; // Footer'ın genel iç boşluğu
+  }
+  
+  .avatarButton {
+    width: 100%;
+    padding: 0;
+    justify-content: center; // Avatarı ortala.
+  }
+}
+
+
+/* ======================================================================== */
+/* 2. Drawer Header                                                       */
+/* ======================================================================== */
+.header {
+  flex-shrink: 0;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0 1.5rem;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s;
+  :global(.dark) & { border-bottom: 1px solid $dark-border; &:hover { background-color: $dark-bg-secondary; } }
+  :global(.light) & { border-bottom: 1px solid $light-border; &:hover { background-color: $light-bg; } }
+}
+
+.logo { flex-shrink: 0; }
+.headerText { flex-grow: 1; min-width: 0; transition: opacity 0.1s, width 0.2s; }
+.workspaceName {
+  font-weight: 600; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  :global(.dark) & { color: $dark-text-primary; }
+  :global(.light) & { color: $light-text-primary; }
+}
+.workspaceChevron { flex-shrink: 0; transition: opacity 0.1s;
+  :global(.dark) & { color: $dark-text-secondary; }
+  :global(.light) & { color: $light-text-secondary; }
+}
+
+
+/* ======================================================================== */
+/* 3. Navigasyon Menüsü                                                     */
+/* ======================================================================== */
+.drawerNav {
+  flex-grow: 1;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  transition: padding 0.2s ease-in-out;
+}
+
+.navButton {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 0.75rem;
+  border-radius: 8px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  transition: all 0.2s;
+}
+
+.navIcon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  width: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 0.75rem;
+  transition: margin 0.2s ease-in-out;
+}
+
+.navLabel { white-space: nowrap; transition: opacity 0.1s, width 0.2s; }
+
+.navButton {
+  :global(.dark) & { color: $dark-text-secondary; background-color: transparent; &:hover { background-color: $dark-bg-secondary; color: $dark-text-primary; } &.active { color: white; background-color: $brand-color; } }
+  :global(.light) & { color: $light-text-secondary; background-color: transparent; &:hover { background-color: $light-border; color: $light-text-primary; } &.active { color: white; background-color: $brand-color; } }
+}
+
+/* ======================================================================== */
+/* 4. Drawer Footer                                                       */
+/* ======================================================================== */
+.footer {
+  flex-shrink: 0;
+  padding: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: padding 0.2s ease-in-out;
+  :global(.dark) & { border-top: 1px solid $dark-border; }
+  :global(.light) & { border-top: 1px solid $light-border; }
+}
+
+.avatarButton {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  border-radius: 6px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  flex-grow: 1;
+  min-width: 0;
+  img { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; }
+  :global(.dark) & { &:hover { background-color: $dark-bg-secondary; } }
+  :global(.light) & { &:hover { background-color: $light-border; } }
+}
+
+.userName {
+    font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    :global(.dark) & { color: $dark-text-primary; }
+    :global(.light) & { color: $light-text-primary; }
+}
+
+.footerActions { display: flex; align-items: center; gap: 0.25rem; flex-shrink: 0; }
+.footerIconButton {
+  display: flex; padding: 0.5rem; border-radius: 50%; border:none; background:none; cursor:pointer; font-size: 1.1rem;
+  :global(.dark) & { color: $dark-text-secondary; &:hover { background-color: $dark-bg-secondary; } }
+  :global(.light) & { color: $light-text-secondary; &:hover { background-color: $light-border; } }
+}
+
+/* ======================================================================== */
+/* 5. Radix UI Bileşenleri (Tooltip ve Dropdown)                            */
+/* ======================================================================== */
+.tooltipContent {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border-radius: 6px;
+  background-color: $dark-bg;
+  color: $dark-text-primary;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  z-index: 9999;
+}
+
+.dropdownContent {
+  min-width: 220px;
+  border-radius: 8px;
+  padding: 0.5rem;
+  box-shadow: 0 10px 38px -10px rgba(22, 23, 24, 0.35);
+  z-index: 999;
+  :global(.dark) & { background-color: $dark-bg-secondary; border: 1px solid $dark-border; }
+  :global(.light) & { background-color: white; border: 1px solid $light-border; }
+}
+
+.dropdownItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  padding: 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  outline: none;
+  :global(.dark) & { color: $dark-text-secondary; &:hover { background-color: $brand-color; color: white; } }
+  :global(.light) & { color: $light-text-secondary; &:hover { background-color: $brand-color; color: white; } }
+  &.danger:global(.dark):hover { background-color: $dark-danger; }
+  &.danger:global(.light):hover { background-color: $dark-danger; }
+}
+
+.dropdownLabel {
+  padding: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  :global(.dark) & { color: $dark-text-primary; }
+  :global(.light) & { color: $light-text-primary; }
+}
+
+.dropdownSeparator {
+  height: 1px;
+  margin: 0.5rem 0;
+  :global(.dark) & { background-color: $dark-border; }
+  :global(.light) & { background-color: $light-border; }
+}
+
+--- File: src/app/components/layout/DrawerMenu.tsx ---
+import React from 'react';
+import * as styles from './DrawerMenu.module.scss';
+import * as Tooltip from '@radix-ui/react-tooltip';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import { useThemeContext } from '../../contexts/ThemeContext';
+import { mockWorkspaces } from '../../data/mockData';
+import { BoilerrumLogo } from './BoilerrumLogo';
+import {
+    FiSettings, FiUsers, FiMail, FiPackage, FiCreditCard, FiFileText,
+    FiKey, FiShield, FiSun, FiMoon, FiLogOut, FiHelpCircle, FiChevronDown
+} from 'react-icons/fi';
+
+// Menü elemanının tipini tanımlıyoruz
+interface NavItem {
+    id: string;
+    label: string;
+    icon: React.ReactNode;
+}
+
+interface DrawerMenuProps {
+    isCollapsed: boolean;
+    activeTab: string;
+    onWorkspaceTabSelect: (tabId: string) => void;
+    onNavigateToAccount: () => void;
+    navItems: NavItem[]; // YENİ: Menü elemanlarını prop olarak alıyoruz
+}
+
+// SABİT navItems DİZİSİ BURADAN SİLİNDİ
+
+export const DrawerMenu: React.FC<DrawerMenuProps> = ({ isCollapsed, activeTab, onWorkspaceTabSelect, onNavigateToAccount, navItems }) => {
+    const { theme, toggleTheme } = useThemeContext();
+    const selectedWorkspace = mockWorkspaces[0];
+
+    return (
+        <aside className={`${styles.drawer} ${isCollapsed ? styles.collapsed : ''}`}>
+            <DropdownMenu.Root>
+                <DropdownMenu.Trigger asChild>
+                    <button className={styles.header}>
+                        <BoilerrumLogo size={32} className={styles.logo} />
+                        <div className={styles.headerText}>
+                            <span className={styles.workspaceName}>{selectedWorkspace.name}</span>
+                        </div>
+                        <FiChevronDown className={styles.workspaceChevron} />
+                    </button>
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Portal>
+                    <DropdownMenu.Content className={styles.dropdownContent} side="bottom" align="start" sideOffset={10}>
+                        <DropdownMenu.Label className={styles.dropdownLabel}>Workspaces</DropdownMenu.Label>
+                        {mockWorkspaces.map(ws => (
+                            <DropdownMenu.Item key={ws.id} className={styles.dropdownItem}>{ws.name}</DropdownMenu.Item>
+                        ))}
+                    </DropdownMenu.Content>
+                </DropdownMenu.Portal>
+            </DropdownMenu.Root>
+
+            <nav className={styles.drawerNav}>
+                <Tooltip.Provider delayDuration={100}>
+                    {/* Dışarıdan gelen navItems prop'unu kullanıyoruz */}
+                    {navItems.map(item => (
+                        <Tooltip.Root key={item.id}>
+                            <Tooltip.Trigger asChild>
+                                <button
+                                    className={`${styles.navButton} ${activeTab === item.id ? styles.active : ''}`}
+                                    onClick={() => onWorkspaceTabSelect(item.id)}
+                                >
+                                    <span className={styles.navIcon}>{item.icon}</span>
+                                    <span className={styles.navLabel}>{item.label}</span>
+                                </button>
+                            </Tooltip.Trigger>
+                            {isCollapsed && (
+                                <Tooltip.Portal>
+                                    <Tooltip.Content className={styles.tooltipContent} side="right" sideOffset={5}>
+                                        {item.label}
+                                    </Tooltip.Content>
+                                </Tooltip.Portal>
+                            )}
+                        </Tooltip.Root>
+                    ))}
+                </Tooltip.Provider>
+            </nav>
+
+            <div className={styles.footer}>
+                 <DropdownMenu.Root>
+                    <DropdownMenu.Trigger asChild>
+                         <button className={styles.avatarButton}>
+                            <img src="https://github.com/mexamon.png" alt="User Avatar" />
+                             <span className={styles.userName}>Engin Mahmut</span>
+                        </button>
+                    </DropdownMenu.Trigger>
+                    <DropdownMenu.Portal>
+                         <DropdownMenu.Content className={styles.dropdownContent} side="top" align="start" sideOffset={10}>
+                            <DropdownMenu.Item className={styles.dropdownItem} onSelect={onNavigateToAccount}>
+                                <FiSettings size={14} /> Account Settings
+                            </DropdownMenu.Item>
+                            <DropdownMenu.Item className={`${styles.dropdownItem} ${styles.danger}`}>
+                                <FiLogOut size={14} /> Log Out
+                            </DropdownMenu.Item>
+                        </DropdownMenu.Content>
+                    </DropdownMenu.Portal>
+                </DropdownMenu.Root>
+                <div className={styles.footerActions}>
+                    <button className={styles.footerIconButton} onClick={toggleTheme}>
+                        {theme.variant === 'light' ? <FiMoon /> : <FiSun />}
+                    </button>
+                     <button className={styles.footerIconButton}>
+                        <FiHelpCircle />
+                    </button>
+                </div>
+            </div>
+        </aside>
+    );
+};
+
+--- File: src/app/components/layout/HubLayout.module.scss ---
+// File: src/app/components/layout/HubLayout.module.scss
+$dark-border: #374151;
+$light-border: #e5e7eb;
+
+.mainContentLayout {
+  display: flex;
+  gap: 3rem;
+  border: 1px solid;
+  border-radius: 16px;
+  overflow: hidden;
+
+  :global(.dark) & { border-color: $dark-border; }
+  :global(.light) & { border-color: $light-border; }
+}
+
+--- File: src/app/components/layout/HubLayout.tsx ---
+import React from 'react';
+import * as styles from './HubLayout.module.scss';
+
+interface HubLayoutProps {
+    children: React.ReactNode;
+}
+
+const HubLayout: React.FC<HubLayoutProps> = ({ children }) => {
+    // Flex ve gap kaldırıldı, artık sadece bir çerçeve görevi görüyor.
+    return (
+        <div className={styles.mainContentLayout}>
+            {children}
+        </div>
+    );
+};
+
+export { HubLayout };
+
+--- File: src/app/components/layout/Sidebar.module.scss ---
+// File: src/app/components/layout/Sidebar.module.scss
+
+.sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+
+  :global(.dark) & { background-color: $dark-bg-secondary; }
+  :global(.light) & { background-color: $light-bg-secondary; }
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.navButton {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-align: left;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  :global(.dark) & {
+    color: $dark-text-secondary;
+    background-color: transparent;
+    &:hover {
+      color: $dark-text-primary;
+      background-color: rgba($brand-color, 0.1);
+    }
+    &.active {
+      color: white;
+      background-color: $brand-color;
+      box-shadow: 0 4px 12px rgba($brand-color, 0.3);
+    }
+  }
+  :global(.light) & {
+    color: $light-text-secondary;
+    background-color: transparent;
+    &:hover {
+      color: $light-text-primary;
+      background-color: rgba($brand-color, 0.1);
+    }
+    &.active {
+      color: white;
+      background-color: $brand-color;
+      box-shadow: 0 4px 12px rgba($brand-color, 0.3);
+    }
+  }
+}
+
+.planInfo {
+  padding: 1rem;
+  border-radius: 12px;
+  :global(.dark) & { background-color: rgba($brand-color, 0.1); }
+  :global(.light) & { background-color: rgba($brand-color, 0.05); }
+}
+
+.planTitle {
+  margin: 0 0 0.25rem 0;
+  font-weight: 500;
+}
+
+.planDesc {
+  margin: 0 0 1rem 0;
+  font-size: 0.8rem;
+  :global(.dark) & { color: $dark-text-secondary; }
+  :global(.light) & { color: $light-text-secondary; }
+}
+
+.upgradeButton {
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 6px;
+  border: none;
+  background-color: $brand-color;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  &:hover {
+    background-color: $brand-color-hover;
+  }
+}
+
+.sidebarFooter {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.themeSwitcherButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-align: center;
+  border: 1px solid;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+
+  :global(.dark) & {
+    color: $dark-text-secondary;
+    background-color: $dark-bg-secondary;
+    border-color: $dark-border;
+    &:hover {
+      color: $dark-text-primary;
+      background-color: $dark-border;
+    }
+  }
+
+  :global(.light) & {
+    color: $light-text-secondary;
+    background-color: $light-bg-secondary;
+    border-color: $light-border;
+    &:hover {
+      color: $light-text-primary;
+      background-color: $light-border;
+    }
+  }
+}
+
+--- File: src/app/components/layout/Sidebar.tsx ---
+// File: src/app/components/layout/Sidebar.tsx
+import React from 'react';
+import * as styles from './Sidebar.module.scss';
+import {
+  FiSettings, FiUsers, FiMail, FiPackage, FiCreditCard,
+  FiFileText, FiKey, FiShield
+} from 'react-icons/fi';
+import { ThemeSwitcher } from './ThemeSwitcher'; // Eklendi
+
+interface SidebarProps {
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
+  currentPlan: string;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, currentPlan }) => {
+  const navItems = [
+    { id: 'settings', label: 'Workspace Settings', icon: <FiSettings /> },
+    { id: 'users', label: 'Workspace Users', icon: <FiUsers /> },
+    { id: 'invitations', label: 'Invitations', icon: <FiMail /> },
+    { id: 'api_keys', label: 'API Keys', icon: <FiKey /> },
+    { id: 'security', label: 'Security', icon: <FiShield /> },
+    { id: 'plans', label: 'Plans', icon: <FiPackage /> },
+    { id: 'billing', label: 'Billing', icon: <FiCreditCard /> },
+    { id: 'invoices', label: 'Invoices', icon: <FiFileText /> },
+  ];
+
+  return (
+    <aside className={styles.sidebar}>
+      <nav className={styles.nav}>
+        {navItems.map(item => (
+          <button
+            key={item.id}
+            className={`${styles.navButton} ${activeTab === item.id ? styles.active : ''}`}
+            onClick={() => setActiveTab(item.id)}
+          >
+            {item.icon} {item.label}
+          </button>
+        ))}
+      </nav>
+      {/* Footer alanı için bir sarmalayıcı eklendi */}
+      <div className={styles.sidebarFooter}>
+        <div className={styles.planInfo}>
+          <p className={styles.planTitle}>Current Plan: <strong>{currentPlan}</strong></p>
+          <p className={styles.planDesc}>You are on the free plan. Upgrade for more features.</p>
+          <button className={styles.upgradeButton} onClick={() => setActiveTab('plans')}>
+            Upgrade Plan
+          </button>
+        </div>
+        <ThemeSwitcher />
+      </div>
+    </aside>
+  );
+};
+
+--- File: src/app/components/layout/ThemeSwitcher.tsx ---
+import React from 'react';
+import { useThemeContext } from '../../contexts/ThemeContext';
+import * as styles from './Sidebar.module.scss';
+import { FiSun, FiMoon } from 'react-icons/fi';
+
+export const ThemeSwitcher = () => {
+    const { theme, toggleTheme } = useThemeContext();
+
+    return (
+        <button onClick={toggleTheme} className={styles.themeSwitcherButton}>
+            {theme.variant === 'light' ? <FiMoon /> : <FiSun />}
+            <span>{theme.variant === 'light' ? 'Dark Mode' : 'Light Mode'}</span>
+        </button>
+    );
+};
+
+--- File: src/app/components/workspace/Workspace.module.scss ---
+// File: src/app/components/workspace/Workspace.module.scss
+
+.searchContainer {
+  position: relative;
+  margin-bottom: 2rem;
+}
+
+.searchInput {
+  width: 100%;
+  height: 44px;
+  border-radius: 8px;
+  padding: 0 1rem 0 2.5rem;
+  font-size: 1rem;
+  border: 1px solid;
+  outline: none;
+  transition: all 0.2s;
+
+  :global(.dark) & {
+    background-color: $dark-bg-secondary;
+    border-color: $dark-border;
+    color: $dark-text-primary;
+    &:focus {
+      border-color: $brand-color;
+      box-shadow: 0 0 0 3px rgba($brand-color, 0.2);
+    }
+  }
+  :global(.light) & {
+    background-color: $light-bg-secondary;
+    border-color: $light-border;
+    color: $light-text-primary;
+    &:focus {
+      border-color: $brand-color;
+      box-shadow: 0 0 0 3px rgba($brand-color, 0.2);
+    }
+  }
+}
+
+.searchIcon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  :global(.dark) & { color: $dark-text-tertiary; }
+  :global(.light) & { color: $light-text-tertiary; }
+}
+
+.workspaceList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 3rem;
+}
+
+.workspaceCard {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  border-radius: 12px;
+  border: 1px solid;
+  transition: all 0.2s;
+
+  :global(.dark) & {
+    background-color: $dark-bg-secondary;
+    border-color: $dark-border;
+    &:hover {
+      border-color: $brand-color;
+    }
+  }
+  :global(.light) & {
+    background-color: $light-bg-secondary;
+    border-color: $light-border;
+     &:hover {
+      border-color: $brand-color;
+    }
+  }
+}
+
+.workspaceLogo {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  margin-right: 1rem;
+  object-fit: cover;
+}
+
+.workspaceInfo {
+  flex-grow: 1;
+  h4 {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+  p, span {
+    margin: 0;
+    font-size: 0.875rem;
+    :global(.dark) & { color: $dark-text-secondary; }
+    :global(.light) & { color: $light-text-secondary; }
+  }
+}
+
+.manageButton {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: 1px solid;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  :global(.dark) & {
+    background-color: $dark-bg;
+    border-color: $dark-border;
+    color: $dark-text-primary;
+    &:hover {
+      background-color: $dark-border;
+    }
+  }
+  :global(.light) & {
+    background-color: $light-bg;
+    border-color: $light-border;
+    color: $light-text-primary;
+    &:hover {
+      background-color: $light-border;
+    }
+  }
+}
+
+
+--- File: src/app/components/workspace/WorkspaceCard.tsx ---
+// File: src/app/components/workspace/WorkspaceCard.tsx
+import React from 'react';
+import * as styles from './Workspace.module.scss';
+import { Workspace } from '../../types';
+
+interface WorkspaceCardProps {
+    workspace: Workspace;
+    onManageClick: () => void;
+}
+
+const WorkspaceCard: React.FC<WorkspaceCardProps> = ({ workspace, onManageClick }) => {
+    return (
+        <div className={styles.workspaceCard}>
+            <img src={workspace.logoUrl} alt={`${workspace.name} logo`} className={styles.workspaceLogo} />
+            <div className={styles.workspaceInfo}>
+                <h4>{workspace.name}</h4>
+                <p>{workspace.ownerEmail}</p>
+                <span>Current plan: <strong>{workspace.plan}</strong></span>
+            </div>
+            <button 
+                className={styles.manageButton}
+                onClick={onManageClick}
+            >
+                Manage
+            </button>
+        </div>
+    );
+};
+
+export { WorkspaceCard };
+
+--- File: src/app/components/workspace/WorkspaceList.tsx ---
+// File: src/app/components/workspace/WorkspaceList.tsx
+import React from 'react';
+import * as styles from './Workspace.module.scss';
+import { Workspace } from '../../types';
+import { WorkspaceCard } from './WorkspaceCard';
+
+interface WorkspaceListProps {
+    workspaces: Workspace[];
+    onManageClick: (workspace: Workspace) => void;
+}
+
+const WorkspaceList: React.FC<WorkspaceListProps> = ({ workspaces, onManageClick }) => {
+    return (
+        <div className={styles.workspaceList}>
+            {workspaces.map(ws => (
+                <WorkspaceCard 
+                    key={ws.id} 
+                    workspace={ws} 
+                    onManageClick={() => onManageClick(ws)} 
+                />
+            ))}
+        </div>
+    );
+};
+
+export { WorkspaceList };
+
+--- File: src/app/components/workspace/WorkspaceSearchBar.tsx ---
+// File: src/app/components/workspace/WorkspaceSearchBar.tsx
+import React from 'react';
+import { FiSearch } from 'react-icons/fi';
+import * as styles from './Workspace.module.scss';
+
+interface WorkspaceSearchBarProps {
+    searchTerm: string;
+    setSearchTerm: (term: string) => void;
+}
+
+const WorkspaceSearchBar: React.FC<WorkspaceSearchBarProps> = ({ searchTerm, setSearchTerm }) => {
+    return (
+        <div className={styles.searchContainer}>
+            <FiSearch className={styles.searchIcon} />
+            <input 
+                type="text" 
+                placeholder="Search workspaces..." 
+                className={styles.searchInput}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+            />
+        </div>
+    );
+};
+
+export { WorkspaceSearchBar };
+
+--- File: src/app/contexts/ThemeContext.tsx ---
+import React, {
+  useState,
+  useContext,
+  createContext,
+  ReactNode,
+  useEffect,
+} from "react";
+
+type ThemeOptions = "dark" | "light";
+
+export interface IBoilerTheme {
+  variant: ThemeOptions;
+  primaryColor: string;
+  borderRadius: number;
+  fontSize: number;
+}
+
+interface ThemeContextProps {
+  theme: IBoilerTheme;
+  toggleTheme: () => void;
+}
+
+const ThemeContext = createContext<ThemeContextProps | undefined>(undefined);
+
+export const useThemeContext = (): ThemeContextProps => {
+  const context = useContext(ThemeContext);
+  if (!context) {
+    throw new Error("useThemeContext must be used within a ThemeContextProvider");
+  }
+  return context;
+};
+
+export const ThemeContextProvider = ({ children }: { children: ReactNode }) => {
+  const [theme, setTheme] = useState<IBoilerTheme>({
+    variant: "dark", // Başlangıç teması
+    primaryColor: "#926ef1",
+    borderRadius: 6,
+    fontSize: 14,
+  });
+
+  useEffect(() => {
+    // SCSS :global(.dark) veya :global(.light) seçicilerinin çalışması için
+    // en üst seviyedeki elemente tema sınıfını ekliyoruz.
+    const body = document.body;
+    body.classList.remove("dark", "light");
+    body.classList.add(theme.variant);
+  }, [theme]);
+  
+  const toggleTheme = () => {
+    setTheme(prevTheme => ({
+        ...prevTheme,
+        variant: prevTheme.variant === 'light' ? 'dark' : 'light'
+    }));
+  };
+
+  const value = {
+    theme,
+    toggleTheme,
+  };
+
+  return (
+    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+  );
+};
+
+--- File: src/app/data/mockData.ts ---
+import { Workspace, User, PendingInvite, Plan, AuditLog, ApiKey, Team } from '../types'; // Team eklendi
+
+export const mockWorkspaces: Workspace[] = [
+    {
+        id: 'ws_business_1',
+        name: 'Boilerrum Inc.',
+        ownerEmail: 'enginmahmut86@gmail.com',
+        plan: 'Free',
+        logoUrl: 'https://placehold.co/64x64/8B5CF6/FFFFFF?text=B',
+        billingEmail: 'billing@boilerrum.com',
+        description: 'This is the main workspace for all Boilerrum Inc. projects, including design, development, and marketing efforts.'
+    },
+    {
+        id: 'ws_personal_1',
+        name: "Engin's Personal Space",
+        ownerEmail: 'enginmahmut86@gmail.com',
+        plan: 'Free',
+        logoUrl: 'https://github.com/mexamon.png',
+        billingEmail: 'engin.mahmut.personal@gmail.com',
+        description: 'A personal space for side projects, learning, and experimentation.'
+    },
+];
+
+// YENİ: Takımlar için mock data eklendi
+export const mockTeams: Team[] = [
+    { id: 'team_1', name: 'Frontend Wizards', color: '#6366F1' }, // Indigo
+    { id: 'team_2', name: 'Backend Titans', color: '#EC4899' },   // Pink
+    { id: 'team_3', name: 'Design Gurus', color: '#F59E0B' },    // Amber
+    { id: 'team_4', name: 'QA Avengers', color: '#10B981' },     // Emerald
+];
+
+export const mockUsers: User[] = [
+    {
+        id: 'user_1',
+        name: 'Engin Mahmut',
+        email: 'enginmahmut86@gmail.com',
+        avatarUrl: 'https://github.com/mexamon.png',
+        role: 'Workspace admin',
+        lastAccess: 'a few seconds ago',
+        status: 'Active',
+        joinDate: '2025-02-22',
+        permissions: { createRooms: true, publishTemplates: true, seeOpenRooms: true, isAdmin: true },
+        teams: ['team_1', 'team_2', 'team_3'], // Eklendi
+    },
+    {
+        id: 'user_2',
+        name: 'Jane Doe',
+        email: 'jane.doe@example.com',
+        avatarUrl: 'https://i.pravatar.cc/150?u=jane_doe',
+        role: 'Member',
+        lastAccess: '2 hours ago',
+        status: 'Active',
+        joinDate: '2025-03-15',
+        permissions: { createRooms: true, publishTemplates: false, seeOpenRooms: true, isAdmin: false },
+        teams: ['team_2', 'team_4'], // Eklendi
+    },
+];
+
+export const mockPendingInvites: PendingInvite[] = [
+    {
+        id: 'invite_1',
+        email: 'new.developer@example.com',
+        invitedBy: 'enginmahmut86@gmail.com',
+        date: '2025-07-17',
+        role: 'Member',
+    }
+];
+
+export const plansData: { monthly: Plan[], annual: Plan[] } = {
+    monthly: [
+        { name: 'Free', price: 0, description: 'For personal projects and flexible collaboration', features: ['3 team boards', '100 team tasks (non-archived)', '3 teams and 10 guests', 'Upload files up to 5MB each'], cta: 'Current plan', isCurrent: true },
+        { name: 'Pro', price: 15, description: 'For small-but-mighty teams or individuals', features: ['Unlimited team boards & tasks', '6 teams and 50 guests', 'Private teams & admin roles', 'Upload files up to 1GB each'], cta: 'Upgrade to Pro' },
+        { name: 'Enterprise', price: 25, description: 'For organizations who need advanced controls', features: ['SSO / SAML & SCIM', 'Starting at 200 guests', 'Dedicated success manager', 'Upload files up to 10GB each'], cta: 'Contact Sales' }
+    ],
+    annual: [
+        { name: 'Free', price: 0, description: 'For personal projects and flexible collaboration', features: ['3 team boards', '100 team tasks (non-archived)', '3 teams and 10 guests', 'Upload files up to 5MB each'], cta: 'Current plan', isCurrent: true },
+        { name: 'Pro', price: 12, description: 'For small-but-mighty teams or individuals', features: ['Unlimited team boards & tasks', '6 teams and 50 guests', 'Private teams & admin roles', 'Upload files up to 1GB each'], cta: 'Upgrade to Pro' },
+        { name: 'Enterprise', price: 20, description: 'For organizations who need advanced controls', features: ['SSO / SAML & SCIM', 'Starting at 200 guests', 'Dedicated success manager', 'Upload files up to 10GB each'], cta: 'Contact Sales' }
+    ]
+};
+
+export const mockAuditLogs: AuditLog[] = [
+    { id: 1, user: { name: 'Engin Mahmut', avatarUrl: 'https://github.com/mexamon.png' }, action: 'User "jane.doe@example.com" was invited to the workspace.', date: '2025-07-21 14:30:15', ip: '88.250.10.1' },
+    { id: 2, user: { name: 'Engin Mahmut', avatarUrl: 'https://github.com/mexamon.png' }, action: 'Workspace name was changed from "Taurena" to "Boilerrum Inc."', date: '2025-07-21 11:15:02', ip: '88.250.10.1' },
+    { id: 3, user: { name: 'Jane Doe', avatarUrl: 'https://i.pravatar.cc/150?u=jane_doe' }, action: 'Logged in successfully.', date: '2025-07-20 09:05:48', ip: '192.168.1.10' },
+];
+
+export const mockApiKeys: ApiKey[] = [
+    { id: 'key_1', name: 'My First Integration', token: 'bhk_abc123def456...', createdAt: '2025-06-15', lastUsed: '2025-07-20' },
+    { id: 'key_2', name: 'Zapier Connection', token: 'bhk_xyz789uvw012...', createdAt: '2025-07-01', lastUsed: null },
+];
+
+
+--- File: src/app/hooks/index.ts ---
+
+
+--- File: src/app/hooks/useApiKeys.ts ---
+// File: src/app/hooks/useApiKeys.ts
+import { useState, useEffect, useCallback } from 'react';
+import { apiKeyService } from '../services/apiKeyService';
+import { ApiKey } from '../types';
+
+export const useApiKeys = (workspaceId: string) => {
+  const [keys, setKeys] = useState<ApiKey[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchKeys = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const fetchedKeys = await apiKeyService.getApiKeys(workspaceId);
+      setKeys(fetchedKeys);
+    } catch (err) {
+      setError('Failed to load API keys.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [workspaceId]);
+
+  useEffect(() => {
+    fetchKeys();
+  }, [fetchKeys]);
+
+  const createKey = useCallback(async (name: string) => {
+    try {
+        const newKey = await apiKeyService.createApiKey(workspaceId, name);
+        // Yeni anahtar oluşturulduktan sonra listeyi tazelemek en iyi pratiktir.
+        await fetchKeys(); 
+        return newKey; // Oluşturulan anahtarı modal'da göstermek için geri döndür
+    } catch (err) {
+        // Hata yönetimi eklenebilir.
+        console.error("Failed to create key", err);
+    }
+  }, [workspaceId, fetchKeys]);
+
+  const deleteKey = useCallback(async (keyId: string) => {
+    try {
+        await apiKeyService.deleteApiKey(keyId);
+        setKeys(prevKeys => prevKeys.filter(key => key.id !== keyId));
+    } catch (err) {
+        // Hata yönetimi eklenebilir.
+        console.error("Failed to delete key", err);
+    }
+  }, []);
+
+  return { keys, isLoading, error, createKey, deleteKey };
+};
+
+
+--- File: src/app/pages/index.ts ---
+
+
+--- File: src/app/panes/AccountSettingsPane.module.scss ---
+.settingsWrapper {
+  display: flex;
+  gap: 3rem;
+  width: 100%;
+}
+
+.settingsNav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 240px;
+  flex-shrink: 0;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-align: left;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  transition: all 0.2s;
+
+  :global(.dark) & {
+    color: $dark-text-secondary;
+    background-color: transparent;
+    &:hover { background-color: $dark-bg-secondary; color: $dark-text-primary; }
+    &.active { color: $dark-text-primary; background-color: $dark-bg-secondary; }
+  }
+  :global(.light) & {
+    color: $light-text-secondary;
+    background-color: transparent;
+    &:hover { background-color: $light-border; color: $light-text-primary; }
+    &.active { color: $light-text-primary; background-color: $light-border; }
+  }
+}
+
+.settingsContent {
+  flex-grow: 1;
+}
+
+.sectionContent {
+    padding-top: 1rem;
+}
+
+.avatarUploader {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+
+    img {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    button {
+        // Panes.module.scss'den .actionButton stilini devralır gibi
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        border: 1px solid;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        :global(.dark) & { background-color: $dark-bg; border-color: $dark-border; color: $dark-text-primary; &:hover { background-color: $dark-border; } }
+        :global(.light) & { background-color: $light-bg; border-color: $light-border; color: $light-text-primary; &:hover { background-color: $light-border; } }
+    }
+}
+
+--- File: src/app/panes/AccountSettingsPane.tsx ---
+import React, { useState } from 'react';
+import * as styles from './AccountSettingsPane.module.scss';
+import * as sharedStyles from './Panes.module.scss'; // Ortak stilleri kullanmak için
+import { FiUser, FiShield, FiBell, FiUpload } from 'react-icons/fi';
+
+// Ayar sekmelerini tanımlayalım
+type SettingsTab = 'profile' | 'security' | 'notifications';
+
+const mockUser = {
+    fullName: 'Engin Mahmut',
+    email: 'enginmahmut86@gmail.com',
+    avatarUrl: 'https://github.com/mexamon.png',
+};
+
+export const AccountSettingsPane = () => {
+    const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
+    const [user, setUser] = useState(mockUser);
+
+    const renderContent = () => {
+        switch (activeTab) {
+            case 'profile':
+                return (
+                    <div>
+                        <header className={sharedStyles.paneHeader}>
+                            <h2>My Profile</h2>
+                            <p>Update your photo and personal details.</p>
+                        </header>
+                        <div className={styles.sectionContent}>
+                            <div className={sharedStyles.formGroup}>
+                                <label>Profile Photo</label>
+                                <div className={styles.avatarUploader}>
+                                    <img src={user.avatarUrl} alt="User Avatar" />
+                                    <button>
+                                        <FiUpload /> Upload New
+                                    </button>
+                                </div>
+                            </div>
+                            <div className={sharedStyles.formGroup}>
+                                <label htmlFor="fullName">Full Name</label>
+                                <input id="fullName" type="text" value={user.fullName} onChange={e => setUser({...user, fullName: e.target.value})} className={sharedStyles.formInput} />
+                            </div>
+                            <div className={sharedStyles.formGroup}>
+                                <label htmlFor="email">Email Address</label>
+                                <input id="email" type="email" value={user.email} className={sharedStyles.formInput} disabled />
+                            </div>
+                            <button className={`${sharedStyles.actionButton} ${sharedStyles.primary}`}>Save Changes</button>
+                        </div>
+                    </div>
+                );
+            case 'security':
+                 return (
+                    <div>
+                        <header className={sharedStyles.paneHeader}>
+                            <h2>Password & Security</h2>
+                            <p>Manage your password and two-factor authentication.</p>
+                        </header>
+                         <div className={styles.sectionContent}>
+                            <div className={sharedStyles.formGroup}>
+                                <label htmlFor="currentPassword">Current Password</label>
+                                <input id="currentPassword" type="password" className={sharedStyles.formInput} />
+                            </div>
+                            <div className={sharedStyles.formGroup}>
+                                <label htmlFor="newPassword">New Password</label>
+                                <input id="newPassword" type="password" className={sharedStyles.formInput} />
+                            </div>
+                             <button className={`${sharedStyles.actionButton} ${sharedStyles.primary}`}>Update Password</button>
+                        </div>
+                    </div>
+                );
+            case 'notifications':
+                 return (
+                    <div>
+                        <header className={sharedStyles.paneHeader}>
+                            <h2>Notifications</h2>
+                            <p>Manage how you receive notifications.</p>
+                        </header>
+                        <div className={sharedStyles.placeholder}>
+                            <p>Notification settings will be available here soon.</p>
+                        </div>
+                    </div>
+                );
+            default:
+                return null;
+        }
+    };
+
+    const navItems = [
+        { id: 'profile', label: 'My Profile', icon: <FiUser /> },
+        { id: 'security', label: 'Password & Security', icon: <FiShield /> },
+        { id: 'notifications', label: 'Notifications', icon: <FiBell /> },
+    ];
+
+    return (
+        <div className={styles.settingsWrapper}>
+            <nav className={styles.settingsNav}>
+                {navItems.map(item => (
+                    <button
+                        key={item.id}
+                        className={`${styles.navItem} ${activeTab === item.id ? styles.active : ''}`}
+                        onClick={() => setActiveTab(item.id as SettingsTab)}
+                    >
+                        {item.icon}
+                        <span>{item.label}</span>
+                    </button>
+                ))}
+            </nav>
+            <div className={styles.settingsContent}>
+                {renderContent()}
+            </div>
+        </div>
+    );
+};
+
+--- File: src/app/panes/ApiKeysPane.tsx ---
+// File: src/app/panes/ApiKeysPane.tsx
+import React from 'react';
+import * as styles from './Panes.module.scss';
+import { useApiKeys } from '../hooks/useApiKeys';
+import { FiKey, FiPlus, FiTrash2 } from 'react-icons/fi';
+import * as Tooltip from '@radix-ui/react-tooltip';
+
+interface ApiKeysPaneProps {
+    workspaceId: string;
+}
+
+const ApiKeysPane: React.FC<ApiKeysPaneProps> = ({ workspaceId }) => {
+    const { keys, isLoading, error, createKey, deleteKey } = useApiKeys(workspaceId);
+
+    // Bu kısım, yeni anahtar oluşturma modal'ını ve
+    // oluşturulan anahtarı gösterme modal'ını yönetmek için state'ler tutabilir.
+    // Şimdilik basit bir yapı sunulmuştur.
+
+    return (
+        <>
+            <header className={styles.paneHeader}>
+                <h2>API Keys</h2>
+                <p>Manage API keys for integrations and automations.</p>
+            </header>
+            <div className={styles.paneActions}>
+                <button 
+                    className={`${styles.actionButton} ${styles.primary}`}
+                    onClick={() => createKey('New API Key')}
+                >
+                    <FiPlus /> Create new key
+                </button>
+            </div>
+            <div className={styles.tableWrapper}>
+                {isLoading ? (
+                    <p>Loading API keys...</p>
+                ) : error ? (
+                    <p>{error}</p>
+                ) : (
+                    <table className={styles.dataTable}>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Token</th>
+                                <th>Created At</th>
+                                <th>Last Used</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {keys.map(key => (
+                                <tr key={key.id}>
+                                    <td>{key.name}</td>
+                                    <td><span className={styles.tokenText}>{key.token.substring(0, 12)}...</span></td>
+                                    <td>{key.createdAt}</td>
+                                    <td>{key.lastUsed || 'Never'}</td>
+                                    <td>
+                                        <div className={styles.actionsCell}>
+                                            <Tooltip.Provider delayDuration={100}>
+                                                <Tooltip.Root>
+                                                    <Tooltip.Trigger 
+                                                        className={`${styles.iconButton} ${styles.danger}`}
+                                                        onClick={() => deleteKey(key.id)}
+                                                    >
+                                                        <FiTrash2 />
+                                                    </Tooltip.Trigger>
+                                                    <Tooltip.Portal><Tooltip.Content className={styles.tooltipContent}>Revoke Key</Tooltip.Content></Tooltip.Portal>
+                                                </Tooltip.Root>
+                                            </Tooltip.Provider>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
+            </div>
+        </>
+    );
+};
+
+export { ApiKeysPane };
+
+--- File: src/app/panes/BillingPane.tsx ---
+// File: src/app/panes/BillingPane.tsx
+import React from 'react';
+import * as styles from './Panes.module.scss';
+
+const BillingPane = () => {
+    return (
+        <>
+            <header className={styles.paneHeader}>
+                <h2>Billing</h2>
+                <p>Manage your subscription and payment methods.</p>
+            </header>
+            <div className={styles.placeholder}>
+                <p>Billing information will be displayed here.</p>
+            </div>
+        </>
+    );
+};
+
+export { BillingPane };
+
+--- File: src/app/panes/DataPrivacyPane.module.scss ---
+.section {
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+
+  :global(.dark) & {
+    background-color: $dark-bg-secondary;
+    border: 1px solid $dark-border;
+  }
+  :global(.light) & {
+    background-color: $light-bg-secondary;
+    border: 1px solid $light-border;
+  }
+}
+
+.sectionTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem 0;
+}
+
+.sectionDescription {
+  max-width: 600px;
+  margin-bottom: 1rem;
+  line-height: 1.5;
+  :global(.dark) & { color: $dark-text-secondary; }
+  :global(.light) & { color: $light-text-secondary; }
+}
+
+/* YENİ EKLENEN SINIF */
+.sectionAction {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: flex-end; /* Butonları sağa yaslar */
+}
+
+.dangerZone {
+    border-color: $dark-danger;
+}
+
+.modalDescription {
+    margin-bottom: 1rem;
+    line-height: 1.5;
+     :global(.dark) & { color: $dark-text-secondary; }
+     :global(.light) & { color: $light-text-secondary; }
+
+    strong {
+      :global(.dark) & { color: $dark-text-primary; }
+      :global(.light) & { color: $light-text-primary; }
+    }
+}
+
+--- File: src/app/panes/DataPrivacyPane.tsx ---
+import React, { useState } from 'react';
+import * as styles from './DataPrivacyPane.module.scss';
+import * as sharedStyles from './Panes.module.scss';
+import { Workspace } from '../types';
+import * as Dialog from '@radix-ui/react-dialog';
+import { FiX } from 'react-icons/fi';
+
+interface DataPrivacyPaneProps {
+    workspace: Workspace;
+}
+
+export const DataPrivacyPane: React.FC<DataPrivacyPaneProps> = ({ workspace }) => {
+    const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [confirmationText, setConfirmationText] = useState('');
+
+    const isDeleteButtonDisabled = confirmationText !== workspace.name;
+
+    return (
+        <>
+            <header className={sharedStyles.paneHeader}>
+                <h2>Data & Privacy</h2>
+                <p>Manage your workspace data, export content, or delete your workspace.</p>
+            </header>
+
+            <div className={styles.section}>
+                <h3 className={styles.sectionTitle}>Export Workspace Data</h3>
+                <p className={styles.sectionDescription}>Export a full backup of your workspace content. We'll email you a link to download the file.</p>
+                <div className={styles.sectionAction}>
+                    <button className={`${sharedStyles.actionButton} ${sharedStyles.primary}`}>
+                        Start Export
+                    </button>
+                </div>
+            </div>
+
+            <div className={styles.section}>
+                <h3 className={styles.sectionTitle}>Archive Workspace</h3>
+                <p className={styles.sectionDescription}>Archiving the workspace will make it inaccessible to all users. You can unarchive it at any time.</p>
+                <div className={styles.sectionAction}>
+                    <button className={sharedStyles.actionButton}>
+                        Archive this Workspace
+                    </button>
+                </div>
+            </div>
+
+            <div className={`${styles.section} ${styles.dangerZone}`}>
+                <h3 className={styles.sectionTitle}>Delete Workspace</h3>
+                <p className={styles.sectionDescription}>
+                    Permanently delete the entire workspace, including all of its content. This action is irreversible.
+                </p>
+                <div className={styles.sectionAction}>
+                    <button 
+                        className={`${sharedStyles.actionButton} ${sharedStyles.dangerOutline}`}
+                        onClick={() => setDeleteModalOpen(true)}
+                    >
+                        Delete this Workspace
+                    </button>
+                </div>
+            </div>
+
+            {/* Delete Confirmation Modal */}
+            <Dialog.Root open={isDeleteModalOpen} onOpenChange={setDeleteModalOpen}>
+                <Dialog.Portal>
+                    <Dialog.Overlay className={sharedStyles.dialogOverlay} />
+                    <Dialog.Content className={sharedStyles.dialogContent}>
+                        <Dialog.Title className={sharedStyles.dialogTitle}>Are you absolutely sure?</Dialog.Title>
+                         <Dialog.Close asChild>
+                          <button className={sharedStyles.dialogCloseButton} aria-label="Close"><FiX /></button>
+                        </Dialog.Close>
+                        <p className={styles.modalDescription}>
+                            This action cannot be undone. This will permanently delete the <strong>{workspace.name}</strong> workspace.
+                        </p>
+                        <p className={styles.modalDescription}>
+                            Please type <strong>{workspace.name}</strong> to confirm.
+                        </p>
+                        
+                        <div className={sharedStyles.formGroup}>
+                            <input 
+                                type="text" 
+                                className={sharedStyles.formInput} 
+                                value={confirmationText}
+                                onChange={e => setConfirmationText(e.target.value)}
+                            />
+                        </div>
+
+                        <div style={{ display: 'flex', marginTop: 25, justifyContent: 'flex-end' }}>
+                           <button 
+                                className={`${sharedStyles.actionButton} ${sharedStyles.danger}`}
+                                disabled={isDeleteButtonDisabled}
+                           >
+                                I understand, delete this workspace
+                           </button>
+                        </div>
+                    </Dialog.Content>
+                </Dialog.Portal>
+            </Dialog.Root>
+        </>
+    );
+};
+
+--- File: src/app/panes/InvitationsPane.tsx ---
+// File: src/app/panes/InvitationsPane.tsx
+import React from 'react';
+import * as styles from './Panes.module.scss';
+import { Workspace } from '../types';
+import { FiCopy, FiInfo } from 'react-icons/fi';
+
+interface InvitationsPaneProps {
+    workspace: Workspace;
+}
+
+const InvitationsPane: React.FC<InvitationsPaneProps> = ({ workspace }) => {
+    return (
+        <>
+            <header className={styles.paneHeader}>
+                <h2>Invite People</h2>
+                <p>Invite new members to join your workspace.</p>
+            </header>
+            <div className={styles.inviteSection}>
+                <h4>Invitation link</h4>
+                <p className={styles.permissionDesc}>Anybody with the link can join the workspace.</p>
+                <div className={styles.inviteLinkWrapper}>
+                    <input type="text" readOnly value={`https://app.boilerrum.com/invite/${workspace.id.slice(3, 15)}`} className={styles.formInput} />
+                    <button className={styles.copyButton}><FiCopy /> Copy link</button>
+                </div>
+                <button className={styles.deleteLink}>Delete link to revoke access</button>
+            </div>
+            <div className={styles.inviteSection}>
+                <h4>Invite people by email address</h4>
+                <div className={styles.emailInviteWrapper}>
+                    <input type="email" placeholder="Enter one or more email addresses" className={styles.formInput} />
+                    <button className={`${styles.actionButton} ${styles.primary}`}>Send Invites</button>
+                </div>
+                <p className={styles.permissionDesc}><FiInfo /> Only admins of <strong>{workspace.name}</strong> can invite new guests.</p>
+            </div>
+        </>
+    );
+};
+
+export { InvitationsPane };
+
+--- File: src/app/panes/InvoicesPane.tsx ---
+// File: src/app/panes/InvoicesPane.tsx
+import React from 'react';
+import * as styles from './Panes.module.scss';
+
+const InvoicesPane = () => {
+    return (
+        <>
+            <header className={styles.paneHeader}>
+                <h2>Invoices</h2>
+                <p>Review your payment history.</p>
+            </header>
+            <div className={styles.placeholder}>
+                <p>You don't have any invoices at the moment.</p>
+            </div>
+        </>
+    );
+};
+
+export { InvoicesPane };
+
+--- File: src/app/panes/Panes.module.scss ---
+// File: src/app/panes/Panes.module.scss (DÜZELTİLMİŞ)
+
+.paneHeader {
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid;
+  :global(.dark) & { border-color: $dark-border; }
+  :global(.light) & { border-color: $light-border; }
+
+  h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+  p {
+    margin: 0.25rem 0 0 0;
+    :global(.dark) & { color: $dark-text-secondary; }
+    :global(.light) & { color: $light-text-secondary; }
+  }
+}
+
+.paneActions {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 1.5rem;
+}
+
+.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  border-radius: 12px;
+  border: 2px dashed;
+  :global(.dark) & { 
+    background-color: $dark-bg-secondary;
+    border-color: $dark-border;
+    color: $dark-text-secondary;
+  }
+  :global(.light) & { 
+    background-color: $light-bg-secondary;
+    border-color: $light-border;
+    color: $light-text-secondary;
+  }
+}
+
+.formInput, .formTextarea {
+  width: 100%;
+  max-width: 500px;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  border: 1px solid;
+  outline: none;
+  transition: all 0.2s;
+  resize: vertical;
+
+  :global(.dark) & {
+    background-color: $dark-bg;
+    border-color: $dark-border;
+    color: $dark-text-primary;
+    &:focus {
+      border-color: $brand-color;
+      box-shadow: 0 0 0 3px rgba($brand-color, 0.2);
+    }
+  }
+  :global(.light) & {
+    background-color: $light-bg-secondary;
+    border-color: $light-border;
+    color: $light-text-primary;
+    &:focus {
+      border-color: $brand-color;
+      box-shadow: 0 0 0 3px rgba($brand-color, 0.2);
+    }
+  }
+}
+
+.logoUploadArea {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  border: 2px dashed;
+  padding: 1rem;
+  border-radius: 12px;
+  max-width: 500px;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  :global(.dark) & {
+    border-color: $dark-border;
+    &:hover {
+      border-color: $brand-color;
+      background-color: $dark-bg-secondary;
+    }
+  }
+  :global(.light) & {
+    border-color: $light-border;
+    &:hover {
+      border-color: $brand-color;
+      background-color: $light-bg-secondary;
+    }
+  }
+}
+
+.logoPreview {
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.logoUploadContent {
+  p {
+    margin: 0;
+    font-weight: 500;
+  }
+  span {
+    font-size: 0.8rem;
+    :global(.dark) & { color: $dark-text-secondary; }
+    :global(.light) & { color: $light-text-secondary; }
+  }
+}
+
+.permissionDesc {
+  font-size: 0.9rem;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  :global(.dark) & { color: $dark-text-secondary; }
+  :global(.light) & { color: $light-text-secondary; }
+}
+
+.radioGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 400;
+  }
+}
+
+// --- USERS & SECURITY PANES (EKSİK KISIMLAR EKLENDİ) ---
+.usersSummary {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+  :global(.dark) & { color: $dark-text-secondary; }
+  :global(.light) & { color: $light-text-secondary; }
+}
+
+.subTabs {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid;
+  margin-bottom: 1.5rem;
+  :global(.dark) & { border-color: $dark-border; }
+  :global(.light) & { border-color: $light-border; }
+
+  button {
+    padding: 0.75rem 0.25rem;
+    margin-bottom: -1px;
+    border: none;
+    background: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    :global(.dark) & { color: $dark-text-secondary; }
+    :global(.light) & { color: $light-text-secondary; }
+
+    &.active {
+      border-bottom-color: $brand-color;
+      :global(.dark) & { color: $dark-text-primary; }
+      :global(.light) & { color: $light-text-primary; }
+    }
+  }
+}
+
+.usersActions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.userFilterButtons {
+  display: flex;
+  padding: 4px;
+  border-radius: 8px;
+  :global(.dark) & { background-color: $dark-bg; }
+  :global(.light) & { background-color: $light-border; }
+  
+  button {
+    padding: 0.5rem 1rem;
+    border: none;
+    background: none;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    :global(.dark) & {
+      color: $dark-text-secondary;
+      &:hover {
+        color: $dark-text-primary;
+      }
+    }
+    :global(.light) & {
+      color: $light-text-secondary;
+      &:hover {
+        color: $light-text-primary;
+      }
+    }
+
+    &.active {
+      :global(.dark) & { 
+        background-color: $dark-bg-secondary; 
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        color: $dark-text-primary;
+      }
+      :global(.light) & { 
+        background-color: $light-bg-secondary; 
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        color: $light-text-primary;
+      }
+    }
+  }
+}
+
+.actionButton {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: 1px solid;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-left: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  
+  &.small {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  :global(.dark) & {
+    background-color: $dark-bg-secondary;
+    border-color: $dark-border;
+    color: $dark-text-primary;
+    &:hover { background-color: $dark-border; }
+    &.primary {
+      background-color: $brand-color;
+      border-color: $brand-color;
+      color: white;
+      &:hover { background-color: $brand-color-hover; }
+    }
+    &.danger {
+      &:hover {
+        background-color: rgba($dark-danger, 0.2);
+        border-color: $dark-danger;
+        color: $dark-danger;
+      }
+    }
+  }
+  :global(.light) & {
+    background-color: $light-bg-secondary;
+    border-color: $light-border;
+    color: $light-text-primary;
+    &:hover { background-color: $light-border; }
+    &.primary {
+      background-color: $brand-color;
+      border-color: $brand-color;
+      color: white;
+      &:hover { background-color: $brand-color-hover; }
+    }
+     &.danger {
+      &:hover {
+        background-color: rgba($dark-danger, 0.1);
+        border-color: $dark-danger;
+        color: $dark-danger;
+      }
+    }
+  }
+
+   &.danger {
+      background-color: $dark-danger;
+      border-color: $dark-danger;
+      color: white;
+      &:hover { background-color: darken($dark-danger, 10%); }
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+    
+    &.dangerOutline {
+       &:global(.dark) {
+          background-color: transparent;
+          border-color: $dark-danger;
+          color: $dark-danger;
+          &:hover { background-color: rgba($dark-danger, 0.1); }
+       }
+       &:global(.light) {
+          background-color: transparent;
+          border-color: $dark-danger;
+          color: $dark-danger;
+          &:hover { background-color: rgba($dark-danger, 0.05); }
+       }
+    }
+}
+
+.tableWrapper {
+  overflow-x: auto;
+  border: 1px solid;
+  border-radius: 12px;
+  :global(.dark) & { border-color: $dark-border; }
+  :global(.light) & { border-color: $light-border; }
+}
+
+.dataTable {
+  width: 100%;
+  border-collapse: collapse;
+
+  th, td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid;
+    :global(.dark) & { border-color: $dark-border; }
+    :global(.light) & { border-color: $light-border; }
+  }
+
+  th {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    :global(.dark) & { color: $dark-text-secondary; }
+    :global(.light) & { color: $light-text-secondary; }
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+}
+
+.userNameCell {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+  }
+  p { margin: 0; font-weight: 500; }
+  span {
+    font-size: 0.8rem;
+    :global(.dark) & { color: $dark-text-secondary; }
+    :global(.light) & { color: $light-text-secondary; }
+  }
+}
+
+.permissionsCell {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 1.25rem;
+}
+
+.permEnabled {
+  color: $dark-success;
+}
+
+.permDisabled {
+  :global(.dark) & { color: $dark-text-tertiary; }
+  :global(.light) & { color: $light-text-tertiary; }
+}
+
+// --- INVITATIONS PANE ---
+.inviteSection {
+  padding-bottom: 1.5rem;
+  margin-bottom: 1.5rem;
+  &:not(:last-child) {
+    border-bottom: 1px solid;
+    :global(.dark) & { border-color: $dark-border; }
+    :global(.light) & { border-color: $light-border; }
+  }
+  h4 {
+    margin: 0 0 0.25rem 0;
+    font-size: 1.125rem;
+  }
+}
+
+.inviteLinkWrapper, .emailInviteWrapper {
+  display: flex;
+  gap: 0.75rem;
+  max-width: 600px;
+}
+
+.copyButton {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: 1px solid;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+
+  :global(.dark) & {
+    background-color: $dark-bg-secondary;
+    border-color: $dark-border;
+    color: $dark-text-primary;
+    &:hover { background-color: $dark-border; }
+  }
+  :global(.light) & {
+    background-color: $light-bg-secondary;
+    border-color: $light-border;
+    color: $light-text-primary;
+    &:hover { background-color: $light-border; }
+  }
+}
+
+.deleteLink {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.8rem;
+  margin-top: 0.75rem;
+  transition: color 0.2s;
+  :global(.dark) & { color: $dark-text-secondary; &:hover { color: $dark-danger; } }
+  :global(.light) & { color: $light-text-secondary; &:hover { color: $dark-danger; } }
+}
+
+// --- PLANS PANE ---
+.billingToggleWrapper {
+  display: flex;
+  align-items: center;
+  margin-bottom: 2.5rem;
+  padding: 6px;
+  border-radius: 10px;
+  width: fit-content;
+
+  :global(.dark) & { background-color: $dark-bg; }
+  :global(.light) & { background-color: $light-border; }
+
+  button {
+    padding: 0.5rem 1.25rem;
+    border: none;
+    background: none;
+    border-radius: 7px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    
+    :global(.dark) & { color: $dark-text-secondary; }
+    :global(.light) & { color: $light-text-secondary; }
+    
+    &.active {
+      :global(.dark) & { background-color: $dark-bg-secondary; color: $dark-text-primary; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+      :global(.light) & { background-color: $light-bg-secondary; color: $light-text-primary; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    }
+  }
+}
+
+.saveBadge {
+  margin-left: 1rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background-color: rgba($dark-success, 0.1);
+  color: $dark-success;
+}
+
+.plansGrid {
+  display: grid;
+  gap: 2rem;
+  
+  // Geniş ekranlar için varsayılan (3 sütun)
+  grid-template-columns: repeat(3, 1fr);
+
+  // Tabletler için (2 sütun) - Ekran 1024px'den dar olduğunda
+  @media (max-width: 1024px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  // Mobil cihazlar için (Tek sütun) - Ekran 768px'den dar olduğunda
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 1.5rem; // Dikeyde boşluk biraz azaltıldı
+  }
+}
+
+.planCard {
+  padding: 2rem;
+  border-radius: 16px;
+  border: 1px solid;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.2s;
+
+  :global(.dark) & {
+    background-color: $dark-bg-secondary;
+    border-color: $dark-border;
+  }
+  :global(.light) & {
+    background-color: $light-bg-secondary;
+    border-color: $light-border;
+  }
+
+  &.currentPlan {
+    border-color: $brand-color;
+    box-shadow: 0 0 0 3px rgba($brand-color, 0.2);
+  }
+}
+
+.planIcon {
+  font-size: 1.75rem;
+  margin-bottom: 1rem;
+  color: $brand-color;
+}
+
+.planCard h3 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.planPrice {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0.5rem 0;
+  
+  span {
+    font-size: 0.9rem;
+    font-weight: 400;
+    :global(.dark) & { color: $dark-text-secondary; }
+    :global(.light) & { color: $light-text-secondary; }
+  }
+}
+
+.planDescription {
+  font-size: 0.9rem;
+  margin: 0 0 1.5rem 0;
+  min-height: 40px;
+  :global(.dark) & { color: $dark-text-secondary; }
+  :global(.light) & { color: $light-text-secondary; }
+}
+
+.planButton {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  :global(.dark) & {
+    background-color: $brand-color;
+    color: white;
+    &:hover { background-color: $brand-color-hover; }
+    &:disabled {
+      background-color: $dark-border;
+      color: $dark-text-secondary;
+      cursor: not-allowed;
+    }
+  }
+  :global(.light) & {
+    background-color: $brand-color;
+    color: white;
+    &:hover { background-color: $brand-color-hover; }
+    &:disabled {
+      background-color: $light-border;
+      color: $light-text-secondary;
+      cursor: not-allowed;
+    }
+  }
+}
+
+.planFeatures {
+  list-style: none;
+  padding: 0;
+  margin: 1.5rem 0 0 0;
+  flex-grow: 1;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+
+    svg {
+      color: $dark-success;
+      flex-shrink: 0;
+    }
+  }
+}
+
+/* ---------- EKLENEN SINIFLAR ---------- */
+
+/* API TOKEN kısa gösterimi */
+.tokenText {
+  font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+  user-select: all;
+  :global(.dark) & { color: $dark-text-secondary; }
+  :global(.light) & { color: $light-text-secondary; }
+}
+
+/* Tablo satırındaki ikon/aksiyon hücresi */
+.actionsCell {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* Genel amaçlı küçük ikon butonu */
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+  background-color: transparent;
+
+  :global(.dark) & {
+    color: $dark-text-secondary;
+    &:hover { 
+      background-color: $dark-bg-secondary;
+      color: $dark-text-primary;
+    }
+    &.danger:hover { 
+      color: $dark-danger; 
+      background-color: rgba($dark-danger, .15); 
+    }
+  }
+  :global(.light) & {
+    color: $light-text-secondary;
+    &:hover { 
+      background-color: $light-border;
+      color: $light-text-primary;
+    }
+    &.danger:hover { 
+      color: $dark-danger; 
+      background-color: rgba($dark-danger, .08); 
+    }
+  }
+}
+
+/* Radix Tooltip gövdesi */
+.tooltipContent {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border-radius: 6px;
+  line-height: 1.4;
+  background-color: $dark-bg; /* Koyu arka plan */
+  color: $dark-text-primary;   /* Açık renk metin */
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  z-index: 9999; /* Her şeyin üzerinde görünmesini garantiler */
+}
+
+.actionButtonsGroup {
+  display: flex;
+  gap: 0.75rem; // Düğmeler arasına boşluk ekler
+}
+
+/* ======================================================================== */
+/* YENİ EKLENEN STİLLER: Takımlar, Popover ve Dialog                        */
+/* ======================================================================== */
+
+/* Kullanıcı satırındaki takımların ve + butonunun bulunduğu alan */
+.teamsCell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 400px;
+}
+
+/* Takım etiketi */
+.teamTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 4px 8px;
+  border-radius: 16px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.teamTagDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.teamTagRemove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: inherit;
+  opacity: 0.6;
+  cursor: pointer;
+  border-radius: 50%;
+  padding: 2px;
+  &:hover {
+    opacity: 1;
+    background-color: rgba(0,0,0,0.2);
+  }
+}
+
+/* Birincil rengin sadece çerçevesini kullanan + butonu */
+.primaryOutline {
+  &:global(.dark) {
+    background-color: transparent;
+    border-color: $brand-color;
+    color: $brand-color;
+    &:hover {
+      background-color: rgba($brand-color, 0.1);
+      border-color: $brand-color;
+      color: $brand-color;
+    }
+  }
+   &:global(.light) {
+    background-color: transparent;
+    border-color: $brand-color;
+    color: $brand-color;
+    &:hover {
+      background-color: rgba($brand-color, 0.05);
+      border-color: $brand-color;
+      color: $brand-color;
+    }
+  }
+}
+
+/* Popover Stilleri */
+.popoverContent {
+  border-radius: 8px;
+  padding: 0.5rem;
+  width: 260px;
+  box-shadow: 0 10px 38px -10px rgba(22, 23, 24, 0.35), 0 10px 20px -15px rgba(22, 23, 24, 0.2);
+  z-index: 999;
+
+  :global(.dark) & {
+    background-color: $dark-bg-secondary;
+    border: 1px solid $dark-border;
+  }
+  :global(.light) & {
+    background-color: $light-bg-secondary;
+    border: 1px solid $light-border;
+  }
+}
+
+.popoverArrow {
+  :global(.dark) & { fill: $dark-border; }
+  :global(.light) & { fill: $light-border; }
+}
+
+.popoverSearchWrapper {
+  position: relative;
+  padding: 0 0.5rem;
+  svg {
+    position: absolute;
+    top: 50%;
+    left: 1rem;
+    transform: translateY(-50%);
+    :global(.dark) & { color: $dark-text-tertiary; }
+    :global(.light) & { color: $light-text-tertiary; }
+  }
+}
+
+.popoverSearchInput {
+  width: 100%;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem 0.5rem 2rem;
+  border: none;
+  outline: none;
+  font-size: 0.9rem;
+  :global(.dark) & { 
+    background-color: $dark-bg; 
+    color: $dark-text-primary;
+  }
+  :global(.light) & { 
+    background-color: $light-bg; 
+    border: 1px solid $light-border;
+    color: $light-text-primary;
+  }
+}
+
+.popoverList {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 0.5rem;
+  padding: 0 0.25rem;
+}
+
+.popoverItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  outline: none;
+  
+  &:not(.disabled):global(.dark):hover { background-color: $dark-border; }
+  &:not(.disabled):global(.light):hover { background-color: $light-border; }
+
+  &.disabled {
+    cursor: not-allowed;
+    :global(.dark) & { color: $dark-text-tertiary; }
+    :global(.light) & { color: $light-text-tertiary; }
+  }
+}
+
+.popoverCreateButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.9rem;
+  
+  :global(.dark) & { color: $dark-text-secondary; &:hover { background-color: $dark-border; color: $dark-text-primary; } }
+  :global(.light) & { color: $light-text-secondary; &:hover { background-color: $light-border; color: $light-text-primary; } }
+}
+
+/* ======================================================================== */
+/* GÜNCELLENDİ: Dialog (Modal) Stilleri                                     */
+/* ======================================================================== */
+.dialogOverlay {
+  background-color: rgba(0,0,0,0.5);
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+}
+
+.dialogContent {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90vw;
+  max-width: 450px;
+  max-height: 85vh;
+  padding: 2rem;
+  border-radius: 12px;
+  z-index: 9999;
+  
+  // Konteyner stilleri zaten temayı destekliyordu, aynı kalıyor.
+  :global(.dark) & {
+    background-color: $dark-bg-secondary;
+    border: 1px solid $dark-border;
+  }
+  :global(.light) & {
+    background-color: $light-bg-secondary;
+    border: 1px solid $light-border;
+  }
+}
+
+.dialogTitle {
+  margin: 0 0 1.5rem 0; // Alt boşluk artırıldı
+  font-weight: 600;
+  font-size: 1.25rem;
+  
+  // YENİ: Başlık için tema destekli metin rengi eklendi.
+  :global(.dark) & { color: $dark-text-primary; }
+  :global(.light) & { color: $light-text-primary; }
+}
+
+// YENİ: Kapatma butonu için stiller eklendi.
+.dialogCloseButton {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  :global(.dark) & {
+    color: $dark-text-secondary;
+    &:hover {
+      background-color: $dark-border;
+      color: $dark-text-primary;
+    }
+  }
+  :global(.light) & {
+    color: $light-text-secondary;
+    &:hover {
+      background-color: $light-border;
+      color: $light-text-primary;
+    }
+  }
+}
+
+
+// Form elemanları için tema desteği belirginleştirildi.
+.formGroup {
+  margin-bottom: 1.5rem;
+  label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    
+    // YENİ: Label için tema destekli metin rengi eklendi.
+    :global(.dark) & { color: $dark-text-primary; }
+    :global(.light) & { color: $light-text-primary; }
+  }
+}
+
+--- File: src/app/panes/PlansPane.tsx ---
+// File: src/app/panes/PlansPane.tsx
+import React, { useState } from 'react';
+import * as styles from './Panes.module.scss';
+import { plansData } from '../data/mockData';
+import { FiPackage, FiAward, FiBriefcase, FiCheck } from 'react-icons/fi';
+
+const PlansPane = () => {
+    const [billingCycle, setBillingCycle] = useState('annual');
+
+    return (
+        <>
+            <header className={styles.paneHeader}><h2>Plans & Features</h2><p>Choose the perfect plan for your team's needs.</p></header>
+            <div className={styles.billingToggleWrapper}><button onClick={() => setBillingCycle('annual')} className={billingCycle === 'annual' ? styles.active : ''}>Annual billing</button><button onClick={() => setBillingCycle('monthly')} className={billingCycle === 'monthly' ? styles.active : ''}>Monthly billing</button>{billingCycle === 'annual' && <span className={styles.saveBadge}>Save 17%</span>}</div>
+            <div className={styles.plansGrid}>{plansData[billingCycle].map(plan => (<div key={plan.name} className={`${styles.planCard} ${plan.isCurrent ? styles.currentPlan : ''}`}><div className={styles.planIcon}>{plan.name === 'Free' && <FiPackage />}{plan.name === 'Pro' && <FiAward />}{plan.name === 'Enterprise' && <FiBriefcase />}</div><h3>{plan.name}</h3><div className={styles.planPrice}>${plan.price}<span>/ Month / Editor</span></div><p className={styles.planDescription}>{plan.description}</p><button className={styles.planButton} disabled={plan.isCurrent}>{plan.cta}</button><ul className={styles.planFeatures}>{plan.features.map(feature => <li key={feature}><FiCheck /> {feature}</li>)}</ul></div>))}</div>
+        </>
+    );
+};
+
+export { PlansPane };
+
+--- File: src/app/panes/SecurityPane.tsx ---
+// File: src/app/panes/SecurityPane.tsx
+import React, { useState } from 'react';
+import * as styles from './Panes.module.scss';
+import { mockAuditLogs } from '../data/mockData';
+
+const SecurityPane = () => {
+    const [securityTab, setSecurityTab] = useState('security');
+
+    return (
+        <>
+            <header className={styles.paneHeader}>
+                <h2>Security</h2>
+                <p>Manage your workspace's security settings.</p>
+            </header>
+            <div className={styles.subTabs}>
+                <button onClick={() => setSecurityTab('security')} className={securityTab === 'security' ? styles.active : ''}>Security</button>
+                <button onClick={() => setSecurityTab('logs')} className={securityTab === 'logs' ? styles.active : ''}>Audit Logs</button>
+                <button onClick={() => setSecurityTab('permissions')} className={securityTab === 'permissions' ? styles.active : ''}>Permissions</button>
+            </div>
+            {securityTab === 'security' && <div className={styles.placeholder}><p>General security settings (SSO, 2FA) will be here.</p></div>}
+            {securityTab === 'logs' && (
+                <div className={styles.tableWrapper}>
+                    <table className={styles.dataTable}>
+                        <thead><tr><th>User</th><th>Action</th><th>Date</th><th>IP Address</th></tr></thead>
+                        <tbody>
+                            {mockAuditLogs.map(log => (
+                                <tr key={log.id}>
+                                    <td><div className={styles.userNameCell}><img src={log.user.avatarUrl} alt={log.user.name} /><div><p>{log.user.name}</p></div></div></td>
+                                    <td>{log.action}</td>
+                                    <td>{log.date}</td>
+                                    <td>{log.ip}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+            {securityTab === 'permissions' && <div className={styles.placeholder}><p>Global permission settings will be here.</p></div>}
+        </>
+    );
+};
+
+export { SecurityPane };
+
+--- File: src/app/panes/SettingsPane.tsx ---
+// File: src/app/panes/SettingsPane.tsx
+import React from 'react';
+import * as styles from './Panes.module.scss';
+import { FiUploadCloud } from 'react-icons/fi';
+import { Workspace } from '../types';
+
+interface SettingsPaneProps {
+    workspace: Workspace;
+}
+
+const SettingsPane: React.FC<SettingsPaneProps> = ({ workspace }) => {
+    return (
+        <>
+            <header className={styles.paneHeader}>
+                <h2>Workspace Settings</h2>
+                <p>Update your workspace details and preferences.</p>
+            </header>
+            <div className={styles.formGroup}><label>Workspace Logo</label><div className={styles.logoUploadArea}><img src={workspace.logoUrl} alt="Workspace Logo" className={styles.logoPreview} /><div className={styles.logoUploadContent}><FiUploadCloud size={24} /><p><strong>Click to upload</strong> or drag and drop</p><span>SVG, PNG, JPG (max. 800x800px)</span></div></div></div>
+            <div className={styles.formGroup}><label htmlFor="ws-name">Workspace Name</label><input id="ws-name" type="text" defaultValue={workspace.name} className={styles.formInput} /></div>
+            <div className={styles.formGroup}><label htmlFor="ws-billing-email">Billing Email Address</label><input id="ws-billing-email" type="email" defaultValue={workspace.billingEmail} className={styles.formInput} /></div>
+            <div className={styles.formGroup}><label htmlFor="ws-desc">Description</label><textarea id="ws-desc" rows={4} defaultValue={workspace.description} className={styles.formTextarea}></textarea></div>
+            <div className={styles.formGroup}><label>Invite Permissions</label><p className={styles.permissionDesc}>Members can invite existing members, and:</p><div className={styles.radioGroup}><label><input type="radio" name="invite" defaultChecked /> Also invite new members</label><label><input type="radio" name="invite" /> Not invite new members</label></div></div>
+        </>
+    );
+};
+
+export { SettingsPane };
+
+--- File: src/app/panes/UsersPane.tsx ---
+import React, { useState } from 'react';
+import * as styles from './Panes.module.scss';
+import { mockUsers as initialUsers, mockTeams as initialTeams, mockPendingInvites } from '../data/mockData';
+import { User, Team } from '../types';
+import * as Tooltip from '@radix-ui/react-tooltip';
+import * as Popover from '@radix-ui/react-popover';
+import * as Dialog from '@radix-ui/react-dialog';
+import {
+    FiCheckCircle, FiXCircle, FiUserCheck, FiUserX, FiSettings, FiTrash2,
+    FiPlus, FiX, FiSearch, FiCheck
+} from 'react-icons/fi';
+
+// Yeni bileşen: Takım Etiketi
+const TeamTag = ({ team, onRemove }: { team: Team; onRemove: () => void; }) => (
+    <div className={styles.teamTag} style={{ backgroundColor: `${team.color}20`, color: team.color }}>
+        <span className={styles.teamTagDot} style={{ backgroundColor: team.color }}></span>
+        {team.name}
+        <button onClick={onRemove} className={styles.teamTagRemove}>
+            <FiX size={12} />
+        </button>
+    </div>
+);
+
+// Yeni bileşen: Takım Atama Popover'ı
+const TeamAssignmentPopover = ({ user, allTeams, onAssign, onCreate }: {
+    user: User,
+    allTeams: Team[],
+    onAssign: (teamId: string) => void,
+    onCreate: () => void,
+}) => {
+    const [searchTerm, setSearchTerm] = useState('');
+    const userTeamIds = new Set(user.teams);
+
+    const filteredTeams = allTeams.filter(team =>
+        team.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    return (
+        <Popover.Root>
+            <Popover.Trigger asChild>
+                <button className={`${styles.iconButton} ${styles.primaryOutline}`}>
+                    <FiPlus />
+                </button>
+            </Popover.Trigger>
+            <Popover.Portal>
+                <Popover.Content className={styles.popoverContent} sideOffset={5}>
+                    <div className={styles.popoverSearchWrapper}>
+                        <FiSearch />
+                        <input
+                            type="text"
+                            placeholder="Search teams..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className={styles.popoverSearchInput}
+                        />
+                    </div>
+                    <div className={styles.popoverList}>
+                        {filteredTeams.map(team => {
+                            const isAssigned = userTeamIds.has(team.id);
+                            return (
+                                <div
+                                    key={team.id}
+                                    className={`${styles.popoverItem} ${isAssigned ? styles.disabled : ''}`}
+                                    onClick={() => !isAssigned && onAssign(team.id)}
+                                >
+                                    <span>{team.name}</span>
+                                    {isAssigned && <FiCheck />}
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <button className={styles.popoverCreateButton} onClick={onCreate}>
+                        <FiPlus /> Create new team
+                    </button>
+                    <Popover.Arrow className={styles.popoverArrow} />
+                </Popover.Content>
+            </Popover.Portal>
+        </Popover.Root>
+    );
+};
+
+export const UsersPane = () => {
+    const [userTab, setUserTab] = useState('users');
+    const [users, setUsers] = useState<User[]>(initialUsers);
+    const [teams, setTeams] = useState<Team[]>(initialTeams);
+    const [isModalOpen, setModalOpen] = useState(false);
+    const [newTeamName, setNewTeamName] = useState('');
+
+    const handleAssignTeam = (userId: string, teamId: string) => {
+        setUsers(users.map(user =>
+            user.id === userId ? { ...user, teams: [...user.teams, teamId] } : user
+        ));
+    };
+
+    const handleRemoveTeam = (userId: string, teamId: string) => {
+        setUsers(users.map(user =>
+            user.id === userId ? { ...user, teams: user.teams.filter(id => id !== teamId) } : user
+        ));
+    };
+
+    const handleCreateTeam = () => {
+        if (!newTeamName.trim()) return;
+
+        const newTeam: Team = {
+            id: `team_${Date.now()}`,
+            name: newTeamName,
+            color: `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}`,
+        };
+
+        setTeams([...teams, newTeam]);
+        setNewTeamName('');
+        setModalOpen(false);
+    };
+
+    return (
+        <>
+            <header className={styles.paneHeader}>
+                <h2>Workspace Users</h2>
+                <p>Manage who has access to this workspace and their teams.</p>
+            </header>
+
+            <div className={styles.usersSummary}>
+                <span><strong>{users.length}</strong> total user(s)</span>
+                <span><strong>{users.filter(u => u.role !== 'Guest').length}</strong> Member(s)</span>
+                <span><strong>{users.filter(u => u.role === 'Guest').length}</strong> Guest(s)</span>
+            </div>
+            <div className={styles.subTabs}>
+                <button onClick={() => setUserTab('users')} className={userTab === 'users' ? styles.active : ''}>Users</button>
+                <button onClick={() => setUserTab('pending')} className={userTab === 'pending' ? styles.active : ''}>Pending invitations ({mockPendingInvites.length})</button>
+            </div>
+            <div className={styles.usersActions}>
+                <div className={styles.userFilterButtons}>
+                    <button className={styles.active}>All</button>
+                    <button>Member</button>
+                    <button>Guest</button>
+                </div>
+                <div className={styles.actionButtonsGroup}>
+                    <button className={styles.actionButton}>Download CSV</button>
+                    <button className={`${styles.actionButton} ${styles.primary}`}>Invite people</button>
+                </div>
+            </div>
+
+            {userTab === 'users' && (
+                <div className={styles.tableWrapper}>
+                    <table className={styles.dataTable}>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Teams</th>
+                                <th>Permissions</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {users.map(user => {
+                                const userTeams = user.teams.map(teamId => teams.find(t => t.id === teamId)).filter(Boolean) as Team[];
+                                return (
+                                    <tr key={user.id}>
+                                        <td>
+                                            <div className={styles.userNameCell}>
+                                                <img src={user.avatarUrl} alt={user.name} />
+                                                <div><p>{user.name}</p><span>{user.email}</span></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div className={styles.teamsCell}>
+                                                {userTeams.map(team => (
+                                                    <TeamTag key={team.id} team={team} onRemove={() => handleRemoveTeam(user.id, team.id)} />
+                                                ))}
+                                                <TeamAssignmentPopover
+                                                    user={user}
+                                                    allTeams={teams}
+                                                    onAssign={(teamId) => handleAssignTeam(user.id, teamId)}
+                                                    onCreate={() => setModalOpen(true)}
+                                                />
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div className={styles.permissionsCell}>
+                                                <Tooltip.Provider delayDuration={100}>
+                                                    <Tooltip.Root>
+                                                        <Tooltip.Trigger asChild>{user.permissions.createRooms ? <FiCheckCircle className={styles.permEnabled} /> : <FiXCircle className={styles.permDisabled} />}</Tooltip.Trigger>
+                                                        <Tooltip.Portal><Tooltip.Content className={styles.tooltipContent}>Create rooms</Tooltip.Content></Tooltip.Portal>
+                                                    </Tooltip.Root>
+                                                    <Tooltip.Root>
+                                                        <Tooltip.Trigger asChild>{user.permissions.publishTemplates ? <FiCheckCircle className={styles.permEnabled} /> : <FiXCircle className={styles.permDisabled} />}</Tooltip.Trigger>
+                                                        <Tooltip.Portal><Tooltip.Content className={styles.tooltipContent}>Publish templates</Tooltip.Content></Tooltip.Portal>
+                                                    </Tooltip.Root>
+                                                    <Tooltip.Root>
+                                                        <Tooltip.Trigger asChild>{user.permissions.seeOpenRooms ? <FiCheckCircle className={styles.permEnabled} /> : <FiXCircle className={styles.permDisabled} />}</Tooltip.Trigger>
+                                                        <Tooltip.Portal><Tooltip.Content className={styles.tooltipContent}>See open rooms</Tooltip.Content></Tooltip.Portal>
+                                                    </Tooltip.Root>
+                                                    <Tooltip.Root>
+                                                        <Tooltip.Trigger asChild>{user.permissions.isAdmin ? <FiUserCheck className={styles.permEnabled} /> : <FiUserX className={styles.permDisabled} />}</Tooltip.Trigger>
+                                                        <Tooltip.Portal><Tooltip.Content className={styles.tooltipContent}>Workspace admin</Tooltip.Content></Tooltip.Portal>
+                                                    </Tooltip.Root>
+                                                </Tooltip.Provider>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div className={styles.actionsCell}>
+                                                <Tooltip.Provider delayDuration={100}>
+                                                    <Tooltip.Root>
+                                                        <Tooltip.Trigger className={styles.iconButton}><FiSettings /></Tooltip.Trigger>
+                                                        <Tooltip.Portal><Tooltip.Content className={styles.tooltipContent}>Edit permissions</Tooltip.Content></Tooltip.Portal>
+                                                    </Tooltip.Root>
+                                                    <Tooltip.Root>
+                                                        <Tooltip.Trigger className={`${styles.iconButton} ${styles.danger}`}><FiTrash2 /></Tooltip.Trigger>
+                                                        <Tooltip.Portal><Tooltip.Content className={styles.tooltipContent}>Deactivate account</Tooltip.Content></Tooltip.Portal>
+                                                    </Tooltip.Root>
+                                                </Tooltip.Provider>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+            
+            {/* ====== EKSİK OLAN KISIM BURAYA EKLENDİ ====== */}
+            {userTab === 'pending' && (
+                <div className={styles.tableWrapper}>
+                    <table className={styles.dataTable}>
+                        <thead>
+                            <tr>
+                                <th>Email</th>
+                                <th>Invited By</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {mockPendingInvites.map(invite => (
+                                <tr key={invite.id}>
+                                    <td>{invite.email}</td>
+                                    <td>{invite.invitedBy}</td>
+                                    <td>{invite.date}</td>
+                                    <td>
+                                        <div className={styles.actionsCell}>
+                                            <button className={`${styles.actionButton} ${styles.small}`}>Resend</button>
+                                            <button className={`${styles.actionButton} ${styles.small} ${styles.danger}`}>Revoke</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+            {/* ====== EKSİK KISIM SONU ====== */}
+
+           <Dialog.Root open={isModalOpen} onOpenChange={setModalOpen}>
+                <Dialog.Portal>
+                    <Dialog.Overlay className={styles.dialogOverlay} />
+                    <Dialog.Content className={styles.dialogContent}>
+                        <Dialog.Title className={styles.dialogTitle}>Create New Team</Dialog.Title>
+                        
+                        {/* YENİ: Kapatma butonu eklendi */}
+                        <Dialog.Close asChild>
+                          <button className={styles.dialogCloseButton} aria-label="Close">
+                            <FiX />
+                          </button>
+                        </Dialog.Close>
+
+                        <div className={styles.formGroup}>
+                            <label htmlFor="team-name">Team Name</label>
+                            <input
+                                id="team-name"
+                                className={styles.formInput}
+                                value={newTeamName}
+                                onChange={e => setNewTeamName(e.target.value)}
+                                placeholder="e.g., Frontend Wizards"
+                            />
+                        </div>
+                        <div style={{ display: 'flex', marginTop: 25, justifyContent: 'flex-end', gap: '1rem' }}>
+                            <Dialog.Close asChild>
+                                <button className={styles.actionButton}>Cancel</button>
+                            </Dialog.Close>
+                            <button className={`${styles.actionButton} ${styles.primary}`} onClick={handleCreateTeam}>Create</button>
+                        </div>
+                    </Dialog.Content>
+                </Dialog.Portal>
+            </Dialog.Root>
+        </>
+    );
+};
+
+--- File: src/app/panes/index.ts ---
+export * from './SettingsPane';
+export * from './UsersPane'; // Eklendi
+export * from './InvitationsPane';
+export * from './ApiKeysPane';
+export * from './SecurityPane';
+export * from './PlansPane';
+export * from './BillingPane';
+export * from './InvoicesPane';
+export * from './AccountSettingsPane';
+export * from './DataPrivacyPane'; 
+
+--- File: src/app/redux/modules/exception-handler/actions.ts ---
+import * as actionTypes from './types';
+
+export interface ActionError {
+  type: typeof actionTypes.ACTION_ERROR;
+  payload: any;
+}
+
+export const actionError = (payload: any): ActionError => {
+  return {
+    type: actionTypes.ACTION_ERROR,
+    payload,
+  };
+};
+
+export type ErrorAction = ActionError;
+
+
+--- File: src/app/redux/modules/exception-handler/exceptionHandler.ts ---
+import { call } from "redux-saga/effects";
+import * as Sentry from "@sentry/react";
+
+import * as globalActions from "./actions";
+import store from "../../store/store";
+
+const errorHandler = (error: any) => {
+  store.dispatch(globalActions.actionError(error));
+  console.log({ error });
+  Sentry.captureException(error);
+
+  /* console.log(error.response.data); */
+};
+
+export const exceptionHandler = (saga: any, ...args: any) =>
+  function* (action: any) {
+    try {
+      yield call(saga, ...args, action);
+    } catch (error) {
+      //@ts-ignore
+      yield call(errorHandler, ...args, error);
+    }
+  };
+
+
+--- File: src/app/redux/modules/exception-handler/index.ts ---
+export { exceptionHandler } from "./exceptionHandler";
+
+
+--- File: src/app/redux/modules/exception-handler/types.ts ---
+export const ACTION_ERROR = "ACTION_ERROR";
+
+
+--- File: src/app/redux/modules/okr/actions.ts ---
+import * as actionTypes from "./types";
+
+import {
+  EpicResponseModel,
+  EpicRequestModel,
+  CreateEpicRequestModel,
+  UpdateEpicRequestModel,
+} from "../../../utils/types";
+
+export interface GetEpicsRequestAction {
+  type: typeof actionTypes.GET_EPICS_REQUEST;
+  payload: EpicRequestModel;
+}
+
+export interface GetEpicsSuccessAction {
+  type: typeof actionTypes.GET_EPICS_SUCCESS;
+  payload: EpicResponseModel[];
+}
+
+export const getEpicsRequest = (
+  payload: EpicRequestModel
+): GetEpicsRequestAction => {
+  return {
+    type: actionTypes.GET_EPICS_REQUEST,
+    payload,
+  };
+};
+
+export const getEpicsSuccess = (
+  payload: EpicResponseModel[]
+): GetEpicsSuccessAction => {
+  return {
+    type: actionTypes.GET_EPICS_SUCCESS,
+    payload,
+  };
+};
+
+/**
+ * CREATE EPIC
+ */
+
+export interface CreateEpicRequestAction {
+  type: typeof actionTypes.CREATE_EPIC_REQUEST;
+  payload: CreateEpicRequestModel;
+}
+
+export interface CreateEpicSuccessAction {
+  type: typeof actionTypes.CREATE_EPIC_SUCCESS;
+  payload: EpicResponseModel;
+}
+
+export const createEpicRequest = (
+  payload: CreateEpicRequestModel
+): CreateEpicRequestAction => {
+  return {
+    type: actionTypes.CREATE_EPIC_REQUEST,
+    payload,
+  };
+};
+
+export const createEpicSuccess = (
+  payload: EpicResponseModel
+): CreateEpicSuccessAction => {
+  return {
+    type: actionTypes.CREATE_EPIC_SUCCESS,
+    payload,
+  };
+};
+
+/**
+ * GET EPIC BY ID
+ */
+
+export interface GetEpicByIDRequestAction {
+  type: typeof actionTypes.GET_EPIC_BY_ID_REQUEST;
+  payload: string;
+}
+
+export interface GetEpicByIDSuccessAction {
+  type: typeof actionTypes.GET_EPIC_BY_ID_SUCCESS;
+  payload: EpicResponseModel;
+}
+
+export const getEpicByIDRequest = (
+  payload: string
+): GetEpicByIDRequestAction => {
+  return {
+    type: actionTypes.GET_EPIC_BY_ID_REQUEST,
+    payload,
+  };
+};
+
+export const getEpicByIDSuccess = (
+  payload: EpicResponseModel
+): GetEpicByIDSuccessAction => {
+  return {
+    type: actionTypes.GET_EPIC_BY_ID_SUCCESS,
+    payload,
+  };
+};
+
+/**
+ * UPDATE EPIC
+ */
+
+export interface UpdateEpicRequestAction {
+  type: typeof actionTypes.UPDATE_EPIC_REQUEST;
+  payload: UpdateEpicRequestModel;
+}
+
+export interface UpdateEpicSuccessAction {
+  type: typeof actionTypes.UPDATE_EPIC_SUCCESS;
+  payload: string;
+}
+
+export const updateEpicRequest = (
+  payload: UpdateEpicRequestModel
+): UpdateEpicRequestAction => {
+  return {
+    type: actionTypes.UPDATE_EPIC_REQUEST,
+    payload,
+  };
+};
+
+export const updateEpicSuccess = (payload: string): UpdateEpicSuccessAction => {
+  return {
+    type: actionTypes.UPDATE_EPIC_SUCCESS,
+    payload,
+  };
+};
+
+export type OKRActionTypes =
+  | GetEpicsRequestAction
+  | GetEpicsSuccessAction
+  | CreateEpicRequestAction
+  | CreateEpicSuccessAction
+  | GetEpicByIDRequestAction
+  | GetEpicByIDSuccessAction
+  | UpdateEpicRequestAction
+  | UpdateEpicSuccessAction;
+
+
+--- File: src/app/redux/modules/okr/api.ts ---
+import axios, { AxiosResponse } from "axios";
+import {
+  CreateEpicRequestModel,
+  EpicRequestModel,
+  EpicResponseModel,
+  UpdateEpicRequestModel,
+} from "../../../utils/types";
+
+export const getEpics = ({
+  projectKey,
+  startDate,
+  endDate,
+  statusFilter,
+  assignee,
+  includeKeyResults,
+  includeMilestones,
+  displayScale,
+}: EpicRequestModel): Promise<AxiosResponse<EpicResponseModel[]>> => {
+  return axios({
+    method: "GET",
+    url: `/get-epics?projectKey=${projectKey}&startDate=${startDate}&endDate=${endDate}&statusFilter=${statusFilter}&assignee=${assignee}&includeKeyResults=${includeKeyResults}&includeMilestones=${includeMilestones}&displayScale=${displayScale}`,
+    /* url: `/get-epics`, */
+    data: null,
+  });
+};
+
+export const createEpic = ({
+  projectKey,
+  issueType,
+  summary,
+  description,
+  priority,
+  startDate,
+  endDate,
+  assignee,
+  keyResults,
+  milestones,
+}: CreateEpicRequestModel): Promise<AxiosResponse<EpicResponseModel>> => {
+  return axios({
+    method: "POST",
+    url: "/create-epic",
+    data: {
+      projectKey,
+      issueType,
+      summary,
+      description,
+      priority,
+      startDate,
+      endDate,
+      assignee,
+      keyResults,
+      milestones,
+    },
+  });
+};
+
+export const updateEpic = ({
+  id,
+  projectKey,
+  issueType,
+  summary,
+  description,
+  priority,
+  startDate,
+  endDate,
+  assignee,
+  keyResults,
+  milestones,
+}: UpdateEpicRequestModel): Promise<AxiosResponse<string>> => {
+  return axios({
+    method: "POST",
+    url: "/update-epic",
+    data: {
+      id,
+      projectKey,
+      issueType,
+      summary,
+      description,
+      priority,
+      startDate,
+      endDate,
+      assignee,
+      keyResults,
+      milestones,
+    },
+  });
+};
+
+export const getEpicByID = (
+  id: string
+): Promise<AxiosResponse<EpicResponseModel>> => {
+  return axios({
+    method: "POST",
+    url: "/get-epic-by-id",
+    data: id,
+  });
+};
+
+
+--- File: src/app/redux/modules/okr/reducers.ts ---
+import { EpicResponseModel } from "../../../utils/types";
+import { ErrorAction } from "../exception-handler/actions";
+import { ACTION_ERROR } from "../exception-handler/types";
+import { OKRActionTypes } from "./actions";
+import * as actionTypes from "./types";
+
+export interface IInitialState {
+  displayScale: "day" | "week" | "month" | "quarter" | "halfYear";
+  epicsLoading: boolean;
+  epics: EpicResponseModel[];
+  createEpicLoading: boolean;
+  getEpicByIdLoading: boolean;
+  epicById: EpicResponseModel | null;
+  updateEpicLoading: boolean;
+}
+
+const initialState: IInitialState = {
+  displayScale: "quarter",
+  epics: [],
+  epicsLoading: false,
+  createEpicLoading: false,
+  updateEpicLoading: false,
+  getEpicByIdLoading: false,
+  epicById: null,
+};
+
+const okrReducer = (
+  state: IInitialState = initialState,
+  action: OKRActionTypes | ErrorAction
+): IInitialState => {
+  switch (action.type) {
+    case actionTypes.GET_EPICS_REQUEST:
+      return {
+        ...state,
+        epicsLoading: true,
+      };
+    case actionTypes.GET_EPICS_SUCCESS:
+      return {
+        ...state,
+        epicsLoading: false,
+        epics: action.payload,
+        displayScale: action.payload[0]?.displayScale,
+      };
+    case actionTypes.CREATE_EPIC_REQUEST:
+      return {
+        ...state,
+        createEpicLoading: true,
+      };
+    case actionTypes.CREATE_EPIC_SUCCESS:
+      return {
+        ...state,
+        createEpicLoading: false,
+      };
+    case actionTypes.UPDATE_EPIC_REQUEST:
+      return {
+        ...state,
+        updateEpicLoading: true,
+      };
+    case actionTypes.UPDATE_EPIC_SUCCESS:
+      return {
+        ...state,
+        updateEpicLoading: false,
+      };
+    case actionTypes.GET_EPIC_BY_ID_REQUEST:
+      return {
+        ...state,
+        getEpicByIdLoading: true,
+      };
+    case actionTypes.GET_EPIC_BY_ID_SUCCESS:
+      return {
+        ...state,
+        getEpicByIdLoading: false,
+        epicById: action.payload,
+      };
+    case ACTION_ERROR:
+      return {
+        ...state,
+        epicsLoading: false,
+        createEpicLoading: false,
+        getEpicByIdLoading: false,
+        updateEpicLoading: false,
+      };
+    default:
+      return state;
+  }
+};
+
+export default okrReducer;
+
+
+--- File: src/app/redux/modules/okr/types.ts ---
+/**
+ * GET EPICS
+ */
+
+export const GET_EPICS_REQUEST = "GET_EPICS_REQUEST";
+export const GET_EPICS_SUCCESS = "GET_EPICS_SUCCESS";
+
+/**
+ * CREATE EPIC
+ */
+
+export const CREATE_EPIC_REQUEST = "CREATE_EPIC_REQUEST";
+export const CREATE_EPIC_SUCCESS = "CREATE_EPIC_SUCCESS";
+
+/**
+ * GET EPIC BY ID
+ */
+
+export const GET_EPIC_BY_ID_REQUEST = "GET_EPIC_BY_ID_REQUEST";
+export const GET_EPIC_BY_ID_SUCCESS = "GET_EPIC_BY_ID_SUCCESS";
+
+/**
+ * UPDATE EPIC
+ */
+
+export const UPDATE_EPIC_REQUEST = "UPDATE_EPIC_REQUEST";
+export const UPDATE_EPIC_SUCCESS = "UPDATE_EPIC_SUCCESS";
+
+
+--- File: src/app/redux/modules/okr/watcherSagas.ts ---
+import { all, takeLatest } from "redux-saga/effects";
+import { exceptionHandler } from "../exception-handler";
+
+import * as actionTypes from "./types";
+import * as workerSagas from "./workerSagas";
+
+export function* getEpicsRequestWatcher() {
+  yield takeLatest(
+    actionTypes.GET_EPICS_REQUEST,
+    exceptionHandler(workerSagas.getEpics)
+  );
+}
+
+export function* createEpicRequestWatcher() {
+  yield takeLatest(
+    actionTypes.CREATE_EPIC_REQUEST,
+    exceptionHandler(workerSagas.createEpic)
+  );
+}
+
+export function* getEpicByIDRequestWatcher() {
+  yield takeLatest(
+    actionTypes.GET_EPIC_BY_ID_REQUEST,
+    exceptionHandler(workerSagas.getEpicById)
+  );
+}
+
+export function* updateEpicRequestWatcher() {
+  yield takeLatest(
+    actionTypes.UPDATE_EPIC_REQUEST,
+    exceptionHandler(workerSagas.updateEpic)
+  );
+}
+
+export function* okrSaga() {
+  yield all([
+    getEpicsRequestWatcher(),
+    createEpicRequestWatcher(),
+    updateEpicRequestWatcher(),
+    getEpicByIDRequestWatcher(),
+  ]);
+}
+
+
+--- File: src/app/redux/modules/okr/workerSagas.ts ---
+import { call, CallEffect, put, PutEffect } from "redux-saga/effects";
+import { AxiosResponse } from "axios";
+
+import * as actions from "./actions";
+import * as api from "./api";
+import {
+  CreateEpicRequestModel,
+  EpicRequestModel,
+  EpicResponseModel,
+} from "../../../utils/types";
+
+export function* getEpics(
+  action: actions.GetEpicsRequestAction
+): Generator<
+  | CallEffect<AxiosResponse<EpicResponseModel[]>>
+  | PutEffect<actions.GetEpicsSuccessAction>,
+  void,
+  AxiosResponse<EpicResponseModel[]>
+> {
+  const response: AxiosResponse<EpicResponseModel[]> = yield call(
+    api.getEpics,
+    action.payload
+  );
+
+  yield put(actions.getEpicsSuccess(response.data));
+}
+
+export function* createEpic(
+  action: actions.CreateEpicRequestAction
+): Generator<
+  | CallEffect<AxiosResponse<EpicResponseModel>>
+  | PutEffect<actions.CreateEpicSuccessAction>
+  | PutEffect<actions.GetEpicsRequestAction>,
+  void,
+  AxiosResponse<EpicResponseModel>
+> {
+  const response: AxiosResponse<EpicResponseModel> = yield call(
+    api.createEpic,
+    action.payload
+  );
+
+  yield put(actions.createEpicSuccess(response.data));
+  yield put<actions.GetEpicsRequestAction>({
+    type: "GET_EPICS_REQUEST",
+    payload: {
+      projectKey: null,
+      startDate: null,
+      endDate: null,
+      statusFilter: null,
+      assignee: null,
+      includeKeyResults: null,
+      includeMilestones: null,
+    },
+  });
+}
+
+export function* getEpicById(
+  action: actions.GetEpicByIDRequestAction
+): Generator<
+  | CallEffect<AxiosResponse<EpicResponseModel>>
+  | PutEffect<actions.GetEpicByIDSuccessAction>,
+  void,
+  AxiosResponse<EpicResponseModel>
+> {
+  const response: AxiosResponse<EpicResponseModel> = yield call(
+    api.getEpicByID,
+    action.payload
+  );
+
+  yield put(actions.getEpicByIDSuccess(response.data));
+}
+
+export function* updateEpic(
+  action: actions.UpdateEpicRequestAction
+): Generator<
+  | CallEffect<AxiosResponse<string>>
+  | PutEffect<actions.UpdateEpicSuccessAction>
+  | PutEffect<actions.GetEpicsRequestAction>,
+  void,
+  AxiosResponse<string>
+> {
+  const response: AxiosResponse<string> = yield call(
+    api.updateEpic,
+    action.payload
+  );
+
+  yield put(actions.updateEpicSuccess("success"));
+  yield put<actions.GetEpicsRequestAction>({
+    type: "GET_EPICS_REQUEST",
+    payload: {
+      projectKey: null,
+      startDate: null,
+      endDate: null,
+      statusFilter: null,
+      assignee: null,
+      includeKeyResults: null,
+      includeMilestones: null,
+    },
+  });
+}
+
+
+--- File: src/app/redux/reducer/rootReducer.ts ---
+import { combineReducers } from "redux";
+
+import okrReducer from "../modules/okr/reducers";
+
+const rootReducer = combineReducers({
+  okr: okrReducer,
+});
+
+export type RootReducerState = ReturnType<typeof rootReducer>;
+
+export default rootReducer;
+
+
+--- File: src/app/redux/saga/rootSaga.ts ---
+import { all, fork } from "redux-saga/effects";
+
+import { okrSaga } from "../modules/okr/watcherSagas";
+
+export default function* rootSaga() {
+  yield all([fork(okrSaga)]);
+}
+
+
+--- File: src/app/redux/store/store.ts ---
+import { configureStore } from "@reduxjs/toolkit";
+import createSagaMiddleware from "redux-saga";
+
+import rootReducer from "../reducer/rootReducer";
+import rootSaga from "../saga/rootSaga";
+
+const sagaMiddleware = createSagaMiddleware();
+
+const store = configureStore({
+  reducer: rootReducer,
+  middleware: [sagaMiddleware],
+});
+
+sagaMiddleware.run(rootSaga);
+
+export default store;
+
+
+--- File: src/app/services/apiKeyService.ts ---
+// File: src/app/services/apiKeyService.ts
+import { mockApiKeys } from '../data/mockData';
+import { ApiKey } from '../types';
+
+// Bu fonksiyonlar ileride gerçek API çağrıları yapacak.
+export const apiKeyService = {
+  getApiKeys: async (workspaceId: string): Promise<ApiKey[]> => {
+    console.log(`Fetching API keys for workspace ${workspaceId}...`);
+    // Simülasyon: 1 saniye bekle
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    return mockApiKeys;
+  },
+  createApiKey: async (workspaceId: string, name: string): Promise<ApiKey> => {
+    console.log(`Creating API key "${name}" for workspace ${workspaceId}...`);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const newKey: ApiKey = {
+      id: `key_${Date.now()}`,
+      name,
+      token: `bhk_${[...Array(32)].map(() => Math.random().toString(36)[2]).join('')}`,
+      createdAt: new Date().toISOString().split('T')[0], // YYYY-MM-DD formatı
+      lastUsed: null,
+    };
+    // mockApiKeys.push(newKey); // Gerçek uygulamada bu state'i güncellemek yerine API'den gelen listeyi yeniden çekeriz.
+    return newKey;
+  },
+  deleteApiKey: async (keyId: string): Promise<void> => {
+    console.log(`Deleting API key ${keyId}...`);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    console.log('Key deleted.');
+  },
+};
+
+--- File: src/app/types/index.ts ---
+// File: src/app/types/index.ts
+
+/**
+ * Çalışma alanının (Workspace) yapısını tanımlar.
+ */
+export interface Workspace {
+    id: string;
+    name: string;
+    ownerEmail: string;
+    plan: string;
+    logoUrl: string;
+    billingEmail: string;
+    description: string;
+}
+
+export interface Team {
+  id: string;
+  name: string;
+  color: string; // Etiketler için renk kodu
+}
+
+/**
+ * Bir kullanıcının yetkilerini tanımlar.
+ */
+export interface UserPermissions {
+    createRooms: boolean;
+    publishTemplates: boolean;
+    seeOpenRooms: boolean;
+    isAdmin: boolean;
+}
+
+/**
+ * Çalışma alanındaki bir kullanıcının yapısını tanımlar.
+ */
+export interface User {
+    id: string;
+    name: string;
+    email: string;
+    avatarUrl: string;
+    role: 'Workspace admin' | 'Member' | 'Guest';
+    lastAccess: string;
+    status: 'Active' | 'Inactive';
+    joinDate: string;
+    permissions: UserPermissions;
+    teams: string[]; // <-- HATA ALMAMAK İÇİN BU SATIRI EKLEYİN
+}
+
+/**
+ * Beklemedeki bir davetiyenin yapısını tanımlar.
+ */
+export interface PendingInvite {
+    id: string;
+    email: string;
+    invitedBy: string;
+    date: string;
+    role: 'Member' | 'Guest';
+}
+
+/**
+ * Fiyatlandırma planının yapısını tanımlar.
+ */
+export interface Plan {
+    name: 'Free' | 'Pro' | 'Enterprise';
+    price: number;
+    description: string;
+    features: string[];
+    cta: string;
+    isCurrent?: boolean;
+}
+
+/**
+ * Bir API anahtarının yapısını tanımlar.
+ */
+export interface ApiKey {
+    id: string;
+    name: string;
+    token: string;
+    createdAt: string;
+    lastUsed: string | null;
+}
+
+/**
+ * Denetim kaydının (Audit Log) yapısını tanımlar.
+ */
+export interface AuditLog {
+    id: number;
+    user: {
+        name: string;
+        avatarUrl: string;
+    };
+    action: string;
+    date: string;
+    ip: string;
+}
+
+
+--- File: src/app/utils/Constants.ts ---
+export const Constants = {
+  COMPONENTS: "@COMPONENTS",
+};
+
+
+--- File: src/app/utils/TabNodes.ts ---
+import { ReactNode } from "react";
+
+type NodeMapping = {
+  key: string;
+  label: string;
+  children: ReactNode;
+};
+
+export type PathSegments = {
+  users: NodeMapping;
+  domains: NodeMapping;
+  roles: NodeMapping;
+  companies: NodeMapping;
+};
+
+export const nodeMapping: PathSegments = {
+  users: {
+    key: "users",
+    label: "Users",
+    children: "TEST USERS",
+  },
+  domains: {
+    key: "domains",
+    label: "Domains",
+    children: "TEST Domains",
+  },
+  roles: {
+    key: "roles",
+    label: "Roles",
+    children: "ROLES CONTENT",
+  },
+  companies: {
+    key: "companies",
+    label: "Companies",
+    children: "COMPANIES CONTENT",
+  },
+};
+
+
+--- File: src/app/utils/full-screen.ts ---
+import { useEffect, useState } from 'react';
+
+export default () => {
+  const [isFull, setFull] = useState(false);
+  const [isContentFull, setIsContentFull] = useState(false);
+
+  const full = (dom?: HTMLElement) => {
+    if (!document.fullscreenElement) {
+      (dom || document.getElementsByTagName('body')[0]).requestFullscreen();
+    }
+  };
+
+  const exit = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    }
+  };
+
+  const contentFull = () => {
+    setIsContentFull(true);
+  };
+  const contentExit = () => {
+    setIsContentFull(false);
+  };
+
+  useEffect(() => {
+    const fullscreenchangeListener = () => {
+      setFull(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', fullscreenchangeListener);
+    return () => {
+      document.removeEventListener('fullscreenchange', fullscreenchangeListener);
+    };
+  }, []);
+
+  return { isFull, full, exit, isContentFull, contentFull, contentExit };
+};
+
+
+--- File: src/app/utils/helpers.ts ---
+import { KeyboardEvent } from "react";
+
+export const onPressEnter = (
+  event: KeyboardEvent<HTMLInputElement>,
+  fn: () => void
+) => {
+  if (event.key === "Enter") {
+    fn();
+  }
+};
+
+
+--- File: src/app/utils/hexToRgb.ts ---
+export const hexToRgb = (hex: string) => {
+  console.log("hex =>", hex);
+  const cleanedHex = hex.replace(/^#/, "");
+
+  if (!/^([A-Fa-f0-9]{3}|[A-Fa-f0-9]{6})$/.test(cleanedHex)) {
+    return null;
+  }
+
+  const fullHex =
+    cleanedHex.length === 3
+      ? cleanedHex
+          .split("")
+          .map((char) => char + char)
+          .join("")
+      : cleanedHex;
+
+  const r = parseInt(fullHex.slice(0, 2), 16);
+  const g = parseInt(fullHex.slice(2, 4), 16);
+  const b = parseInt(fullHex.slice(4, 6), 16);
+
+  return { r, g, b };
+};
+
+
+--- File: src/app/utils/human-readable-effort.ts ---
+const convertEffortToHumanReadableFormat = (
+  hours: number,
+  days: number,
+  weeks: number
+) => {
+  let result = "";
+
+  // Günleri kontrol et
+  if (days > 0) {
+    if (days >= 5) {
+      const weeksFromDays = Math.floor(days / 5);
+      const remainingDays = days % 5;
+      result += `${weeksFromDays}w `;
+      if (remainingDays > 0) {
+        result += `${remainingDays}d `;
+      }
+    } else {
+      result += `${days}d `;
+    }
+  }
+
+  // Saatleri kontrol et
+  if (hours > 0) {
+    const totalDays = Math.floor(hours / 8) + days;
+    const remainingHours = hours % 8;
+
+    if (totalDays > 0) {
+      if (totalDays >= 5) {
+        const weeksFromDays = Math.floor(totalDays / 5);
+        const remainingDays = totalDays % 5;
+        result += `${weeksFromDays}w `;
+        if (remainingDays > 0) {
+          result += `${remainingDays}d `;
+        }
+      } else {
+        result += `${totalDays}d `;
+      }
+    }
+
+    if (remainingHours > 0) {
+      result += `${remainingHours}h `;
+    }
+  }
+
+  // Haftaları kontrol et
+  if (weeks > 0) {
+    result += `${weeks}w `;
+  }
+
+  const regex = /^(\d+[dhw]\s*)*$/;
+  if (!regex.test(result)) {
+    alert("NO");
+    return "Invalid input! Please use only valid characters (d, h, w) for days, hours, and weeks.";
+  }
+
+  return result.trim();
+};
+
+export const handleCalculate = (inputValue: string) => {
+  const regex = /(\d+)([hdw])/g;
+  let match;
+  let hours = 0;
+  let days = 0;
+  let weeks = 0;
+
+  while ((match = regex.exec(inputValue)) !== null) {
+    const value = parseInt(match[1], 10);
+    const unit = match[2];
+
+    if (unit === "h") {
+      hours += value;
+    } else if (unit === "d") {
+      days += value;
+    } else if (unit === "w") {
+      weeks += value;
+    }
+  }
+
+  const result = convertEffortToHumanReadableFormat(hours, days, weeks);
+  return result;
+};
+
+
+--- File: src/app/utils/lightenColor.ts ---
+export const lightenColor = (color: string, percent: number) => {
+  const num = parseInt(color.replace("#", ""), 16);
+  const r = (num >> 16) + Math.round(((255 - (num >> 16)) * percent) / 100);
+  const g =
+    ((num >> 8) & 0x00ff) +
+    Math.round(((255 - ((num >> 8) & 0x00ff)) * percent) / 100);
+  const b =
+    (num & 0x0000ff) + Math.round(((255 - (num & 0x0000ff)) * percent) / 100);
+
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
+};
+
+export const darkenColor = (color: string, percent: number) => {
+  const num = parseInt(color.replace("#", ""), 16);
+  const r = Math.max(
+    0,
+    (num >> 16) - Math.round(((num >> 16) * percent) / 100)
+  );
+  const g = Math.max(
+    0,
+    ((num >> 8) & 0x00ff) - Math.round((((num >> 8) & 0x00ff) * percent) / 100)
+  );
+  const b = Math.max(
+    0,
+    (num & 0x0000ff) - Math.round(((num & 0x0000ff) * percent) / 100)
+  );
+
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
+};
+
+
+--- File: src/app/utils/mockApiHelpers.ts ---
+import { EpicRequestModel, EpicResponseModel } from "./types";
+
+interface IFilterData extends EpicRequestModel {
+  data: EpicResponseModel[];
+}
+
+export const filterData = ({
+  data,
+  projectKey,
+  startDate,
+  endDate,
+  statusFilter,
+  assignee,
+  includeKeyResults,
+  includeMilestones,
+  displayScale,
+}: IFilterData): EpicResponseModel[] => {
+  console.log(
+    "CONDITION=>",
+    projectKey === null &&
+      startDate === null &&
+      endDate === null &&
+      statusFilter === null &&
+      assignee === null &&
+      includeKeyResults === null &&
+      includeMilestones === null
+  );
+  if (
+    projectKey === null &&
+    startDate === null &&
+    endDate === null &&
+    statusFilter === null &&
+    assignee === null &&
+    includeKeyResults === null &&
+    includeMilestones === null &&
+    displayScale === null
+  ) {
+    console.log("U");
+    return data;
+  }
+
+  return data.filter((project) => {
+    const projectMatches =
+      (!projectKey || project.project.projectKey === projectKey) &&
+      (!startDate || project.project.startDate >= startDate) &&
+      (!endDate || project.project.endDate <= endDate);
+
+    const objectivesMatches = project.objectives.filter((objective) => {
+      const statusMatches = !statusFilter || objective.status === statusFilter;
+      const assigneeMatches = !assignee || objective.assignee === assignee;
+
+      const keyResultsMatches =
+        includeKeyResults === null ||
+        (includeKeyResults &&
+          objective.keyResults &&
+          objective.keyResults.length > 0);
+
+      const milestonesMatches =
+        includeMilestones === null ||
+        (includeMilestones &&
+          objective.milestones &&
+          objective.milestones.length > 0);
+
+      return (
+        statusMatches &&
+        assigneeMatches &&
+        keyResultsMatches &&
+        milestonesMatches
+      );
+    });
+
+    return projectMatches && objectivesMatches.length > 0;
+  });
+};
+
+
+--- File: src/app/utils/mockData.ts ---
+import { EpicResponseModel } from "./types";
+import { v4 as uuidv4 } from "uuid";
+
+export const mockRoadMapData: EpicResponseModel[] = [
+  {
+    id: uuidv4(),
+    displayScale: "day",
+    project: {
+      id: uuidv4(),
+      projectKey: "BU-1",
+      projectName: "Boilerrum UI",
+      startDate: "2024-01-01",
+      endDate: "2024-12-12",
+    },
+    objectives: [
+      {
+        id: "TET-1",
+        issueKey: "TET-1",
+        summary: "Increase revenue by 10%",
+        description: "Focus on customer acquisition",
+        status: "In Progress",
+        startDate: "2024-09-11",
+        endDate: "2024-09-22",
+        assignee: "john.doe",
+        progressPercentage: 60,
+        keyResults: [
+          {
+            id: uuidv4(),
+            keyResultID: "KR-101",
+            summary: "Acquire 1000 new customers",
+            targetValue: "1000",
+            currentValue: "600",
+            status: "In Progress",
+            dueDate: "2024-05-31",
+          },
+        ],
+        milestones: [
+          {
+            id: uuidv4(),
+            milestoneID: "MILE-100",
+            title: "Launch marketing campaign",
+            dueDate: "2024-09-09",
+            isAchieved: false,
+          },
+        ],
+      },
+      {
+        id: "TET-2",
+        issueKey: "TET-2",
+        summary: "Designing mockups",
+        description: "Designing mockups for another project",
+        status: "To Do",
+        startDate: "2024-10-02",
+        endDate: "2024-10-06",
+        assignee: "john.doe",
+        progressPercentage: 60,
+        keyResults: [
+          {
+            id: uuidv4(),
+            keyResultID: "KR-102",
+            summary: "Design at least two screens",
+            targetValue: "1000",
+            currentValue: "600",
+            status: "In Progress",
+            dueDate: "2024-05-31",
+          },
+        ],
+        milestones: [
+          {
+            id: uuidv4(),
+            milestoneID: "MILE-100",
+            title: "Design first screen",
+            dueDate: "2024-09-12",
+            isAchieved: true,
+          },
+        ],
+      },
+      {
+        id: "TET-3",
+        issueKey: "TET-3",
+        summary: "Test Epic",
+        description: "Designing mockups for another project",
+        status: "To Do",
+        startDate: "2024-10-08",
+        endDate: "2024-10-22",
+        assignee: "john.doe",
+        progressPercentage: 60,
+        keyResults: [
+          {
+            id: uuidv4(),
+            keyResultID: "KR-102",
+            summary: "Design at least two screens",
+            targetValue: "1000",
+            currentValue: "600",
+            status: "In Progress",
+            dueDate: "2024-05-31",
+          },
+        ],
+        milestones: [
+          {
+            id: uuidv4(),
+            milestoneID: "MILE-100",
+            title: "Design first screen",
+            dueDate: "2024-09-12",
+            isAchieved: true,
+          },
+        ],
+      },
+    ],
+    totalObjectives: 5,
+    completedObjectives: 2,
+    inProgessObjectives: 3,
+  },
+];
+
+
+--- File: src/app/utils/sentry.ts ---
+import * as Sentry from "@sentry/react";
+
+export const initSentry = () => {
+  Sentry.init({
+    dsn: "https://o4507922510643200.ingest.de.sentry.io/4507922513854544",
+    integrations: [
+      Sentry.browserTracingIntegration(),
+      Sentry.replayIntegration(),
+    ],
+    // Tracing
+    tracesSampleRate: 1.0, //  Capture 100% of the transactions
+    // Set 'tracePropagationTargets' to control for which URLs distributed tracing should be enabled
+    tracePropagationTargets: ["localhost", "http://92.205.131.234:9102"],
+    // Session Replay
+    replaysSessionSampleRate: 0.1, // This sets the sample rate at 10%. You may want to change it to 100% while in development and then sample at a lower rate in production.
+    replaysOnErrorSampleRate: 1.0, // If you're not already sampling the entire session, change the sample rate to 100% when sampling sessions where errors occur.
+  });
+};
+
+
+--- File: src/assets/index.d.ts ---
+declare module "*.scss";
+declare module "*.svg";
+declare module "*.png";
+declare module "*.jpeg";
+declare module "*.jpg";
+declare module "taurenaShell/BoilerThemeContext";
+declare module "boilerContainer/BoilerSettings";
+declare module "boilerContainer/BoilerLayout";
+declare module "boilerContainer/BoilerFullScreenContext";
+
+
+--- File: src/index.js ---
+import("./EntryPoint.tsx");
+
+--- File: src/index.scss ---
+// File: src/index.scss (DÜZELTİLMİŞ)
+// Bu dosya, Tailwind CSS'in temel stillerini ve
+// projenizin genel stillerini içermelidir.
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Montserrat", sans-serif;
+}
+
+--- File: src/scripts/extract-files.ts ---
+// extract-files.cjs  —  iki üst klasörden itibaren .ts/.js/.tsx dosyalarını toplar
+
+// node extract-files.ts "../../" "output.txt
+const fs   = require("fs");
+const path = require("path");
+
+// ---------- Parametreler ----------
+const args = process.argv.slice(2);
+const sourceDir = args[0]
+  ? path.resolve(process.cwd(), args[0])
+  : path.resolve(__dirname, "../../");          // <‑‑ iki üst klasör
+const outputFile = args[1]
+  ? path.resolve(process.cwd(), args[1])
+  : path.resolve(__dirname, "./output/project-files.txt");
+
+// ---------- Hazırlık ----------
+const outputDir = path.dirname(outputFile);
+if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
+fs.writeFileSync(outputFile, "", "utf-8");      // eski içeriği sil
+
+const allowed = [".ts", ".js", ".tsx", ".css", ".scss", ".json"];
+const ignore  = ["node_modules", ".git", "dist", "build", "coverage"];
+
+function write(filePath, content) {
+  const rel = path.relative(path.resolve(__dirname, "../.."), filePath);
+  const block = `--- File: ${rel} ---\n${content}\n\n`;
+  console.log(`📝  ${rel}`);
+  fs.appendFileSync(outputFile, block, "utf-8");
+}
+
+function scan(dir) {
+  for (const item of fs.readdirSync(dir)) {
+    const full = path.join(dir, item);
+    const stat = fs.statSync(full);
+
+    if (stat.isDirectory() && !ignore.includes(item)) {
+      scan(full);
+    } else if (stat.isFile() && allowed.includes(path.extname(item))) {
+      write(full, fs.readFileSync(full, "utf-8"));
+    }
+  }
+}
+
+console.log(`🔍 Kaynak:  ${sourceDir}`);
+console.log(`📄 Çıktı:   ${outputFile}\n`);
+scan(sourceDir);
+console.log("\n✅ Tamamlandı.");
+
+
+--- File: src/styles/main.scss ---
+/* 1. Google Fonts - EKLENDİ */
+@import url("https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Nunito+Sans:ital,opsz,wght@0,6..12,200;0,6..12,300;0,6..12,400;0,6..12,500;0,6..12,600;0,6..12,700;0,6..12,800;0,6..12,900;0,6..12,1000;1,6..12,200;1,6..12,300;1,6..12,400;1,6..12,500;1,6..12,600;1,6..12,700;1,6..12,800;1,6..12,900;1,6..12,1000&family=Nunito:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;0,1000;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900;1,1000&display=swap");
+
+/* 2. Temel Reset (Mevcut kod) */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  /* Font ailesini Montserrat olarak bırakıyoruz, çünkü artık yüklü olacak. */
+  font-family: "Montserrat", sans-serif;
+}
+
+/* ────────────────────────────────────────────────────────────────
+   4 · Tema Duyarlı Kaydırma Çubuğu (Radix’e benzer minimal stil)
+   ──────────────────────────────────────────────────────────────── */
+
+/* Tema değişkenleri  */
+:root {
+  --scroll-thumb-light: #c1c1c1;
+  --scroll-thumb-dark: #4b5563; /* Tailwind slate‑600 */
+}
+
+/* Tema seçimine göre aktif renk  */
+html[data-kit-theme="light"] {
+  --scroll-thumb: var(--scroll-thumb-light);
+}
+html[data-kit-theme="dark"] {
+  --scroll-thumb: var(--scroll-thumb-dark);
+}
+
+/* Firefox & yeni‑nesil tarayıcılar  */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb) transparent;
+}
+
+/* WebKit (tab‑, Safari, Edge‑Chr) */
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--scroll-thumb);
+  border-radius: 4px;
+}
+
+/* Köşe (hem yatay hem dikey olduğunda) */
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+
+--- File: src/styles/variables.scss ---
+// File: src/styles/variables.scss (YENİ DOSYA)
+// Tüm SCSS dosyalarının kullandığı ortak değişkenler.
+$brand-color: #8B5CF6;
+$brand-color-hover: #7c3aed;
+
+// Dark Theme
+$dark-bg: #111827;
+$dark-bg-secondary: #1f2937;
+$dark-border: #374151;
+$dark-text-primary: #f9fafb;
+$dark-text-secondary: #9ca3af;
+$dark-text-tertiary: #6b7280;
+$dark-success: #22c55e;
+$dark-danger: #ef4444;
+
+// Light Theme
+$light-bg: #f9fafb;
+$light-bg-secondary: #ffffff;
+$light-border: #e5e7eb;
+$light-text-primary: #111827;
+$light-text-secondary: #6b7280;
+$light-text-tertiary: #9ca3af;
+
+--- File: tailwind.config.js ---
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: ["./src/**/*.{js,jsx,ts,tsx}"],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+};
+
+
+--- File: tsconfig.json ---
+{
+  "compilerOptions": {
+    "target": "es5",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx"
+  },
+  "include": [
+    "src"
+  ]
+}
+
+

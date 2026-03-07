@@ -1,0 +1,9 @@
+declare module "*.scss";
+declare module "*.svg";
+declare module "*.png";
+declare module "*.jpeg";
+declare module "*.jpg";
+declare module "taurenaShell/BoilerThemeContext";
+declare module "boilerContainer/BoilerSettings";
+declare module "boilerContainer/BoilerLayout";
+declare module "boilerContainer/BoilerFullScreenContext";

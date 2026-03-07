@@ -1,0 +1,113 @@
+$brand-color: #C8102E;
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 300;
+  animation: fadeIn 0.15s ease;
+}
+
+.content {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(480px, 90vw);
+  max-height: 85vh;
+  overflow-y: auto;
+  border-radius: 16px;
+  padding: 1.5rem;
+  z-index: 301;
+  border: 1px solid;
+  :global(.dark) & {
+    background: #1e293b;
+    border-color: rgba(255,255,255,0.08);
+  }
+  :global(.light) & {
+    background: #fff;
+    border-color: rgba(0,0,0,0.1);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+  }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.dangerIcon {
+  color: #ef4444;
+  display: inline-flex;
+}
+
+.title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  flex: 1;
+  margin: 0;
+  :global(.dark) & { color: #f1f5f9; }
+  :global(.light) & { color: #1e293b; }
+}
+
+.closeBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  :global(.dark) & { background: transparent; color: rgba(255,255,255,0.4); &:hover { background: rgba(255,255,255,0.06); } }
+  :global(.light) & { background: transparent; color: rgba(0,0,0,0.4); &:hover { background: rgba(0,0,0,0.04); } }
+}
+
+.description {
+  font-size: 0.85rem;
+  margin: 0 0 1rem;
+  :global(.dark) & { color: rgba(255,255,255,0.5); }
+  :global(.light) & { color: rgba(0,0,0,0.5); }
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.cancelBtn {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: 1px solid;
+  cursor: pointer;
+  :global(.dark) & { border-color: rgba(255,255,255,0.1); background: transparent; color: rgba(255,255,255,0.6); &:hover { background: rgba(255,255,255,0.04); } }
+  :global(.light) & { border-color: rgba(0,0,0,0.12); background: transparent; color: rgba(0,0,0,0.6); &:hover { background: rgba(0,0,0,0.03); } }
+}
+
+.confirmBtn {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  background: $brand-color;
+  color: #fff;
+  &:hover { filter: brightness(1.1); }
+}
+
+.confirmDanger {
+  background: #dc2626;
+  &:hover { background: #b91c1c; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

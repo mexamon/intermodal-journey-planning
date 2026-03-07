@@ -1,0 +1,119 @@
+# ===================================================================
+# İşletim Sistemi ve Editör Dosyaları
+# ===================================================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Thumbnails
+._*
+
+# Windows thumbnail cache
+Thumbs.db
+ehthumbs.db
+ehthumbs_vista.db
+
+# VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# JetBrains (WebStorm, etc.)
+.idea/
+
+# ===================================================================
+# Bağımlılıklar ve Kilit Dosyaları
+# ===================================================================
+# Tüm alt projelerdeki node_modules klasörlerini yoksay
+**/node_modules
+/node_modules
+
+# Yarn PnP dosyaları
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# Paket yöneticisi logları
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# package-lock.json, çünkü projenizde yarn.lock kullanılıyor
+package-lock.json
+
+# ===================================================================
+# Build ve Cache Dosyaları
+# ===================================================================
+# TurboRepo cache
+.turbo
+
+# Webpack, Next.js, etc. build çıktıları
+**/build
+/build
+**/dist
+/dist
+/.next/
+
+# Rollup cache
+.rollup.cache
+
+# ESLint cache
+.eslintcache
+
+# Diğer cache dosyaları
+.cache/
+.cache-loader/
+
+# ===================================================================
+# Test ve Raporlama Dosyaları
+# ===================================================================
+/coverage
+junit.xml
+
+# Cypress test videoları ve ekran görüntüleri
+/cypress/videos/
+/cypress/screenshots/
+
+# ===================================================================
+# Projeye Özel Girdiler
+# ===================================================================
+# boilerrum uygulamasındaki webpack stats dosyası
+stats.html
+
+# React Flow Pro örneklerini yoksay (mevcut girdiniz)
+/src/react-flow-pro-examples
+
+# ===================================================================
+# Log ve Ortam Değişkeni Dosyaları
+# ===================================================================
+# Loglar
+*.log
+logs
+*.log.*
+
+# Ortam değişkenleri (Environment variables)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+
+# ===================================================================
+# Diğer
+# ===================================================================
+# Webpack Obfuscator raporları
+obfuscator-map.json
+obfuscator-map.js
+
+# Cache, yedek veya build çıktısı gibi sıkıştırılmış dosyalar
+*.gz

@@ -1,0 +1,14 @@
+// File: src/app/components/layout/HubLayout.module.scss
+$dark-border: #374151;
+$light-border: #e5e7eb;
+
+.mainContentLayout {
+  display: flex;
+  gap: 3rem;
+  border: none;
+  border-radius: 0;
+  overflow: visible;
+  backdrop-filter: none;
+  background: transparent;
+  box-shadow: none;
+}

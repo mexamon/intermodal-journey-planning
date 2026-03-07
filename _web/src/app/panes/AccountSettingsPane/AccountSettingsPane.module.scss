@@ -1,0 +1,186 @@
+.settingsWrapper {
+  display: flex;
+  gap: 3rem;
+  width: 100%;
+}
+
+.settingsNav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 240px;
+  flex-shrink: 0;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-align: left;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  transition: all 0.2s;
+
+  :global(.dark) & {
+    color: $dark-text-secondary;
+    background-color: transparent;
+    &:hover { background-color: $dark-bg-secondary; color: $dark-text-primary; }
+    &.active { color: $dark-text-primary; background-color: $dark-bg-secondary; }
+  }
+  :global(.light) & {
+    color: $light-text-secondary;
+    background-color: transparent;
+    &:hover { background-color: $light-border; color: $light-text-primary; }
+    &.active { color: $light-text-primary; background-color: $light-border; }
+  }
+}
+
+.settingsContent {
+  flex-grow: 1;
+}
+
+.sectionContent {
+    padding-top: 1rem;
+}
+
+.avatarUploader {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+
+    img {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    button {
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        border: 1px solid;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        :global(.dark) & { background-color: $dark-bg; border-color: $dark-border; color: $dark-text-primary; &:hover { background-color: $dark-border; } }
+        :global(.light) & { background-color: $light-bg; border-color: $light-border; color: $light-text-primary; &:hover { background-color: $light-border; } }
+    }
+}
+
+.divider {
+    margin: 2rem 0;
+    border: none;
+    border-top: 1px solid;
+    :global(.dark) & { border-color: $dark-border; }
+    :global(.light) & { border-color: $light-border; }
+}
+
+// DÜZELTME: Eksik olan .section sınıfı eklendi.
+.section {
+  display: block;
+}
+
+.subSection {
+    padding: 1.5rem 0;
+    &:not(:last-child) {
+        border-bottom: 1px solid;
+        :global(.dark) & { border-color: $dark-border; }
+        :global(.light) & { border-color: $light-border; }
+    }
+}
+
+.sectionTitle {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.sectionDescription {
+    max-width: 500px;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    :global(.dark) & { color: $dark-text-secondary; }
+    :global(.light) & { color: $light-text-secondary; }
+}
+
+.twoFactorSetup {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.qrCodeWrapper {
+    padding: 1rem;
+    border-radius: 8px;
+    background-color: white;
+}
+
+.twoFactorActions {
+    display: flex;
+    gap: 1rem;
+}
+
+.sessionList {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+
+    li {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+}
+
+.sessionIcon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+    :global(.dark) & { color: $dark-text-secondary; }
+    :global(.light) & { color: $light-text-secondary; }
+}
+
+.sessionInfo {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    
+    span { font-weight: 500; font-size: 0.9rem; }
+    small {
+        font-size: 0.8rem;
+        :global(.dark) & { color: $dark-text-secondary; }
+        :global(.light) & { color: $light-text-secondary; }
+    }
+}
+
+.currentTag {
+    font-size: 0.8rem;
+    font-weight: 500;
+    padding: 4px 8px;
+    border-radius: 16px;
+    background-color: rgba($dark-success, 0.1);
+    color: $dark-success;
+}
+
+.logoutButton {
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    border: 1px solid;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    :global(.dark) & { background-color: $dark-bg-secondary; border-color: $dark-border; color: $dark-text-secondary; &:hover { color: $dark-danger; border-color: $dark-danger; } }
+    :global(.light) & { background-color: $light-bg-secondary; border-color: $light-border; color: $light-text-secondary; &:hover { color: $dark-danger; border-color: $dark-danger; } }
+}

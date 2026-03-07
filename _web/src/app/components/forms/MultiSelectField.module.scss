@@ -1,0 +1,115 @@
+@use "sass:color";
+
+.trigger {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: left;
+  :global(.dark) & {
+    border-color: $dark-border;
+    background: $dark-bg;
+    color: $dark-text-primary;
+  }
+  :global(.light) & {
+    border-color: $light-border;
+    background: $light-bg-secondary;
+    color: $light-text-primary;
+  }
+}
+
+.triggerLabel {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.triggerIcon {
+  opacity: 0.7;
+}
+
+.count {
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: rgba(124, 58, 237, 0.18);
+  color: $brand-color;
+}
+
+.content {
+  min-width: 220px;
+  border-radius: 12px;
+  padding: 0.4rem;
+  border: 1px solid;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  position: relative;
+  z-index: 9999;
+  :global(.dark) & {
+    border-color: $dark-border;
+    background: #0f1720;
+    color: $dark-text-primary;
+  }
+  :global(.light) & {
+    border-color: $light-border;
+    background: $light-bg-secondary;
+    color: $light-text-primary;
+  }
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  cursor: pointer;
+  outline: none;
+  :global(.dark) & { color: $dark-text-secondary; }
+  :global(.light) & { color: $light-text-secondary; }
+}
+
+.item[data-highlighted] {
+  background: rgba(124, 58, 237, 0.14);
+  color: $brand-color;
+}
+
+.itemSelected {
+  background: rgba(124, 58, 237, 0.18);
+  color: $brand-color;
+}
+
+.itemText {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.itemLabel {
+  font-weight: 600;
+}
+
+.itemDescription {
+  font-size: 0.7rem;
+  :global(.dark) & { color: $dark-text-tertiary; }
+  :global(.light) & { color: $light-text-tertiary; }
+}
+
+.itemCheck {
+  color: $brand-color;
+}
+
+.separator {
+  height: 1px;
+  margin: 0.35rem 0.2rem;
+  :global(.dark) & { background: $dark-border; }
+  :global(.light) & { background: $light-border; }
+}

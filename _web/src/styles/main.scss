@@ -1,0 +1,59 @@
+/* 1. Google Fonts */
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&family=Sora:wght@300;400;500;600;700;800&display=swap");
+
+/* 2. Temel Reset (Mevcut kod) */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Manrope", sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Sora", sans-serif;
+  letter-spacing: -0.02em;
+}
+
+/* ────────────────────────────────────────────────────────────────
+   4 · Tema Duyarlı Kaydırma Çubuğu (Radix’e benzer minimal stil)
+   ──────────────────────────────────────────────────────────────── */
+
+/* Tema değişkenleri  */
+:root {
+  --scroll-thumb-light: #d6d6d6;
+  --scroll-thumb-dark: #4b5563; /* Tailwind slate‑600 */
+}
+
+/* Tema seçimine göre aktif renk  */
+html[data-kit-theme="light"] {
+  --scroll-thumb: var(--scroll-thumb-light);
+}
+html[data-kit-theme="dark"] {
+  --scroll-thumb: var(--scroll-thumb-dark);
+}
+
+/* Firefox & yeni‑nesil tarayıcılar  */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb) transparent;
+}
+
+/* WebKit (tab‑, Safari, Edge‑Chr) */
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--scroll-thumb);
+  border-radius: 4px;
+}
+
+/* Köşe (hem yatay hem dikey olduğunda) */
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}

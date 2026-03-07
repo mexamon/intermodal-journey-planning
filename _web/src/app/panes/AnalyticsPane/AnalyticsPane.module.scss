@@ -1,0 +1,453 @@
+@use "sass:color";
+
+/* ═══════════ DASHBOARD HEADER ═══════════ */
+.dashHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.dashTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  h2 { margin: 0; font-size: 1.3rem; font-weight: 700; }
+  svg { color: $brand-color; }
+}
+
+.periodSelector {
+  display: flex;
+  gap: 0.25rem;
+  border-radius: 10px;
+  padding: 0.2rem;
+  border: 1px solid;
+  :global(.dark) & {
+    background: $dark-bg-secondary;
+    border-color: $dark-border;
+  }
+  :global(.light) & {
+    background: $light-bg-secondary;
+    border-color: $light-border;
+  }
+}
+
+.periodBtn {
+  padding: 0.35rem 0.85rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: transparent;
+  transition: all 0.15s;
+  :global(.dark) & { color: $dark-text-secondary; }
+  :global(.light) & { color: $light-text-secondary; }
+  &.active {
+    background: $brand-color;
+    color: #fff;
+  }
+}
+
+/* ═══════════ KPI GRID ═══════════ */
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.85rem;
+  margin-bottom: 1.25rem;
+  @media (max-width: 1400px) { grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 800px) { grid-template-columns: repeat(2, 1fr); }
+}
+
+.kpiCard {
+  padding: 1rem;
+  border-radius: 12px;
+  border: 1px solid;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  :global(.dark) & {
+    background: $dark-bg-secondary;
+    border-color: $dark-border;
+    &:hover { border-color: rgba($brand-color, 0.25); box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+  }
+  :global(.light) & {
+    background: $light-bg-secondary;
+    border-color: $light-border;
+    &:hover { border-color: rgba($brand-color, 0.15); box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
+  }
+}
+
+.kpiTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+}
+
+.kpiIcon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem;
+}
+
+.kpiChange {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.12rem 0.4rem;
+  border-radius: 5px;
+  &.positive { color: #22c55e; background: rgba(#22c55e, 0.1); }
+  &.negative { color: #ef4444; background: rgba(#ef4444, 0.1); }
+}
+
+.kpiValue {
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.1;
+  margin-bottom: 0.15rem;
+}
+
+.kpiLabel {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  :global(.dark) & { color: $dark-text-secondary; }
+  :global(.light) & { color: $light-text-secondary; }
+}
+
+.kpiSub {
+  font-size: 0.68rem;
+  margin-top: 0.15rem;
+  :global(.dark) & { color: $dark-text-tertiary; }
+  :global(.light) & { color: $light-text-tertiary; }
+}
+
+/* ═══════════ TWO COLUMN / CARD ═══════════ */
+.twoColumn {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  @media (max-width: 1100px) { grid-template-columns: 1fr; }
+}
+
+.card {
+  border-radius: 12px;
+  border: 1px solid;
+  overflow: hidden;
+  :global(.dark) & {
+    background: $dark-bg-secondary;
+    border-color: $dark-border;
+  }
+  :global(.light) & {
+    background: $light-bg-secondary;
+    border-color: $light-border;
+  }
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid;
+  :global(.dark) & { border-color: $dark-border; }
+  :global(.light) & { border-color: $light-border; }
+  h3 {
+    margin: 0;
+    font-size: 0.88rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+}
+
+.cardBadge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 5px;
+  :global(.dark) & { background: rgba(255,255,255,0.06); color: $dark-text-secondary; }
+  :global(.light) & { background: rgba(0,0,0,0.05); color: $light-text-secondary; }
+}
+
+/* ── Sparkline ── */
+.sparklineWrap {
+  padding: 1rem 1rem 0.5rem;
+}
+
+.sparklineSvg {
+  width: 100%;
+  height: 80px;
+  display: block;
+}
+
+.sparklineLabels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.6rem;
+  padding-top: 0.25rem;
+  :global(.dark) & { color: $dark-text-tertiary; }
+  :global(.light) & { color: $light-text-tertiary; }
+}
+
+.sparklineStats {
+  display: flex;
+  gap: 1.5rem;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid;
+  :global(.dark) & { border-color: $dark-border; }
+  :global(.light) & { border-color: $light-border; }
+  > div {
+    display: flex;
+    flex-direction: column;
+    strong { font-size: 1.05rem; font-weight: 700; }
+    span {
+      font-size: 0.62rem; text-transform: uppercase; font-weight: 600;
+      :global(.dark) & { color: $dark-text-tertiary; }
+      :global(.light) & { color: $light-text-tertiary; }
+    }
+  }
+}
+
+/* ── Mode Distribution ── */
+.modeList {
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.modeRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.modeInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 140px;
+}
+
+.modeIcon {
+  font-size: 1rem;
+  display: inline-flex;
+}
+
+.modeName {
+  font-size: 0.82rem;
+  font-weight: 500;
+  flex: 1;
+}
+
+.modeCount {
+  font-size: 0.72rem;
+  :global(.dark) & { color: $dark-text-tertiary; }
+  :global(.light) & { color: $light-text-tertiary; }
+}
+
+.modeBarWrap {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  :global(.dark) & { background: rgba(255,255,255,0.06); }
+  :global(.light) & { background: rgba(0,0,0,0.06); }
+}
+
+.modeBar {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.6s ease;
+}
+
+.modePct {
+  min-width: 32px;
+  text-align: right;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* ── Top Routes Table Enhancements ── */
+.rankBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px; height: 22px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  :global(.dark) & { background: rgba(255,255,255,0.06); color: $dark-text-secondary; }
+  :global(.light) & { background: rgba(0,0,0,0.05); color: $light-text-secondary; }
+}
+
+.searchBarCell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  span { font-size: 0.82rem; font-weight: 600; min-width: 40px; }
+}
+
+.miniBar {
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+  overflow: hidden;
+  :global(.dark) & { background: rgba(255,255,255,0.06); }
+  :global(.light) & { background: rgba(0,0,0,0.06); }
+  > div {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, $brand-color, color.adjust($brand-color, $hue: 20deg));
+    transition: width 0.5s ease;
+  }
+}
+
+.trendBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.12rem 0.4rem;
+  border-radius: 5px;
+  &.positive { color: #22c55e; background: rgba(#22c55e, 0.1); }
+  &.negative { color: #ef4444; background: rgba(#ef4444, 0.1); }
+}
+
+/* ── Activity Feed ── */
+.activityFeed {
+  display: flex;
+  flex-direction: column;
+}
+
+.activityItem {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid;
+  transition: background 0.1s;
+  :global(.dark) & {
+    border-color: rgba(255,255,255,0.04);
+    &:hover { background: rgba(255,255,255,0.02); }
+  }
+  :global(.light) & {
+    border-color: rgba(0,0,0,0.04);
+    &:hover { background: rgba(0,0,0,0.015); }
+  }
+  &:last-child { border-bottom: none; }
+}
+
+.activityIcon {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  :global(.dark) & { background: rgba(255,255,255,0.06); color: $dark-text-secondary; }
+  :global(.light) & { background: rgba(0,0,0,0.05); color: $light-text-secondary; }
+}
+
+.activityContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.activityDesc {
+  font-size: 0.82rem;
+  strong { font-weight: 600; margin-right: 0.3rem; }
+  span {
+    :global(.dark) & { color: $dark-text-secondary; }
+    :global(.light) & { color: $light-text-secondary; }
+  }
+}
+
+.activityMeta {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.68rem;
+  margin-top: 0.15rem;
+  :global(.dark) & { color: $dark-text-tertiary; }
+  :global(.light) & { color: $light-text-tertiary; }
+}
+
+/* ── System Health ── */
+.healthGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  padding: 1rem;
+  @media (max-width: 900px) { grid-template-columns: repeat(2, 1fr); }
+}
+
+.healthCard {
+  padding: 0.85rem;
+  border-radius: 10px;
+  border: 1px solid;
+  &.healthy {
+    :global(.dark) & { border-color: rgba(#22c55e, 0.2); background: rgba(#22c55e, 0.04); }
+    :global(.light) & { border-color: rgba(#22c55e, 0.15); background: rgba(#22c55e, 0.03); }
+    svg { color: #22c55e; }
+  }
+  &.warning {
+    :global(.dark) & { border-color: rgba(#f59e0b, 0.25); background: rgba(#f59e0b, 0.05); }
+    :global(.light) & { border-color: rgba(#f59e0b, 0.2); background: rgba(#f59e0b, 0.04); }
+    svg { color: #f59e0b; }
+  }
+}
+
+.healthTop {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+}
+
+.healthLabel {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.healthStats {
+  display: flex;
+  gap: 1.25rem;
+  > div {
+    display: flex;
+    flex-direction: column;
+    span {
+      font-size: 0.58rem; text-transform: uppercase; font-weight: 600; letter-spacing: 0.04em;
+      :global(.dark) & { color: $dark-text-tertiary; }
+      :global(.light) & { color: $light-text-tertiary; }
+    }
+    strong { font-size: 0.85rem; font-weight: 700; }
+  }
+}
+
+.refreshBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid;
+  border-radius: 7px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 600;
+  transition: all 0.15s;
+  :global(.dark) & {
+    border-color: $dark-border;
+    color: $dark-text-secondary;
+    &:hover { background: rgba(255,255,255,0.05); }
+  }
+  :global(.light) & {
+    border-color: $light-border;
+    color: $light-text-secondary;
+    &:hover { background: rgba(0,0,0,0.03); }
+  }
+}

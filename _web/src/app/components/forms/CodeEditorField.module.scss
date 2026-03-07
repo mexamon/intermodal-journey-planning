@@ -1,0 +1,59 @@
+.editorRoot {
+  border-radius: 12px;
+  border: 1px solid;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  overflow: auto;
+  font-family: "SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono", "Courier New", monospace;
+  :global(.dark) & {
+    background: #0c131b;
+    border-color: $dark-border;
+    color: $dark-text-primary;
+  }
+  :global(.light) & {
+    background: #f6f4f2;
+    border-color: $light-border;
+    color: $light-text-primary;
+  }
+}
+
+.editorTextarea,
+.editorPre {
+  outline: none;
+  white-space: pre;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  min-height: 100%;
+}
+
+.editorTextarea {
+  caret-color: $brand-color;
+}
+
+.editorRoot :global(.token.comment) { color: var(--token-comment); }
+.editorRoot :global(.token.keyword) { color: var(--token-keyword); }
+.editorRoot :global(.token.string) { color: var(--token-string); }
+.editorRoot :global(.token.number) { color: var(--token-number); }
+.editorRoot :global(.token.operator) { color: var(--token-operator); }
+.editorRoot :global(.token.boolean) { color: var(--token-boolean); }
+.editorRoot :global(.token.property) { color: var(--token-property); }
+
+.editorRoot {
+  --token-comment: #6b7280;
+  --token-keyword: #7c3aed;
+  --token-string: #0f766e;
+  --token-number: #0ea5e9;
+  --token-operator: #64748b;
+  --token-boolean: #7c3aed;
+  --token-property: #0f172a;
+  :global(.dark) & {
+    --token-comment: #475569;
+    --token-keyword: #a78bfa;
+    --token-string: #34d399;
+    --token-number: #38bdf8;
+    --token-operator: #94a3b8;
+    --token-boolean: #f9a8d4;
+    --token-property: #e2e8f0;
+  }
+}

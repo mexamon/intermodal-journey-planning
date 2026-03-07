@@ -1,0 +1,77 @@
+.appContainer {
+  display: flex;
+  height: 100vh;
+  // Arka plan rengini en dış sarmalayıcıya veriyoruz.
+  // Bu, tüm ekranın temanın arka plan rengine sahip olmasını sağlar.
+  :global(.dark) & {
+    background-color: $dark-bg;
+  }
+  :global(.light) & {
+    background-color: $light-bg;
+  }
+}
+
+.mainContent {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  transition: margin-left 0.2s ease-in-out;
+  margin-left: 280px; // Genişletilmiş drawer genişliği
+
+  &.collapsed {
+    margin-left: 80px; // Daraltılmış drawer genişliği
+  }
+}
+
+.scrollableArea {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 0.75rem;
+  position: relative;
+  
+  // TEMA RENKLERİ BU ALANA UYGULANIYOR
+  // Bu, drawer menüden bağımsız olarak sadece kaydırılabilir içeriğin
+  // kendi tema rengine ve metin rengine sahip olmasını sağlar.
+  :global(.dark) & {
+    color: $dark-text-primary;
+    background:
+      radial-gradient(1200px 600px at 20% -10%, rgba(200, 16, 46, 0.18), transparent 60%),
+      radial-gradient(900px 500px at 90% 10%, rgba(200, 16, 46, 0.08), transparent 55%),
+      $dark-bg;
+  }
+  :global(.light) & {
+    color: $light-text-primary;
+    background:
+      radial-gradient(1200px 600px at 20% -10%, rgba(200, 16, 46, 0.12), transparent 60%),
+      radial-gradient(900px 500px at 90% 10%, rgba(200, 16, 46, 0.06), transparent 55%),
+      $light-bg;
+  }
+}
+
+.flowFullBleed {
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+// contentArea artık sadece iç boşluk ve esneme sağlıyor.
+// Renk ve arkaplanı üst elementten alıyor.
+.contentArea {
+  padding: 1rem;
+  overflow-y: auto;
+  flex-grow: 1;
+  width: 100%; // İçeriğin tam genişliği kaplamasını sağlar
+  position: relative;
+  z-index: 1;
+}
+
+.contentArea.flowFullBleed {
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.flowFullBleedLayout {
+  height: 100%;
+}

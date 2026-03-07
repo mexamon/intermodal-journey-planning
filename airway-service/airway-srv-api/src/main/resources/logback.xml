@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration debug="false">
+    <include resource="org/springframework/boot/logging/logback/base.xml"/>
+
+    <!-- Logstash appender — uncomment when logstash-logback-encoder is on classpath
+    <appender name="logstash" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+        <destination>35.233.11.65:5000</destination>
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <mdc/><context/><version/><logLevel/><loggerName/><message/>
+                <pattern><pattern>{"appName": "airway-srv-api"}</pattern></pattern>
+                <threadName/><stackTrace/>
+            </providers>
+        </encoder>
+    </appender>
+    -->
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+    <logger name="org.springframework" level="INFO"/>
+    <logger name="com.thy.cloud" level="DEBUG"/>
+    <logger name="org.hibernate.SQL" level="DEBUG"/>
+    <logger name="org.flywaydb" level="INFO"/>
+</configuration>

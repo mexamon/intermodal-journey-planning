@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: intermodal-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: intermodal
+      POSTGRES_USER: intermodal
+      POSTGRES_PASSWORD: Cloud5231!
+    ports:
+      - "5434:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U intermodal -d intermodal"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  pgdata:
+    driver: local

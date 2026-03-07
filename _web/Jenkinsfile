@@ -1,0 +1,89 @@
+pipeline {
+    agent any
+
+    environment {
+        GIT_REPO = 'git@github.com:mindtro/taurena-ui-roadmap.git'
+        BRANCH = 'main'
+        SSH_USER = 'enginmahmut'
+        LOCAL_DOCKER_HOST = 'unix:///var/run/docker.sock'
+        REMOTE_DOCKER_HOST = 'tcp://92.205.131.234:2375'
+        DOCKER_IMAGE_PREFIX = 'mindtro'
+        DOCKER_TAG = 'latest'
+        WORK_DIR = '/tmp'
+        DOCKER_REGISTRY = 'nexus.mindtro.net:8083'
+        NEXUS_CREDENTIALS = 'nexus-credentials'
+    }
+
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                sshagent(['pyrodit-pipeline']) {
+                    git branch: "${BRANCH}", url: "${GIT_REPO}"
+                }
+            }
+        }
+
+        stage('Build Taurena-Roadmap') {
+            agent {
+                docker {
+                    image 'jitesoft/node-yarn'
+                    args '--privileged'
+                }
+            }
+            steps {
+                sh '''
+                echo "Building Taurena-Roadmap"
+                yarn install
+                yarn build
+                '''
+            }
+        }
+
+        stage('Push Taurena-Roadmap') {
+            steps {
+                script {
+                   docker.withRegistry("https://${DOCKER_REGISTRY}", "${NEXUS_CREDENTIALS}") {
+                        sh '''
+                        docker build --no-cache -t ${DOCKER_REGISTRY}/${DOCKER_IMAGE_PREFIX}-boiler-taurena-roadmap:${DOCKER_TAG} .
+                        docker push ${DOCKER_REGISTRY}/${DOCKER_IMAGE_PREFIX}-boiler-taurena-roadmap:${DOCKER_TAG}
+                        '''
+                        }
+                }
+            }
+        }
+
+      
+        stage('Deploy Taurena-Roadmap') {
+            environment {
+                DOCKER_HOST = "${REMOTE_DOCKER_HOST}"
+            }
+            steps {
+                sshagent(['pyrodit-pipeline']) {
+                    sh """
+                    echo "Deploying Boiler-Taurena-Roadmap"
+                    ssh ${SSH_USER}@${REMOTE_DOCKER_HOST.split('//')[1].split(':')[0]} '
+                        docker stop boiler-taurena-roadmap || true
+                        docker rm boiler-taurena-roadmap || true
+                        docker rmi -f ${DOCKER_REGISTRY}/${DOCKER_IMAGE_PREFIX}-boiler-taurena-roadmap:${DOCKER_TAG} || true
+                        docker pull ${DOCKER_REGISTRY}/${DOCKER_IMAGE_PREFIX}-boiler-taurena-roadmap:${DOCKER_TAG}
+                        docker run -d --name boiler-taurena-roadmap -p 3030:80 ${DOCKER_REGISTRY}/${DOCKER_IMAGE_PREFIX}-boiler-taurena-roadmap:${DOCKER_TAG}
+                    '
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Pipeline finished.'
+        }
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed!'
+        }
+    }
+}

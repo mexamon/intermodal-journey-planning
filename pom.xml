@@ -1,0 +1,81 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.thy.cloud</groupId>
+        <artifactId>airway-dependencies</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>airway-dependencies/pom.xml</relativePath>
+    </parent>
+
+    <artifactId>airway</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <name>${project.artifactId}</name>
+    <description>Airway Cloud Parent</description>
+    <url>http://thy.com</url>
+    <packaging>pom</packaging>
+
+    <properties>
+        <project.version>1.0.0-SNAPSHOT</project.version>
+    </properties>
+
+    <modules>
+        <module>airway-dependencies</module>
+        <module>airway-base</module>
+        <module>airway-data</module>
+        <module>airway-service</module>
+    </modules>
+
+    <dependencyManagement>
+        <dependencies>
+
+            <!-- AIRWAY BASE -->
+            <dependency>
+                <groupId>com.thy.cloud</groupId>
+                <artifactId>airway-base-constant</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.thy.cloud</groupId>
+                <artifactId>airway-base-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.thy.cloud</groupId>
+                <artifactId>airway-base-serialize</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.thy.cloud</groupId>
+                <artifactId>airway-base-util</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- AIRWAY DATA -->
+            <dependency>
+                <groupId>com.thy.cloud</groupId>
+                <artifactId>airway-data-cache</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.thy.cloud</groupId>
+                <artifactId>airway-data-jpa</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- AIRWAY SERVICE -->
+            <dependency>
+                <groupId>com.thy.cloud</groupId>
+                <artifactId>airway-srv-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.thy.cloud</groupId>
+                <artifactId>airway-srv-dao</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+</project>

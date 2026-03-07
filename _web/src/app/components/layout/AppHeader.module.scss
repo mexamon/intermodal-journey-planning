@@ -1,0 +1,115 @@
+@use "sass:color";
+
+.appHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+  padding: 0 1.5rem;
+  flex-shrink: 0;
+  
+  :global(.dark) & {
+    background-color: $dark-bg-secondary;
+    border-bottom: 1px solid $dark-border;
+  }
+  :global(.light) & {
+    background-color: $light-bg-secondary;
+    border-bottom: 1px solid $light-border;
+  }
+}
+
+.headerLeft, .headerRight {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.headerLeft {
+  flex-wrap: wrap;
+}
+
+.subtitle {
+  font-size: 0.85rem;
+  font-weight: 500;
+  max-width: 420px;
+  :global(.dark) & { color: $dark-text-tertiary; }
+  :global(.light) & { color: $light-text-tertiary; }
+}
+
+@media (max-width: 960px) {
+  .subtitle {
+    display: none;
+  }
+}
+
+.headerButton {
+  display: flex;
+  padding: 0.5rem;
+  border-radius: 50%;
+  border:none; background:none; cursor:pointer;
+  font-size: 1.25rem;
+  transition: background-color 0.2s;
+  :global(.dark) & { color: $dark-text-secondary; &:hover { background-color: $dark-border; } }
+  :global(.light) & { color: $light-text-secondary; &:hover { background-color: $light-border; } }
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  font-size: 0.9rem;
+  :global(.dark) & { color: $dark-text-secondary; }
+  :global(.light) & { color: $light-text-secondary; }
+  
+  .activeCrumb {
+    :global(.dark) & { color: $dark-text-primary; }
+    :global(.light) & { color: $light-text-primary; }
+  }
+}
+
+.crumbLink {
+  cursor: pointer;
+  transition: color 0.2s;
+  &:hover {
+    :global(.dark) & { color: $dark-text-primary; }
+    :global(.light) & { color: $light-text-primary; }
+  }
+}
+
+.actionButton {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: 1px solid;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background-color 0.2s;
+
+  :global(.dark) & {
+    background-color: $dark-bg;
+    border-color: $dark-border;
+    color: $dark-text-primary;
+    &:hover { background-color: $dark-border; }
+    &.primary {
+      background-color: $brand-color;
+      border-color: $brand-color;
+      color: white;
+      &:hover { background-color: color.adjust($brand-color, $lightness: -5%); }
+    }
+  }
+   :global(.light) & {
+    background-color: $light-bg;
+    border-color: $light-border;
+    color: $light-text-primary;
+    &:hover { background-color: $light-border; }
+     &.primary {
+      background-color: $brand-color;
+      border-color: $brand-color;
+      color: white;
+      &:hover { background-color: color.adjust($brand-color, $lightness: -5%); }
+    }
+  }
+}

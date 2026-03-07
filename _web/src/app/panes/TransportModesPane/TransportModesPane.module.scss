@@ -1,0 +1,311 @@
+@use "sass:color";
+
+/* ═══════════════════════════════════════
+   TransportModesPane — Theme-Aware Styles
+   ═══════════════════════════════════════ */
+
+/* ── Search Panel (same as ProvidersPane) ── */
+.searchPanel {
+  border-radius: 12px;
+  padding: 0.75rem;
+  border: 1px solid;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+
+  :global(.dark) & {
+    background: linear-gradient(135deg, rgba(17, 26, 34, 0.9), rgba(11, 17, 21, 0.95));
+    border-color: $dark-border;
+  }
+  :global(.light) & {
+    background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(246,244,241,0.9));
+    border-color: $light-border;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  }
+}
+
+.searchInputWrap {
+  flex: 1;
+  min-width: 200px;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 0.75rem;
+  z-index: 1;
+  font-size: 0.9rem;
+  :global(.dark) & { color: $brand-color; }
+  :global(.light) & { color: $brand-color; }
+}
+
+.searchInput {
+  width: 100%;
+  padding: 0.55rem 0.85rem 0.55rem 2.25rem;
+  border-radius: 8px;
+  border: 1px solid;
+  font-size: 0.85rem;
+  outline: none;
+  transition: all 0.2s;
+
+  :global(.dark) & {
+    background-color: $dark-bg;
+    border-color: $dark-border;
+    color: $dark-text-primary;
+    &::placeholder { color: $dark-text-tertiary; }
+    &:focus {
+      border-color: $brand-color;
+      box-shadow: 0 0 0 3px rgba($brand-color, 0.15);
+    }
+  }
+  :global(.light) & {
+    background-color: $light-bg-secondary;
+    border-color: $light-border;
+    color: $light-text-primary;
+    &::placeholder { color: $light-text-tertiary; }
+    &:focus {
+      border-color: $brand-color;
+      box-shadow: 0 0 0 3px rgba($brand-color, 0.12);
+    }
+  }
+}
+
+/* ── Add Button ── */
+.addButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1.15rem;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  background-color: $brand-color;
+  color: #fff;
+  transition: background-color 0.2s, transform 0.1s;
+  white-space: nowrap;
+
+  &:hover { background-color: $brand-color-hover; }
+  &:active { transform: scale(0.97); }
+}
+
+/* ── Mode Card ── */
+.modeCard {
+  border-radius: 14px;
+  padding: 1.15rem;
+  border: 1px solid;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  position: relative;
+
+  :global(.dark) & {
+    background-color: $dark-bg-secondary;
+    border-color: $dark-border;
+    &:hover {
+      border-color: rgba($brand-color, 0.3);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+  }
+  :global(.light) & {
+    background-color: $light-bg-secondary;
+    border-color: $light-border;
+    &:hover {
+      border-color: rgba($brand-color, 0.2);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    }
+  }
+}
+
+/* ── Overlay, Dialog, etc ── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  animation: fadeIn 0.15s ease;
+  :global(.dark) & { background-color: rgba(0, 0, 0, 0.6); backdrop-filter: blur(6px); }
+  :global(.light) & { background-color: rgba(0, 0, 0, 0.3); backdrop-filter: blur(4px); }
+}
+
+.dialogContent {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 420px;
+  max-width: 92vw;
+  border-radius: 14px;
+  padding: 1.15rem;
+  z-index: 301;
+  animation: scaleIn 0.18s ease;
+  :global(.dark) & {
+    background-color: $dark-bg-secondary;
+    border: 1px solid $dark-border;
+    color: $dark-text-primary;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+  }
+  :global(.light) & {
+    background-color: $light-bg-secondary;
+    border: 1px solid $light-border;
+    color: $light-text-primary;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.12);
+  }
+}
+
+.dialogContentSmall {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 380px;
+  max-width: 92vw;
+  border-radius: 14px;
+  padding: 1.15rem;
+  z-index: 301;
+  animation: scaleIn 0.18s ease;
+  :global(.dark) & {
+    background-color: $dark-bg-secondary;
+    border: 1px solid $dark-border;
+    color: $dark-text-primary;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+  }
+  :global(.light) & {
+    background-color: $light-bg-secondary;
+    border: 1px solid $light-border;
+    color: $light-text-primary;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.12);
+  }
+}
+
+.dialogHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.dialogTitle { margin: 0; font-size: 0.95rem; font-weight: 700; }
+
+.dialogClose {
+  background: none; border: none; cursor: pointer;
+  color: inherit; opacity: 0.4; padding: 0.25rem; border-radius: 6px;
+  display: flex; transition: opacity 0.15s;
+  &:hover { opacity: 0.8; }
+}
+
+.dialogFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.15rem;
+}
+
+.btnCancel {
+  padding: 0.4rem 0.85rem; border-radius: 8px; background: transparent;
+  cursor: pointer; font-size: 0.8rem; color: inherit; transition: background 0.15s;
+  :global(.dark) & { border: 1px solid $dark-border; &:hover { background-color: rgba(255,255,255,0.04); } }
+  :global(.light) & { border: 1px solid $light-border; &:hover { background-color: rgba(0,0,0,0.04); } }
+}
+
+.btnPrimary {
+  padding: 0.4rem 1.1rem; border-radius: 8px; border: none; cursor: pointer;
+  font-weight: 600; font-size: 0.8rem; background-color: $brand-color; color: #fff;
+  transition: background-color 0.2s;
+  &:hover { background-color: $brand-color-hover; }
+}
+
+.btnDanger {
+  padding: 0.4rem 1.1rem; border-radius: 8px; border: none; cursor: pointer;
+  font-weight: 600; font-size: 0.8rem; color: #fff; background-color: #ef4444;
+  transition: background-color 0.2s;
+  &:hover { background-color: #dc2626; }
+}
+
+.fieldLabel {
+  font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; margin-bottom: 0.25rem; display: block;
+  :global(.dark) & { color: $dark-text-tertiary; }
+  :global(.light) & { color: $light-text-tertiary; }
+}
+
+/* ── Row actions / card menu ── */
+.cardAction {
+  background: none; border: none; cursor: pointer;
+  padding: 0.3rem; border-radius: 6px; display: flex;
+  color: inherit; opacity: 0.35; transition: opacity 0.15s;
+  &:hover { opacity: 0.8; }
+}
+
+/* ── Dropdown ── */
+.dropdownContent {
+  border-radius: 12px; padding: 0.4rem; min-width: 160px; z-index: 400;
+  animation: dropdownIn 0.12s ease;
+  :global(.dark) & {
+    background-color: $dark-bg-secondary; border: 1px solid $dark-border;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.4); color: $dark-text-primary;
+  }
+  :global(.light) & {
+    background-color: $light-bg-secondary; border: 1px solid $light-border;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.1); color: $light-text-primary;
+  }
+}
+
+.dropdownItem {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 0.5rem; padding: 0.5rem 0.7rem; border-radius: 8px;
+  cursor: pointer; font-size: 0.82rem; outline: none; color: inherit;
+  transition: background 0.12s;
+  :global(.dark) &:hover, :global(.dark) &[data-highlighted] { background-color: rgba(255,255,255,0.06); }
+  :global(.light) &:hover, :global(.light) &[data-highlighted] { background-color: rgba(0,0,0,0.05); }
+}
+
+.dropdownItemDanger {
+  display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.7rem;
+  border-radius: 8px; cursor: pointer; font-size: 0.82rem; outline: none;
+  color: #ef4444; transition: background 0.12s;
+  :global(.dark) &:hover, :global(.dark) &[data-highlighted] { background-color: rgba(239,68,68,0.1); }
+  :global(.light) &:hover, :global(.light) &[data-highlighted] { background-color: rgba(239,68,68,0.08); }
+}
+
+.dropdownSep {
+  height: 1px; margin: 0.3rem 0;
+  :global(.dark) & { background-color: rgba(255,255,255,0.08); }
+  :global(.light) & { background-color: rgba(0,0,0,0.08); }
+}
+
+/* ── Toast ── */
+.toast {
+  border-radius: 12px; padding: 0.75rem 1rem; display: flex;
+  align-items: center; gap: 0.6rem; border: 1px solid; animation: slideIn 0.2s ease;
+  :global(.dark) & { box-shadow: 0 12px 40px rgba(0,0,0,0.4); }
+  :global(.light) & { box-shadow: 0 12px 40px rgba(0,0,0,0.1); }
+  &.success { background-color: rgba(34,197,94,0.1); border-color: rgba(34,197,94,0.25); color: #22c55e; }
+  &.error { background-color: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.25); color: #ef4444; }
+}
+
+/* ── Animations ── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.96); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes dropdownIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}

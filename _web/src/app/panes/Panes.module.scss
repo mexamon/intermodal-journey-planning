@@ -1,0 +1,1069 @@
+// File: src/app/panes/Panes.module.scss (DÜZELTİLMİŞ)
+@use "sass:color";
+
+.paneHeader {
+  display: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+
+  h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+  p {
+    margin: 0.25rem 0 0 0;
+    :global(.dark) & { color: $dark-text-secondary; }
+    :global(.light) & { color: $light-text-secondary; }
+  }
+}
+
+.paneActions {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 1.5rem;
+}
+
+.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  border-radius: 12px;
+  border: 2px dashed;
+  :global(.dark) & { 
+    background-color: $dark-bg-secondary;
+    border-color: $dark-border;
+    color: $dark-text-secondary;
+  }
+  :global(.light) & { 
+    background-color: $light-bg-secondary;
+    border-color: $light-border;
+    color: $light-text-secondary;
+  }
+}
+
+.formInput, .formTextarea {
+  width: 100%;
+  max-width: 500px;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  border: 1px solid;
+  outline: none;
+  transition: all 0.2s;
+  resize: vertical;
+
+  :global(.dark) & {
+    background-color: $dark-bg;
+    border-color: $dark-border;
+    color: $dark-text-primary;
+    color-scheme: dark;
+    &::placeholder { color: $dark-text-tertiary; font-size: 0.82rem; }
+    &:focus {
+      border-color: $brand-color;
+      box-shadow: 0 0 0 3px rgba($brand-color, 0.2);
+    }
+  }
+  :global(.light) & {
+    background-color: $light-bg-secondary;
+    border-color: $light-border;
+    color: $light-text-primary;
+    &::placeholder { color: $light-text-tertiary; font-size: 0.82rem; }
+    &:focus {
+      border-color: $brand-color;
+      box-shadow: 0 0 0 3px rgba($brand-color, 0.2);
+    }
+  }
+}
+
+.logoUploadArea {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  border: 2px dashed;
+  padding: 1rem;
+  border-radius: 12px;
+  max-width: 500px;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  :global(.dark) & {
+    border-color: $dark-border;
+    &:hover {
+      border-color: $brand-color;
+      background-color: $dark-bg-secondary;
+    }
+  }
+  :global(.light) & {
+    border-color: $light-border;
+    &:hover {
+      border-color: $brand-color;
+      background-color: $light-bg-secondary;
+    }
+  }
+}
+
+.logoPreview {
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.logoUploadContent {
+  p {
+    margin: 0;
+    font-weight: 500;
+  }
+  span {
+    font-size: 0.8rem;
+    :global(.dark) & { color: $dark-text-secondary; }
+    :global(.light) & { color: $light-text-secondary; }
+  }
+}
+
+.permissionDesc {
+  font-size: 0.9rem;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  :global(.dark) & { color: $dark-text-secondary; }
+  :global(.light) & { color: $light-text-secondary; }
+}
+
+.radioGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 400;
+  }
+}
+
+// --- USERS & SECURITY PANES (EKSİK KISIMLAR EKLENDİ) ---
+.usersSummary {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+  :global(.dark) & { color: $dark-text-secondary; }
+  :global(.light) & { color: $light-text-secondary; }
+}
+
+.subTabs {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid;
+  margin-bottom: 1.5rem;
+  :global(.dark) & { border-color: $dark-border; }
+  :global(.light) & { border-color: $light-border; }
+
+  button {
+    padding: 0.75rem 0.25rem;
+    margin-bottom: -1px;
+    border: none;
+    background: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    :global(.dark) & { color: $dark-text-secondary; }
+    :global(.light) & { color: $light-text-secondary; }
+
+    &.active {
+      border-bottom-color: $brand-color;
+      :global(.dark) & { color: $dark-text-primary; }
+      :global(.light) & { color: $light-text-primary; }
+    }
+  }
+}
+
+.usersActions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap; // Dar ekranlar için
+  gap: 1rem;      // Dar ekranlar için
+}
+
+// YENİ: Arama ve filtreleme grubunu sarmalayan sınıf
+.userSearchAndFilter {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap; // Dar ekranlar için
+}
+
+// YENİ: Arama kutusu için stiller
+.userSearchWrapper {
+    position: relative;
+    input {
+        padding: 0.5rem 0.75rem 0.5rem 2.25rem;
+        border-radius: 6px;
+        border: 1px solid;
+        width: 280px;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+
+        :global(.dark) & {
+            background-color: $dark-bg;
+            border-color: $dark-border;
+            color: $dark-text-primary;
+            &:focus { border-color: $brand-color; }
+        }
+        :global(.light) & {
+            background-color: $light-bg-secondary;
+            border-color: $light-border;
+            color: $light-text-primary;
+            &:focus { border-color: $brand-color; }
+        }
+    }
+    svg {
+        position: absolute;
+        left: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        :global(.dark) & { color: $dark-text-tertiary; }
+        :global(.light) & { color: $light-text-tertiary; }
+    }
+}
+
+.userFilterButtons {
+  display: flex;
+  padding: 4px;
+  border-radius: 8px;
+  :global(.dark) & { background-color: $dark-bg; }
+  :global(.light) & { background-color: $light-border; }
+  
+  button {
+    padding: 0.5rem 1rem;
+    border: none;
+    background: none;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    :global(.dark) & {
+      color: $dark-text-secondary;
+      &:hover {
+        color: $dark-text-primary;
+      }
+    }
+    :global(.light) & {
+      color: $light-text-secondary;
+      &:hover {
+        color: $light-text-primary;
+      }
+    }
+
+    &.active {
+      :global(.dark) & { 
+        background-color: $dark-bg-secondary; 
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        color: $dark-text-primary;
+      }
+      :global(.light) & { 
+        background-color: $light-bg-secondary; 
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        color: $light-text-primary;
+      }
+    }
+  }
+}
+
+.actionButton {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: 1px solid;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-left: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  
+  &.small {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  :global(.dark) & {
+    background-color: $dark-bg-secondary;
+    border-color: $dark-border;
+    color: $dark-text-primary;
+    &:hover { background-color: $dark-border; }
+    
+    &.primary {
+      background-color: $brand-color;
+      border-color: $brand-color;
+      color: white;
+      &:hover { background-color: color.adjust($brand-color, $lightness: -5%); }
+    }
+    
+    &.dangerOutline {
+        background-color: transparent;
+        border-color: $dark-danger;
+        color: $dark-danger;
+        &:hover { background-color: rgba($dark-danger, 0.1); }
+    }
+  }
+
+  :global(.light) & {
+    background-color: $light-bg-secondary;
+    border-color: $light-border;
+    color: $light-text-primary;
+    &:hover { background-color: $light-border; }
+
+    &.primary {
+      background-color: $brand-color;
+      border-color: $brand-color;
+      color: white;
+      &:hover { background-color: color.adjust($brand-color, $lightness: -5%); }
+    }
+
+    &.dangerOutline {
+        background-color: transparent;
+        border-color: $dark-danger;
+        color: $dark-danger;
+        &:hover { background-color: rgba($dark-danger, 0.05); }
+    }
+  }
+
+  &.danger {
+    background-color: $dark-danger;
+    border-color: $dark-danger;
+    color: white;
+    &:hover { background-color: color.adjust($dark-danger, $lightness: -10%); }
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+}
+
+.tableWrapper {
+  overflow-x: auto;
+  border: 1px solid;
+  border-radius: 12px;
+  scrollbar-width: thin;
+  :global(.dark) & {
+    border-color: $dark-border;
+    scrollbar-color: rgba(255,255,255,0.08) transparent;
+  }
+  :global(.light) & {
+    border-color: $light-border;
+    scrollbar-color: rgba(0,0,0,0.08) transparent;
+  }
+  &::-webkit-scrollbar { width: 5px; height: 5px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  :global(.dark) &::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+  :global(.light) &::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.08); border-radius: 4px; }
+}
+
+.dataTable {
+  width: 100%;
+  border-collapse: collapse;
+
+  th, td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid;
+    :global(.dark) & { border-color: $dark-border; }
+    :global(.light) & { border-color: $light-border; }
+  }
+
+  th {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    :global(.dark) & { color: $dark-text-secondary; }
+    :global(.light) & { color: $light-text-secondary; }
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  tbody tr {
+    transition: background-color 0.12s;
+    cursor: pointer;
+    :global(.dark) &:hover {
+      background-color: rgba(255, 255, 255, 0.03);
+    }
+    :global(.light) &:hover {
+      background-color: rgba(0, 0, 0, 0.02);
+    }
+  }
+}
+
+.userNameCell {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+  }
+  p { margin: 0; font-weight: 500; }
+  span {
+    font-size: 0.8rem;
+    :global(.dark) & { color: $dark-text-secondary; }
+    :global(.light) & { color: $light-text-secondary; }
+  }
+}
+
+.permissionsCell {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 1.25rem;
+}
+
+.permEnabled {
+  color: $dark-success;
+}
+
+.permDisabled {
+  :global(.dark) & { color: $dark-text-tertiary; }
+  :global(.light) & { color: $light-text-tertiary; }
+}
+
+// --- INVITATIONS PANE ---
+.inviteSection {
+  padding-bottom: 1.5rem;
+  margin-bottom: 1.5rem;
+  &:not(:last-child) {
+    border-bottom: 1px solid;
+    :global(.dark) & { border-color: $dark-border; }
+    :global(.light) & { border-color: $light-border; }
+  }
+  h4 {
+    margin: 0 0 0.25rem 0;
+    font-size: 1.125rem;
+  }
+}
+
+.inviteLinkWrapper, .emailInviteWrapper {
+  display: flex;
+  gap: 0.75rem;
+  max-width: 600px;
+}
+
+.copyButton {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: 1px solid;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+
+  :global(.dark) & {
+    background-color: $dark-bg-secondary;
+    border-color: $dark-border;
+    color: $dark-text-primary;
+    &:hover { background-color: $dark-border; }
+  }
+  :global(.light) & {
+    background-color: $light-bg-secondary;
+    border-color: $light-border;
+    color: $light-text-primary;
+    &:hover { background-color: $light-border; }
+  }
+}
+
+.deleteLink {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.8rem;
+  margin-top: 0.75rem;
+  transition: color 0.2s;
+  :global(.dark) & { color: $dark-text-secondary; &:hover { color: $dark-danger; } }
+  :global(.light) & { color: $light-text-secondary; &:hover { color: $dark-danger; } }
+}
+
+// --- PLANS PANE ---
+.billingToggleWrapper {
+  display: flex;
+  align-items: center;
+  margin-bottom: 2.5rem;
+  padding: 6px;
+  border-radius: 10px;
+  width: fit-content;
+
+  :global(.dark) & { background-color: $dark-bg; }
+  :global(.light) & { background-color: $light-border; }
+
+  button {
+    padding: 0.5rem 1.25rem;
+    border: none;
+    background: none;
+    border-radius: 7px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    
+    :global(.dark) & { color: $dark-text-secondary; }
+    :global(.light) & { color: $light-text-secondary; }
+    
+    &.active {
+      :global(.dark) & { background-color: $dark-bg-secondary; color: $dark-text-primary; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+      :global(.light) & { background-color: $light-bg-secondary; color: $light-text-primary; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    }
+  }
+}
+
+.saveBadge {
+  margin-left: 1rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background-color: rgba($dark-success, 0.1);
+  color: $dark-success;
+}
+
+.plansGrid {
+  display: grid;
+  gap: 2rem;
+  
+  // Geniş ekranlar için varsayılan (3 sütun)
+  grid-template-columns: repeat(3, 1fr);
+
+  // Tabletler için (2 sütun) - Ekran 1024px'den dar olduğunda
+  @media (max-width: 1024px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  // Mobil cihazlar için (Tek sütun) - Ekran 768px'den dar olduğunda
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 1.5rem; // Dikeyde boşluk biraz azaltıldı
+  }
+}
+
+.planCard {
+  padding: 2rem;
+  border-radius: 16px;
+  border: 1px solid;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.2s;
+
+  :global(.dark) & {
+    background-color: $dark-bg-secondary;
+    border-color: $dark-border;
+  }
+  :global(.light) & {
+    background-color: $light-bg-secondary;
+    border-color: $light-border;
+  }
+
+  &.currentPlan {
+    border-color: $brand-color;
+    box-shadow: 0 0 0 3px rgba($brand-color, 0.2);
+  }
+}
+
+.planIcon {
+  font-size: 1.75rem;
+  margin-bottom: 1rem;
+  color: $brand-color;
+}
+
+.planCard h3 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.planPrice {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0.5rem 0;
+  
+  span {
+    font-size: 0.9rem;
+    font-weight: 400;
+    :global(.dark) & { color: $dark-text-secondary; }
+    :global(.light) & { color: $light-text-secondary; }
+  }
+}
+
+.planDescription {
+  font-size: 0.9rem;
+  margin: 0 0 1.5rem 0;
+  min-height: 40px;
+  :global(.dark) & { color: $dark-text-secondary; }
+  :global(.light) & { color: $light-text-secondary; }
+}
+
+.planButton {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  :global(.dark) & {
+    background-color: $brand-color;
+    color: white;
+    &:hover { background-color: $brand-color-hover; }
+    &:disabled {
+      background-color: $dark-border;
+      color: $dark-text-secondary;
+      cursor: not-allowed;
+    }
+  }
+  :global(.light) & {
+    background-color: $brand-color;
+    color: white;
+    &:hover { background-color: $brand-color-hover; }
+    &:disabled {
+      background-color: $light-border;
+      color: $light-text-secondary;
+      cursor: not-allowed;
+    }
+  }
+}
+
+.planFeatures {
+  list-style: none;
+  padding: 0;
+  margin: 1.5rem 0 0 0;
+  flex-grow: 1;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+
+    svg {
+      color: $dark-success;
+      flex-shrink: 0;
+    }
+  }
+}
+
+/* ---------- EKLENEN SINIFLAR ---------- */
+
+/* API TOKEN kısa gösterimi */
+.tokenText {
+  font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+  user-select: all;
+  :global(.dark) & { color: $dark-text-secondary; }
+  :global(.light) & { color: $light-text-secondary; }
+}
+
+/* Tablo satırındaki ikon/aksiyon hücresi */
+.actionsCell {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* Genel amaçlı küçük ikon butonu */
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+  background-color: transparent;
+
+  :global(.dark) & {
+    color: $dark-text-secondary;
+    &:hover { 
+      background-color: $dark-bg-secondary;
+      color: $dark-text-primary;
+    }
+    &.danger:hover { 
+      color: $dark-danger; 
+      background-color: rgba($dark-danger, .15); 
+    }
+  }
+  :global(.light) & {
+    color: $light-text-secondary;
+    &:hover { 
+      background-color: $light-border;
+      color: $light-text-primary;
+    }
+    &.danger:hover { 
+      color: $dark-danger; 
+      background-color: rgba($dark-danger, .08); 
+    }
+  }
+}
+
+/* Radix Tooltip gövdesi */
+.tooltipContent {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border-radius: 6px;
+  line-height: 1.4;
+  background-color: $dark-bg; /* Koyu arka plan */
+  color: $dark-text-primary;   /* Açık renk metin */
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  z-index: 9999; /* Her şeyin üzerinde görünmesini garantiler */
+}
+
+.actionButtonsGroup {
+  display: flex;
+  gap: 0.75rem; // Düğmeler arasına boşluk ekler
+}
+
+/* ======================================================================== */
+/* YENİ EKLENEN STİLLER: Takımlar, Popover ve Dialog                        */
+/* ======================================================================== */
+
+/* Kullanıcı satırındaki takımların ve + butonunun bulunduğu alan */
+.teamsCell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 400px;
+}
+
+/* Takım etiketi */
+.teamTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 4px 8px;
+  border-radius: 16px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.teamTagDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.teamTagRemove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: inherit;
+  opacity: 0.6;
+  cursor: pointer;
+  border-radius: 50%;
+  padding: 2px;
+  &:hover {
+    opacity: 1;
+    background-color: rgba(0,0,0,0.2);
+  }
+}
+
+/* Birincil rengin sadece çerçevesini kullanan + butonu */
+.primaryOutline {
+  &:global(.dark) {
+    background-color: transparent;
+    border-color: $brand-color;
+    color: $brand-color;
+    &:hover {
+      background-color: rgba($brand-color, 0.1);
+      border-color: $brand-color;
+      color: $brand-color;
+    }
+  }
+   &:global(.light) {
+    background-color: transparent;
+    border-color: $brand-color;
+    color: $brand-color;
+    &:hover {
+      background-color: rgba($brand-color, 0.05);
+      border-color: $brand-color;
+      color: $brand-color;
+    }
+  }
+}
+
+/* Popover Stilleri */
+.popoverContent {
+  border-radius: 8px;
+  padding: 0.5rem;
+  width: 260px;
+  box-shadow: 0 10px 38px -10px rgba(22, 23, 24, 0.35), 0 10px 20px -15px rgba(22, 23, 24, 0.2);
+  z-index: 999;
+
+  :global(.dark) & {
+    background-color: $dark-bg-secondary;
+    border: 1px solid $dark-border;
+  }
+  :global(.light) & {
+    background-color: $light-bg-secondary;
+    border: 1px solid $light-border;
+  }
+
+  /* YENİ EKLENEN KISIM: Ok'u buradan hedefliyoruz */
+  [data-radix-popover-arrow] {
+    :global(.dark) & { fill: $dark-border; }
+    :global(.light) & { fill: $light-border; }
+  }
+}
+.popoverSearchWrapper {
+  position: relative;
+  padding: 0 0.5rem;
+  svg {
+    position: absolute;
+    top: 50%;
+    left: 1rem;
+    transform: translateY(-50%);
+    :global(.dark) & { color: $dark-text-tertiary; }
+    :global(.light) & { color: $light-text-tertiary; }
+  }
+}
+
+.popoverSearchInput {
+  width: 100%;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem 0.5rem 2rem;
+  border: none;
+  outline: none;
+  font-size: 0.9rem;
+  :global(.dark) & { 
+    background-color: $dark-bg; 
+    color: $dark-text-primary;
+  }
+  :global(.light) & { 
+    background-color: $light-bg; 
+    border: 1px solid $light-border;
+    color: $light-text-primary;
+  }
+}
+
+.popoverList {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 0.5rem;
+  padding: 0 0.25rem;
+}
+
+.popoverItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  outline: none;
+  
+  &:not(.disabled):global(.dark):hover { background-color: $dark-border; }
+  &:not(.disabled):global(.light):hover { background-color: $light-border; }
+
+  &.disabled {
+    cursor: not-allowed;
+    :global(.dark) & { color: $dark-text-tertiary; }
+    :global(.light) & { color: $light-text-tertiary; }
+  }
+}
+
+.popoverCreateButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.9rem;
+  
+  :global(.dark) & { color: $dark-text-secondary; &:hover { background-color: $dark-border; color: $dark-text-primary; } }
+  :global(.light) & { color: $light-text-secondary; &:hover { background-color: $light-border; color: $light-text-primary; } }
+}
+
+/* ======================================================================== */
+/* GÜNCELLENDİ: Dialog (Modal) Stilleri                                     */
+/* ======================================================================== */
+.dialogOverlay {
+  background-color: rgba(0,0,0,0.5);
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+}
+
+.dialogContent {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90vw;
+  max-width: 450px;
+  max-height: 85vh;
+  padding: 2rem;
+  border-radius: 12px;
+  z-index: 9999;
+  
+  // Konteyner stilleri zaten temayı destekliyordu, aynı kalıyor.
+  :global(.dark) & {
+    background-color: $dark-bg-secondary;
+    border: 1px solid $dark-border;
+  }
+  :global(.light) & {
+    background-color: $light-bg-secondary;
+    border: 1px solid $light-border;
+  }
+}
+
+.dialogTitle {
+  margin: 0 0 1.5rem 0; // Alt boşluk artırıldı
+  font-weight: 600;
+  font-size: 1.25rem;
+  
+  // YENİ: Başlık için tema destekli metin rengi eklendi.
+  :global(.dark) & { color: $dark-text-primary; }
+  :global(.light) & { color: $light-text-primary; }
+}
+
+// YENİ: Kapatma butonu için stiller eklendi.
+.dialogCloseButton {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  :global(.dark) & {
+    color: $dark-text-secondary;
+    &:hover {
+      background-color: $dark-border;
+      color: $dark-text-primary;
+    }
+  }
+  :global(.light) & {
+    color: $light-text-secondary;
+    &:hover {
+      background-color: $light-border;
+      color: $light-text-primary;
+    }
+  }
+}
+
+
+// Form elemanları için tema desteği belirginleştirildi.
+.formGroup {
+  margin-bottom: 1.5rem;
+  label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    
+    // YENİ: Label için tema destekli metin rengi eklendi.
+    :global(.dark) & { color: $dark-text-primary; }
+    :global(.light) & { color: $light-text-primary; }
+  }
+}
+
+.plansActions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+}
+
+.compareButton {
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    border: 1px solid;
+    font-weight: 600;
+    cursor: pointer;
+    :global(.dark) & { background-color: $dark-bg; border-color: $dark-border; color: $dark-text-primary; &:hover { background-color: $dark-border; } }
+    :global(.light) & { background-color: $light-bg; border-color: $light-border; color: $light-text-primary; &:hover { background-color: $light-border; } }
+}
+
+/* ======================================================================== */
+/* YENİ: Özel Select (Dropdown) Stilleri                                    */
+/* ======================================================================== */
+
+// Select elementini ve ikonu sarmalayan göreceli konumlu div
+.selectWrapper {
+  position: relative;
+  max-width: 500px;
+}
+
+// Sağ tarafa yerleştirilen özel ok ikonu
+.selectIcon {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none; // İkonun tıklanmasını engeller, select'e tıklanır
+  :global(.dark) & { color: $dark-text-secondary; }
+  :global(.light) & { color: $light-text-secondary; }
+}
+
+// .formInput sınıfı bir select elementine uygulandığında
+// tarayıcının varsayılan okunu gizle ve ikon için yer aç
+:global(select).formInput {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  padding-right: 2.5rem; // Sağdaki ikonun metnin üzerine gelmesini engeller
+}
+
+/* ── Row Action Button (3-dot menu trigger) ── */
+.rowActionBtn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+
+  :global(.dark) & {
+    color: $dark-text-secondary;
+    &:hover { background: rgba(255, 255, 255, 0.08); }
+  }
+  :global(.light) & {
+    color: $light-text-secondary;
+    &:hover { background: rgba(0, 0, 0, 0.06); }
+  }
+}
