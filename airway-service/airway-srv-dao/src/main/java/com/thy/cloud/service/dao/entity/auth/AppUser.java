@@ -22,6 +22,7 @@ public class AppUser extends AbstractAuditionGuidKeyEntity {
     private String passwordHash;
 
     @Column(name = "role", nullable = false)
+    @Convert(converter = com.thy.cloud.service.dao.enums.converter.EnumUserRoleConverter.class)
     private EnumUserRole role;
 
     @Column(name = "display_name")

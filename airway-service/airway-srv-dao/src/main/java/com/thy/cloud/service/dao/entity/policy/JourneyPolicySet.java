@@ -22,15 +22,18 @@ public class JourneyPolicySet extends AbstractAuditionGuidKeyEntity {
     private String code;
 
     @Column(name = "scope_type", nullable = false)
+    @Convert(converter = com.thy.cloud.service.dao.enums.converter.EnumPolicyScopeTypeConverter.class)
     private EnumPolicyScopeType scopeType;
 
     @Column(name = "scope_key", nullable = false)
     private String scopeKey;
 
     @Column(name = "segment", nullable = false)
+    @Convert(converter = com.thy.cloud.service.dao.enums.converter.EnumPolicySegmentConverter.class)
     private EnumPolicySegment segment;
 
     @Column(name = "status", nullable = false)
+    @Convert(converter = com.thy.cloud.service.dao.enums.converter.EnumPolicyStatusConverter.class)
     private EnumPolicyStatus status;
 
     @Column(name = "version", nullable = false, insertable = false, updatable = false)

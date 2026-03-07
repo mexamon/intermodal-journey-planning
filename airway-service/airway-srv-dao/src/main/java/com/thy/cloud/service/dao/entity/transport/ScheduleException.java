@@ -31,6 +31,7 @@ public class ScheduleException extends AbstractAuditionGuidKeyEntity {
     private LocalDate exceptionDate;
 
     @Column(name = "exception_type", nullable = false)
+    @Enumerated(EnumType.STRING)
     private EnumScheduleExceptionType exceptionType;
 
     @Column(name = "reason")

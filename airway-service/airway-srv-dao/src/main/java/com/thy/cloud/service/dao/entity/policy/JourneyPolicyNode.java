@@ -21,6 +21,7 @@ public class JourneyPolicyNode extends AbstractAuditionGuidKeyEntity {
     private JourneyPolicySet policySet;
 
     @Column(name = "node_key", nullable = false)
+    @Convert(converter = com.thy.cloud.service.dao.enums.converter.EnumNodeKeyConverter.class)
     private EnumNodeKey nodeKey;
 
     @Column(name = "min_visits", nullable = false)

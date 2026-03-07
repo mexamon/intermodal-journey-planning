@@ -33,6 +33,7 @@ public class TransportServiceArea extends AbstractAuditionGuidKeyEntity {
     private String name;
 
     @Column(name = "area_type", nullable = false)
+    @Convert(converter = com.thy.cloud.service.dao.enums.converter.EnumAreaTypeConverter.class)
     private EnumAreaType areaType;
 
     @Column(name = "center_lat", precision = 9, scale = 6)

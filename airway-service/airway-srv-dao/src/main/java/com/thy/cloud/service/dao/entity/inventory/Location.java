@@ -20,6 +20,7 @@ import java.math.BigDecimal;
 public class Location extends AbstractAuditionGuidKeyEntity {
 
     @Column(name = "type", nullable = false)
+    @Convert(converter = com.thy.cloud.service.dao.enums.converter.EnumLocationTypeConverter.class)
     private EnumLocationType type;
 
     @Column(name = "name", nullable = false)
@@ -72,6 +73,7 @@ public class Location extends AbstractAuditionGuidKeyEntity {
     private Integer searchPriority;
 
     @Column(name = "source", nullable = false)
+    @Convert(converter = com.thy.cloud.service.dao.enums.converter.EnumLocationSourceConverter.class)
     private EnumLocationSource source;
 
     @Column(name = "source_pk")

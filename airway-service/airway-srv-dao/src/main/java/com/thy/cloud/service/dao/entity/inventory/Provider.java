@@ -23,6 +23,7 @@ public class Provider extends AbstractAuditionGuidKeyEntity {
     private String name;
 
     @Column(name = "type", nullable = false)
+    @Convert(converter = com.thy.cloud.service.dao.enums.converter.EnumProviderTypeConverter.class)
     private EnumProviderType type;
 
     @Column(name = "country_iso_code", length = 2)

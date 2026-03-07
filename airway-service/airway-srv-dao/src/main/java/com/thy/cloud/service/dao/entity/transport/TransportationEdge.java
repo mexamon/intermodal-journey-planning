@@ -55,6 +55,7 @@ public class TransportationEdge extends AbstractAuditionGuidKeyEntity {
     // ── Schedule Type (V013) ──
 
     @Column(name = "schedule_type", nullable = false)
+    @Convert(converter = com.thy.cloud.service.dao.enums.converter.EnumScheduleTypeConverter.class)
     private EnumScheduleType scheduleType;
 
     // ── Trips (V013 — FIXED schedule departures) ──
@@ -100,9 +101,11 @@ public class TransportationEdge extends AbstractAuditionGuidKeyEntity {
     // ── Status & Source ──
 
     @Column(name = "status", nullable = false)
+    @Convert(converter = com.thy.cloud.service.dao.enums.converter.EnumEdgeStatusConverter.class)
     private EnumEdgeStatus status;
 
     @Column(name = "source", nullable = false)
+    @Convert(converter = com.thy.cloud.service.dao.enums.converter.EnumEdgeSourceConverter.class)
     private EnumEdgeSource source;
 
     // ── Estimates ──

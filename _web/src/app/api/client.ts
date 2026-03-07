@@ -72,15 +72,28 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+/**
+ * Extract a human-readable message from a backend Result.
+ * data can be: string | { errors: [{ code, message }] } | null
+ */
+function extractErrorMessage(result: ApiResult<unknown>): string {
+  const d = result.data as any;
+  if (typeof d === 'string' && d) return d;
+  if (d && Array.isArray(d.errors) && d.errors.length > 0) {
+    return d.errors.map((e: any) => e.message).join('; ');
+  }
+  return result.message || 'İşlem başarısız.';
+}
+
 // Response interceptor: unwrap Result<T> + error handling
 api.interceptors.response.use(
   (response: AxiosResponse<ApiResult<unknown>>) => {
     const result = response.data;
     // Backend returns code='000000' for success
     if (result && result.code && result.code !== SUCCESS_CODE) {
-      const msg = typeof result.data === 'string' ? result.data : result.message;
-      emitToast('error', msg || 'İşlem başarısız.');
-      throw new ApiError(result.code, msg || 'İşlem başarısız.');
+      const msg = extractErrorMessage(result);
+      emitToast('error', msg);
+      throw new ApiError(result.code, msg);
     }
     return response;
   },
@@ -88,9 +101,9 @@ api.interceptors.response.use(
     // Backend returned a structured error (400, 404, etc.)
     if (error.response?.data?.code) {
       const result = error.response.data;
-      const msg = typeof result.data === 'string' ? result.data : result.message;
-      emitToast('error', msg || 'İşlem başarısız.');
-      throw new ApiError(result.code, msg || 'İşlem başarısız.');
+      const msg = extractErrorMessage(result);
+      emitToast('error', msg);
+      throw new ApiError(result.code, msg);
     }
     if (error.response?.status === 401) {
       localStorage.removeItem('auth_token');

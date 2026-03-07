@@ -27,9 +27,11 @@ public class Fare extends AbstractAuditionGuidKeyEntity {
     private EdgeTrip trip;
 
     @Column(name = "fare_class", nullable = false)
+    @Enumerated(EnumType.STRING)
     private EnumFareClass fareClass;
 
     @Column(name = "pricing_type", nullable = false)
+    @Enumerated(EnumType.STRING)
     private EnumPricingType pricingType;
 
     @Column(name = "price_cents")

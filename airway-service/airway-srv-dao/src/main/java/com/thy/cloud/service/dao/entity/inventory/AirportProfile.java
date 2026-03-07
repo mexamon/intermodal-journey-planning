@@ -16,6 +16,7 @@ import jakarta.persistence.*;
 public class AirportProfile extends AbstractAuditionGuidKeyEntity {
 
     @Column(name = "airport_kind", nullable = false)
+    @Convert(converter = com.thy.cloud.service.dao.enums.converter.EnumAirportKindConverter.class)
     private EnumAirportKind airportKind;
 
     @Column(name = "elevation_ft")

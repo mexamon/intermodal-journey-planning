@@ -24,12 +24,15 @@ public class TransportMode extends AbstractAuditionGuidKeyEntity {
     private String name;
 
     @Column(name = "category", nullable = false)
+    @Convert(converter = com.thy.cloud.service.dao.enums.converter.EnumModeCategoryConverter.class)
     private EnumModeCategory category;
 
     @Column(name = "coverage_type", nullable = false)
+    @Convert(converter = com.thy.cloud.service.dao.enums.converter.EnumCoverageTypeConverter.class)
     private EnumCoverageType coverageType;
 
     @Column(name = "edge_resolution", nullable = false)
+    @Convert(converter = com.thy.cloud.service.dao.enums.converter.EnumEdgeResolutionConverter.class)
     private EnumEdgeResolution edgeResolution;
 
     @Column(name = "requires_stop", nullable = false)

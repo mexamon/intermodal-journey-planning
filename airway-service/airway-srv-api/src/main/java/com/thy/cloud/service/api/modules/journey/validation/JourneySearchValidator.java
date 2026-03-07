@@ -21,7 +21,7 @@ public class JourneySearchValidator implements ConstraintValidator<JourneySearch
         boolean hasOrigin = (request.getOriginLocationId() != null)
                 || (request.getOriginIataCode() != null && !request.getOriginIataCode().isBlank());
         if (!hasOrigin) {
-            context.buildConstraintViolationWithTemplate("Kalkış noktası belirtilmelidir (lokasyon ID veya IATA kodu)")
+            context.buildConstraintViolationWithTemplate("Origin must be specified (location ID or IATA code)")
                     .addPropertyNode("originIataCode")
                     .addConstraintViolation();
             valid = false;
@@ -31,7 +31,7 @@ public class JourneySearchValidator implements ConstraintValidator<JourneySearch
         boolean hasDest = (request.getDestinationLocationId() != null)
                 || (request.getDestinationIataCode() != null && !request.getDestinationIataCode().isBlank());
         if (!hasDest) {
-            context.buildConstraintViolationWithTemplate("Varış noktası belirtilmelidir (lokasyon ID veya IATA kodu)")
+            context.buildConstraintViolationWithTemplate("Destination must be specified (location ID or IATA code)")
                     .addPropertyNode("destinationIataCode")
                     .addConstraintViolation();
             valid = false;
@@ -44,7 +44,7 @@ public class JourneySearchValidator implements ConstraintValidator<JourneySearch
             boolean sameByIata = request.getOriginIataCode() != null
                     && request.getOriginIataCode().equalsIgnoreCase(request.getDestinationIataCode());
             if (sameById || sameByIata) {
-                context.buildConstraintViolationWithTemplate("Kalkış ve varış noktası aynı olamaz")
+                context.buildConstraintViolationWithTemplate("Origin and destination cannot be the same")
                         .addConstraintViolation();
                 valid = false;
             }
@@ -52,7 +52,7 @@ public class JourneySearchValidator implements ConstraintValidator<JourneySearch
 
         // Max transfers limit
         if (request.getMaxTransfers() < 0 || request.getMaxTransfers() > 6) {
-            context.buildConstraintViolationWithTemplate("Maksimum aktarma sayısı 0-6 arasında olmalıdır")
+            context.buildConstraintViolationWithTemplate("Max transfers must be between 0 and 6")
                     .addPropertyNode("maxTransfers")
                     .addConstraintViolation();
             valid = false;

@@ -360,6 +360,9 @@ export const PlannerPane: React.FC = () => {
     setSearched(true);
     clearError();
 
+    // UUID format check — mock place IDs like "p9" are not valid UUIDs
+    const isUuid = (s?: string) => !!s && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+
     // Determine origin/destination identifiers
     const originId = origin.selected?.id;
     const originIata = origin.selected?.iataCode;
@@ -371,9 +374,9 @@ export const PlannerPane: React.FC = () => {
     };
 
     await storeSearch({
-      originLocationId: originIata ? undefined : originId,
+      originLocationId: (!originIata && isUuid(originId)) ? originId : undefined,
       originIataCode: originIata || undefined,
-      destinationLocationId: destIata ? undefined : destId,
+      destinationLocationId: (!destIata && isUuid(destId)) ? destId : undefined,
       destinationIataCode: destIata || undefined,
       departureDate: date,
       sortBy: (sortMap[sortBy] || 'FASTEST') as any,

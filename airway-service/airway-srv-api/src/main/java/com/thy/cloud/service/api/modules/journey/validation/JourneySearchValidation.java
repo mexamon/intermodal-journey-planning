@@ -16,7 +16,7 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface JourneySearchValidation {
 
-    String message() default "Geçersiz yolculuk arama parametreleri";
+    String message() default "Invalid journey search parameters";
 
     Class<?>[] groups() default {};
 

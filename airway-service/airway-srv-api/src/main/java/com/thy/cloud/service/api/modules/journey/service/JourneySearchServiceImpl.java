@@ -59,13 +59,9 @@ public class JourneySearchServiceImpl implements JourneySearchService {
         int maxTransfers = Math.min(request.getMaxTransfers(), 6);
         int maxDuration = request.getMaxDurationMinutes();
 
-        // 2. Load transport graph (all active edges with trips)
-        List<TransportationEdge> allEdges = edgeRepository.findByOriginLocationIdAndStatus(
-                origin.getId(), EnumEdgeStatus.ACTIVE);
-
-        // Build adjacency list: locationId -> edges departing from there
+        // 2. Build bounded adjacency map (only edges reachable from origin within maxTransfers hops)
         Map<UUID, List<TransportationEdge>> adjacency = buildAdjacencyMap(
-                request.getPreferredModes());
+                origin.getId(), maxTransfers, request.getPreferredModes());
 
         // 3. BFS — find all paths from origin to destination
         List<List<PathStep>> completePaths = new ArrayList<>();
@@ -98,23 +94,55 @@ public class JourneySearchServiceImpl implements JourneySearchService {
     }
 
     /* ═══════════════════════════════════════════════
-       Graph Construction
+       Graph Construction — Bounded hop-by-hop loading
        ═══════════════════════════════════════════════ */
-    private Map<UUID, List<TransportationEdge>> buildAdjacencyMap(List<String> preferredModes) {
-        // Fetch all active, non-deleted edges
-        List<TransportationEdge> allEdges = edgeRepository
-                .findAllByStatusAndDeletedFalse(EnumEdgeStatus.ACTIVE);
+    private Map<UUID, List<TransportationEdge>> buildAdjacencyMap(
+            UUID originId, int maxTransfers, List<String> preferredModes) {
 
-        // Mode filter
-        if (preferredModes != null && !preferredModes.isEmpty()) {
-            Set<String> modes = new HashSet<>(preferredModes);
-            allEdges = allEdges.stream()
-                    .filter(e -> modes.contains(e.getTransportMode().getCode()))
-                    .collect(Collectors.toList());
+        Map<UUID, List<TransportationEdge>> adjacency = new HashMap<>();
+        Set<UUID> visited = new HashSet<>();
+        Set<UUID> frontier = new HashSet<>();
+        frontier.add(originId);
+
+        Set<String> modes = (preferredModes != null && !preferredModes.isEmpty())
+                ? new HashSet<>(preferredModes) : null;
+
+        // Load edges hop by hop (origin → 1st hop → 2nd hop → ... up to maxTransfers)
+        for (int hop = 0; hop <= maxTransfers; hop++) {
+            if (frontier.isEmpty()) break;
+
+            for (UUID locId : frontier) {
+                if (visited.contains(locId)) continue;
+                visited.add(locId);
+
+                List<TransportationEdge> edges = edgeRepository.findByOriginLocationIdAndStatus(
+                        locId, EnumEdgeStatus.ACTIVE);
+
+                // Mode filter
+                if (modes != null) {
+                    edges = edges.stream()
+                            .filter(e -> modes.contains(e.getTransportMode().getCode()))
+                            .collect(Collectors.toList());
+                }
+
+                adjacency.put(locId, edges);
+            }
+
+            // Next frontier = all destinations of current edges not yet visited
+            Set<UUID> nextFrontier = new HashSet<>();
+            for (UUID locId : frontier) {
+                List<TransportationEdge> edges = adjacency.getOrDefault(locId, Collections.emptyList());
+                for (TransportationEdge edge : edges) {
+                    UUID destId = edge.getDestinationLocation().getId();
+                    if (!visited.contains(destId)) {
+                        nextFrontier.add(destId);
+                    }
+                }
+            }
+            frontier = nextFrontier;
         }
 
-        return allEdges.stream()
-                .collect(Collectors.groupingBy(e -> e.getOriginLocation().getId()));
+        return adjacency;
     }
 
     /* ═══════════════════════════════════════════════
