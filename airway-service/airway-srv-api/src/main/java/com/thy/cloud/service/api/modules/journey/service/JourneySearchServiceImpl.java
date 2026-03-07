@@ -246,7 +246,11 @@ public class JourneySearchServiceImpl implements JourneySearchService {
 
         Set<String> destinationKeys = new HashSet<>();
         destinationKeys.add(locKey(destination));
-        destHubs.forEach(hub -> destinationKeys.add(locKey(hub)));
+        // Only treat dest hubs as terminals when destination IS a hub (airport/station)
+        // When destination is a place (e.g. "London"), BFS must continue through last-mile edges
+        if ("AIRPORT".equals(destination.type()) || "STATION".equals(destination.type())) {
+            destHubs.forEach(hub -> destinationKeys.add(locKey(hub)));
+        }
 
         List<List<ResolvedEdge>> completePaths = new ArrayList<>();
         bfs(adjacency, locKey(origin), destinationKeys, date, earliest,
@@ -323,7 +327,7 @@ public class JourneySearchServiceImpl implements JourneySearchService {
             hubs.add(location);
             // Also find other nearby airports if this is a city with multiple airports
             if (location.persisted()) {
-                findNearbyPersistedLocations(location, "AIRPORT", 3).forEach(hub -> {
+                findNearbyPersistedLocations(location, "AIRPORT", 7).forEach(hub -> {
                     if (!locKey(hub).equals(locKey(location))) hubs.add(hub);
                 });
             }
@@ -331,7 +335,7 @@ public class JourneySearchServiceImpl implements JourneySearchService {
         }
 
         // For POI/CITY — find nearby airports and stations
-        hubs.addAll(findNearbyPersistedLocations(location, "AIRPORT", 3));
+        hubs.addAll(findNearbyPersistedLocations(location, "AIRPORT", 7));
         hubs.addAll(findNearbyPersistedLocations(location, "STATION", 5));
 
         if (hubs.isEmpty()) {
