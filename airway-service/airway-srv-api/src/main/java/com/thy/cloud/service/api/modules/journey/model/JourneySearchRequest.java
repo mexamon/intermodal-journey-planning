@@ -1,5 +1,6 @@
 package com.thy.cloud.service.api.modules.journey.model;
 
+import com.thy.cloud.service.api.modules.journey.validation.JourneySearchValidation;
 import lombok.Data;
 
 import java.time.LocalDate;
@@ -8,6 +9,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Data
+@JourneySearchValidation
 public class JourneySearchRequest {
 
     private UUID originLocationId;

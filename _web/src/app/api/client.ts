@@ -2,21 +2,51 @@ import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig, AxiosResp
 
 /* ═══════════════════════════════════════════════
    Result<T> — matches backend Result wrapper
+   Backend uses: code='000000' for success, message, timestamp, data
    ═══════════════════════════════════════════════ */
 export interface ApiResult<T> {
-  code: number;
+  code: string;
   message: string;
+  timestamp: string;
   data: T;
-  success: boolean;
 }
 
+const SUCCESS_CODE = '000000';
+
 export class ApiError extends Error {
-  code: number;
-  constructor(code: number, message: string) {
+  code: string;
+  constructor(code: string, message: string) {
     super(message);
     this.code = code;
     this.name = 'ApiError';
   }
+}
+
+/* ═══════════════════════════════════════════════
+   Toast Event Bus — simple pub/sub for notifications
+   ═══════════════════════════════════════════════ */
+export type ToastType = 'error' | 'warning' | 'success' | 'info';
+export interface ToastEvent {
+  id: string;
+  type: ToastType;
+  message: string;
+  duration?: number;
+}
+
+type ToastListener = (toast: ToastEvent) => void;
+const toastListeners: ToastListener[] = [];
+
+export function onToast(listener: ToastListener) {
+  toastListeners.push(listener);
+  return () => {
+    const idx = toastListeners.indexOf(listener);
+    if (idx >= 0) toastListeners.splice(idx, 1);
+  };
+}
+
+export function emitToast(type: ToastType, message: string, duration = 5000) {
+  const event: ToastEvent = { id: Date.now().toString(36) + Math.random().toString(36).slice(2), type, message, duration };
+  toastListeners.forEach(l => l(event));
 }
 
 /* ═══════════════════════════════════════════════
@@ -46,34 +76,43 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response: AxiosResponse<ApiResult<unknown>>) => {
     const result = response.data;
-    if (result && result.success === false) {
-      throw new ApiError(result.code, result.message || 'İşlem başarısız.');
+    // Backend returns code='000000' for success
+    if (result && result.code && result.code !== SUCCESS_CODE) {
+      const msg = typeof result.data === 'string' ? result.data : result.message;
+      emitToast('error', msg || 'İşlem başarısız.');
+      throw new ApiError(result.code, msg || 'İşlem başarısız.');
     }
     return response;
   },
   (error: AxiosError<ApiResult<unknown>>) => {
-    if (error.response?.data?.message) {
-      throw new ApiError(
-        error.response.data.code || error.response.status,
-        error.response.data.message
-      );
+    // Backend returned a structured error (400, 404, etc.)
+    if (error.response?.data?.code) {
+      const result = error.response.data;
+      const msg = typeof result.data === 'string' ? result.data : result.message;
+      emitToast('error', msg || 'İşlem başarısız.');
+      throw new ApiError(result.code, msg || 'İşlem başarısız.');
     }
     if (error.response?.status === 401) {
       localStorage.removeItem('auth_token');
+      emitToast('error', 'Oturum süresi doldu. Lütfen tekrar giriş yapın.');
       window.location.href = '/login';
-      throw new ApiError(401, 'Oturum süresi doldu. Lütfen tekrar giriş yapın.');
+      throw new ApiError('401', 'Oturum süresi doldu.');
     }
     if (error.response?.status === 403) {
-      throw new ApiError(403, 'Bu işlem için yetkiniz yok.');
+      emitToast('error', 'Bu işlem için yetkiniz yok.');
+      throw new ApiError('403', 'Bu işlem için yetkiniz yok.');
     }
     if (error.code === 'ECONNABORTED') {
-      throw new ApiError(408, 'İstek zaman aşımına uğradı.');
+      emitToast('warning', 'İstek zaman aşımına uğradı.');
+      throw new ApiError('408', 'İstek zaman aşımına uğradı.');
     }
     if (!error.response) {
-      throw new ApiError(0, 'Sunucuya bağlanılamıyor. İnternet bağlantınızı kontrol edin.');
+      emitToast('error', 'Sunucuya bağlanılamıyor. İnternet bağlantınızı kontrol edin.');
+      throw new ApiError('0', 'Sunucuya bağlanılamıyor.');
     }
+    emitToast('error', 'Beklenmeyen bir hata oluştu.');
     throw new ApiError(
-      error.response?.status || 500,
+      String(error.response?.status || 500),
       'Beklenmeyen bir hata oluştu.'
     );
   }

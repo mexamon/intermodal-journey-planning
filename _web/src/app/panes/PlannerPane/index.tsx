@@ -3,6 +3,7 @@ import * as s from './PlannerPane.module.scss';
 import {
   FiNavigation, FiMapPin, FiCalendar, FiSearch, FiRepeat,
   FiDollarSign, FiWind, FiChevronDown, FiX, FiUsers, FiFilter, FiClock, FiStar, FiZap,
+  FiAlertCircle, FiLoader,
 } from 'react-icons/fi';
 import {
   MdFlight, MdDirectionsBus, MdTrain, MdDirectionsWalk, MdLocalTaxi,
@@ -15,6 +16,8 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useThemeContext } from '../../contexts/ThemeContext';
+import { searchLocations, LocationResult } from '../../api/locationApi';
+import { useJourneyStore } from '../../stores/journeyStore';
 
 /* ═══════════════════════════════════════════════
    Types
@@ -23,6 +26,7 @@ interface PlaceSuggestion {
   id: string;
   name: string;
   description: string;
+  iataCode: string | null;
   lat: number;
   lon: number;
   type: 'address' | 'city' | 'airport' | 'station' | 'poi';
@@ -270,15 +274,41 @@ function useAutocomplete() {
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [selected, setSelected] = useState<PlaceSuggestion | null>(null);
   const [open, setOpen] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     if (!query || query.length < 2 || selected) { setSuggestions([]); setOpen(false); return; }
-    const q = query.toLowerCase();
-    const matched = MOCK_PLACES.filter(p =>
-      p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q)
-    ).slice(0, 6);
-    setSuggestions(matched);
-    setOpen(matched.length > 0);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const results = await searchLocations({ name: query }, 0, 8);
+        const mapped: PlaceSuggestion[] = results.map(loc => {
+          const typeMap: Record<string, PlaceSuggestion['type']> = {
+            AIRPORT: 'airport', TRAIN_STATION: 'station', BUS_TERMINAL: 'station',
+            FERRY_PORT: 'station', CITY_CENTER: 'city',
+          };
+          return {
+            id: loc.id,
+            name: loc.iataCode ? `${loc.name} (${loc.iataCode})` : loc.name,
+            description: [loc.city, loc.countryIsoCode].filter(Boolean).join(', '),
+            iataCode: loc.iataCode,
+            lat: loc.lat, lon: loc.lon,
+            type: typeMap[loc.type] || 'city',
+          };
+        });
+        setSuggestions(mapped);
+        setOpen(mapped.length > 0);
+      } catch {
+        // Fallback to mock data on API error
+        const q = query.toLowerCase();
+        const matched = MOCK_PLACES.filter(p =>
+          p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q)
+        ).slice(0, 6).map(p => ({ ...p, iataCode: null }));
+        setSuggestions(matched);
+        setOpen(matched.length > 0);
+      }
+    }, 250);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [query, selected]);
 
   const select = (place: PlaceSuggestion) => {
@@ -307,7 +337,7 @@ export const PlannerPane: React.FC = () => {
   const totalPax = adults + children + infants;
   const cabinLabels = { economy: 'Ekonomi', business: 'Business', first: 'First' };
   const paxSummary = `${totalPax} Yolcu · ${cabinLabels[cabinClass]}`;
-  const [results, setResults] = useState<JourneyResult[]>([]);
+  const { results: storeResults, loading, error, search: storeSearch, selectedJourney, clearError } = useJourneyStore();
   const [searched, setSearched] = useState(false);
   const [sortBy, setSortBy] = useState<'fastest' | 'cheapest' | 'greenest'>('fastest');
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set(['all']));
@@ -326,14 +356,28 @@ export const PlannerPane: React.FC = () => {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     setSearched(true);
-    const sorted = [...DEMO_RESULTS].sort((a, b) => {
-      if (sortBy === 'cheapest') return a.totalCostCents - b.totalCostCents;
-      if (sortBy === 'greenest') return a.co2Grams - b.co2Grams;
-      return a.totalDurationMin - b.totalDurationMin;
+    clearError();
+
+    // Determine origin/destination identifiers
+    const originId = origin.selected?.id;
+    const originIata = origin.selected?.iataCode;
+    const destId = dest.selected?.id;
+    const destIata = dest.selected?.iataCode;
+
+    const sortMap: Record<string, string> = {
+      fastest: 'FASTEST', cheapest: 'CHEAPEST', greenest: 'GREENEST',
+    };
+
+    await storeSearch({
+      originLocationId: originIata ? undefined : originId,
+      originIataCode: originIata || undefined,
+      destinationLocationId: destIata ? undefined : destId,
+      destinationIataCode: destIata || undefined,
+      departureDate: date,
+      sortBy: (sortMap[sortBy] || 'FASTEST') as any,
     });
-    setResults(sorted);
   };
 
   const handleSwap = () => {
@@ -357,9 +401,18 @@ export const PlannerPane: React.FC = () => {
     setActiveFilters(next);
   };
 
-  const filteredResults = results.filter(r => {
+  // Use store results, apply local sort + filter
+  const sortedResults = useMemo(() => {
+    const arr = [...storeResults];
+    if (sortBy === 'cheapest') arr.sort((a, b) => a.totalCostCents - b.totalCostCents);
+    else if (sortBy === 'greenest') arr.sort((a, b) => a.co2Grams - b.co2Grams);
+    else arr.sort((a, b) => a.totalDurationMin - b.totalDurationMin);
+    return arr;
+  }, [storeResults, sortBy]);
+
+  const filteredResults = sortedResults.filter(r => {
     if (activeFilters.has('all')) return true;
-    return r.segments.some(seg => activeFilters.has(seg.mode));
+    return r.segments.some(seg => activeFilters.has(seg.mode.toLowerCase()));
   });
 
   /* ═══════════ Render ═══════════ */
@@ -371,7 +424,7 @@ export const PlannerPane: React.FC = () => {
           {/* Origin */}
           <div className={s.inputGroup} ref={originRef}>
             <FiNavigation className={s.inputIcon} />
-            <input className={s.searchInput} placeholder="Nereden? (e.g. Beytepe, Ankara)"
+            <input className={s.searchInput} placeholder="Kalkış noktası (ör. İstanbul, ESB, Frankfurt)"
               value={origin.query} onChange={e => origin.setQuery(e.target.value)}
               onFocus={() => origin.suggestions.length > 0 && origin.setOpen(true)} />
             {origin.selected && (
@@ -391,7 +444,7 @@ export const PlannerPane: React.FC = () => {
                     <span className={s.placeType}>{p.type}</span>
                   </button>
                 ))}
-                <div className={s.poweredBy}>Powered by Google Places API</div>
+                <div className={s.poweredBy}>Lokasyon veritabanı</div>
               </div>
             )}
           </div>
@@ -404,7 +457,7 @@ export const PlannerPane: React.FC = () => {
           {/* Destination */}
           <div className={s.inputGroup} ref={destRef}>
             <FiMapPin className={s.inputIcon} />
-            <input className={s.searchInput} placeholder="Nereye? (e.g. Hückelhoven)"
+            <input className={s.searchInput} placeholder="Varış noktası (ör. Berlin, LHR, Ankara)"
               value={dest.query} onChange={e => dest.setQuery(e.target.value)}
               onFocus={() => dest.suggestions.length > 0 && dest.setOpen(true)} />
             {dest.selected && (
@@ -424,7 +477,7 @@ export const PlannerPane: React.FC = () => {
                     <span className={s.placeType}>{p.type}</span>
                   </button>
                 ))}
-                <div className={s.poweredBy}>Powered by Google Places API</div>
+                <div className={s.poweredBy}>Lokasyon veritabanı</div>
               </div>
             )}
           </div>

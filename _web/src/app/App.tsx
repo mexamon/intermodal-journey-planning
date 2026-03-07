@@ -5,6 +5,7 @@ import { HubPage } from './HubPage';
 import { ThemeContextProvider } from './contexts/ThemeContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LoginPage } from './pages/LoginPage/LoginPage';
+import { ToastContainer } from './components/ToastContainer';
 import '../styles/main.scss';
 
 const AuthGate: React.FC = () => {
@@ -20,6 +21,7 @@ const App = () => {
           <AuthGate />
         </BrowserRouter>
       </AuthProvider>
+      <ToastContainer />
     </ThemeContextProvider>
   );
 };
