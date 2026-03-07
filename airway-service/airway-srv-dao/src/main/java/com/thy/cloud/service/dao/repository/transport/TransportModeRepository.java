@@ -2,6 +2,7 @@ package com.thy.cloud.service.dao.repository.transport;
 
 import com.thy.cloud.data.jpa.repository.GenericRepository;
 import com.thy.cloud.service.dao.entity.transport.TransportMode;
+import com.thy.cloud.service.dao.enums.EnumEdgeResolution;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -14,4 +15,6 @@ public interface TransportModeRepository extends GenericRepository<TransportMode
     Optional<TransportMode> findByCode(String code);
 
     List<TransportMode> findByIsActiveTrueOrderBySortOrderAsc();
+
+    List<TransportMode> findByEdgeResolutionAndIsActiveTrue(EnumEdgeResolution edgeResolution);
 }

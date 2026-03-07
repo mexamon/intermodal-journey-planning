@@ -2,6 +2,8 @@
 
 // ─── SEARCH PANEL ───────────────────────────────────
 .searchPanel {
+  position: relative;
+  z-index: 10;
   border-radius: 16px;
   padding: 1.5rem;
   border: 1px solid;
@@ -469,6 +471,8 @@
 
 // ─── FILTER BOX ──────────────────────────────────────
 .filterBox {
+  position: relative;
+  z-index: 1;
   border-radius: 12px;
   border: 1px solid;
   padding: 0.75rem 1rem;
@@ -560,6 +564,8 @@
 
 // ─── RESULT CARDS ────────────────────────────────────
 .resultsGrid {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;

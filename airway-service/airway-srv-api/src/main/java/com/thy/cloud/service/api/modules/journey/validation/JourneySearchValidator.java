@@ -17,21 +17,23 @@ public class JourneySearchValidator implements ConstraintValidator<JourneySearch
         boolean valid = true;
         context.disableDefaultConstraintViolation();
 
-        // Origin: either locationId or iataCode must be provided
+        // Origin: locationId, iataCode, OR query text must be provided
         boolean hasOrigin = (request.getOriginLocationId() != null)
-                || (request.getOriginIataCode() != null && !request.getOriginIataCode().isBlank());
+                || (request.getOriginIataCode() != null && !request.getOriginIataCode().isBlank())
+                || (request.getOriginQuery() != null && !request.getOriginQuery().isBlank());
         if (!hasOrigin) {
-            context.buildConstraintViolationWithTemplate("Origin must be specified (location ID or IATA code)")
+            context.buildConstraintViolationWithTemplate("Origin must be specified (location ID, IATA code, or query text)")
                     .addPropertyNode("originIataCode")
                     .addConstraintViolation();
             valid = false;
         }
 
-        // Destination: either locationId or iataCode must be provided
+        // Destination: locationId, iataCode, OR query text must be provided
         boolean hasDest = (request.getDestinationLocationId() != null)
-                || (request.getDestinationIataCode() != null && !request.getDestinationIataCode().isBlank());
+                || (request.getDestinationIataCode() != null && !request.getDestinationIataCode().isBlank())
+                || (request.getDestinationQuery() != null && !request.getDestinationQuery().isBlank());
         if (!hasDest) {
-            context.buildConstraintViolationWithTemplate("Destination must be specified (location ID or IATA code)")
+            context.buildConstraintViolationWithTemplate("Destination must be specified (location ID, IATA code, or query text)")
                     .addPropertyNode("destinationIataCode")
                     .addConstraintViolation();
             valid = false;

@@ -3,6 +3,8 @@ package com.thy.cloud.service.dao.repository.transport;
 import com.thy.cloud.data.jpa.repository.GenericRepository;
 import com.thy.cloud.service.dao.entity.transport.TransportationEdge;
 import com.thy.cloud.service.dao.enums.EnumEdgeStatus;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -13,7 +15,15 @@ public interface TransportationEdgeRepository extends GenericRepository<Transpor
 
     List<TransportationEdge> findByOriginLocationId(UUID originLocationId);
 
-    List<TransportationEdge> findByOriginLocationIdAndStatus(UUID originLocationId, EnumEdgeStatus status);
+    @Query("SELECT e FROM TransportationEdge e " +
+           "JOIN FETCH e.transportMode " +
+           "LEFT JOIN FETCH e.provider " +
+           "JOIN FETCH e.originLocation " +
+           "JOIN FETCH e.destinationLocation " +
+           "WHERE e.originLocation.id = :originId AND e.status = :status")
+    List<TransportationEdge> findByOriginLocationIdAndStatus(
+            @Param("originId") UUID originLocationId,
+            @Param("status") EnumEdgeStatus status);
 
     List<TransportationEdge> findByOriginLocationIdAndDestinationLocationId(UUID originId, UUID destinationId);
 

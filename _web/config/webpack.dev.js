@@ -19,6 +19,13 @@ module.exports = merge(common, {
     compress: true,
     hot: true,
     port: 3041,
+    proxy: [
+      {
+        context: ['/api'],
+        target: 'http://localhost:8600',
+        changeOrigin: true,
+      },
+    ],
   },
   plugins: [
     new Dotenv(),

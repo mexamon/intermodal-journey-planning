@@ -6,8 +6,16 @@ import { apiPost } from './client';
 export interface JourneySearchRequest {
   originLocationId?: string;
   originIataCode?: string;
+  originQuery?: string;           // free-text: "Kadıköy", "Taksim"
+  originLat?: number;             // from selected autocomplete
+  originLon?: number;
+  originType?: 'airport' | 'station' | 'place';
   destinationLocationId?: string;
   destinationIataCode?: string;
+  destinationQuery?: string;      // free-text: "London Heathrow"
+  destinationLat?: number;
+  destinationLon?: number;
+  destinationType?: 'airport' | 'station' | 'place';
   departureDate?: string;       // ISO date: 2026-03-08
   earliestDeparture?: string;   // HH:mm
   maxTransfers?: number;

@@ -14,9 +14,17 @@ public class JourneySearchRequest {
 
     private UUID originLocationId;
     private String originIataCode;
+    private String originQuery;
+    private Double originLat;
+    private Double originLon;
+    private String originType;           // "airport" | "station" | "place"
 
     private UUID destinationLocationId;
     private String destinationIataCode;
+    private String destinationQuery;
+    private Double destinationLat;
+    private Double destinationLon;
+    private String destinationType;      // "airport" | "station" | "place"
 
     private LocalDate departureDate;
     private LocalTime earliestDeparture;
@@ -28,3 +36,4 @@ public class JourneySearchRequest {
 
     private String sortBy = "FASTEST"; // FASTEST, CHEAPEST, GREENEST, FEWEST_TRANSFERS
 }
+

@@ -5,6 +5,7 @@ import com.thy.cloud.service.dao.entity.inventory.Location;
 import com.thy.cloud.service.dao.enums.EnumLocationType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -21,4 +22,7 @@ public interface LocationRepository extends GenericRepository<Location, UUID> {
     List<Location> findByType(EnumLocationType type);
 
     Page<Location> findByIsSearchableTrueOrderBySearchPriorityDesc(Pageable pageable);
+
+    @Query("SELECT l FROM Location l WHERE l.type = :type AND l.iataCode IS NOT NULL AND l.lat BETWEEN :minLat AND :maxLat AND l.lon BETWEEN :minLon AND :maxLon")
+    List<Location> findNearbyByType(EnumLocationType type, double minLat, double maxLat, double minLon, double maxLon);
 }

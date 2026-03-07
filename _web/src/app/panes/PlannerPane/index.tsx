@@ -5,6 +5,7 @@ import {
   FiDollarSign, FiWind, FiChevronDown, FiX, FiUsers, FiFilter, FiClock, FiStar, FiZap,
   FiAlertCircle, FiLoader,
 } from 'react-icons/fi';
+import { LoadingSpinner } from '../../components/LoadingSpinner';
 import {
   MdFlight, MdDirectionsBus, MdTrain, MdDirectionsWalk, MdLocalTaxi,
   MdDirectionsSubway, MdSwapVert,
@@ -62,7 +63,7 @@ interface JourneyResult {
 /* ═══════════════════════════════════════════════
    Mode Metadata
    ═══════════════════════════════════════════════ */
-const MODE_META: Record<SegmentMode, { icon: React.ReactNode; color: string; label: string }> = {
+const MODE_META: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
   flight: { icon: <MdFlight size={14} />,          color: '#3b82f6', label: 'Uçuş' },
   train:  { icon: <MdTrain size={14} />,           color: '#f97316', label: 'Tren' },
   bus:    { icon: <MdDirectionsBus size={14} />,    color: '#22c55e', label: 'Otobüs' },
@@ -70,6 +71,8 @@ const MODE_META: Record<SegmentMode, { icon: React.ReactNode; color: string; lab
   walk:   { icon: <MdDirectionsWalk size={14} />,   color: '#94a3b8', label: 'Yürüme' },
   taxi:   { icon: <MdLocalTaxi size={14} />,        color: '#a855f7', label: 'Taksi' },
 };
+const FALLBACK_MODE = { icon: <MdFlight size={14} />, color: '#6b7280', label: '?' };
+const modeMeta = (m: string) => MODE_META[m] || MODE_META[m?.toLowerCase()] || FALLBACK_MODE;
 
 /* ═══════════════════════════════════════════════
    Journey Graph — builds React Flow graph from results
@@ -87,13 +90,13 @@ type JGraphNodeData = {
 
 const JGraphNode: React.FC<NodeProps<Node<JGraphNodeData>>> = ({ data }) => {
   const isTerminal = data.isOrigin || data.isDestination;
-  const color = data.mode ? MODE_META[data.mode].color : '#6b7280';
+  const color = data.mode ? modeMeta(data.mode).color : '#6b7280';
   return (
     <div className={s.jgNode} style={{ borderColor: color }}>
       {!data.isOrigin && <Handle type="target" position={Position.Left} className={s.jgHandle} />}
       {!data.isDestination && <Handle type="source" position={Position.Right} className={s.jgHandle} />}
       {data.mode && (
-        <span className={s.jgModeIcon} style={{ color }}>{MODE_META[data.mode].icon}</span>
+        <span className={s.jgModeIcon} style={{ color }}>{modeMeta(data.mode).icon}</span>
       )}
       <div className={s.jgInfo}>
         <strong>{data.code}</strong>
@@ -109,7 +112,7 @@ const jgNodeTypes = { journeyNode: JGraphNode };
 function buildSingleJourneyGraph(journey: JourneyResult): { nodes: Node<JGraphNodeData>[]; edges: Edge[] } {
   const nodes: Node<JGraphNodeData>[] = [];
   const edges: Edge[] = [];
-  const xSpacing = 240;
+  const xSpacing = 400;
 
   journey.segments.forEach((seg, si) => {
     // Origin node
@@ -117,7 +120,7 @@ function buildSingleJourneyGraph(journey: JourneyResult): { nodes: Node<JGraphNo
     if (!nodes.find(n => n.id === fromId)) {
       nodes.push({
         id: fromId, type: 'journeyNode',
-        position: { x: si * xSpacing, y: 60 },
+        position: { x: si * xSpacing, y: 40 },
         data: {
           label: seg.originName, code: seg.originCode,
           isOrigin: si === 0,
@@ -129,7 +132,7 @@ function buildSingleJourneyGraph(journey: JourneyResult): { nodes: Node<JGraphNo
     if (!nodes.find(n => n.id === toId)) {
       nodes.push({
         id: toId, type: 'journeyNode',
-        position: { x: (si + 1) * xSpacing, y: 60 },
+        position: { x: (si + 1) * xSpacing, y: 40 },
         data: {
           label: seg.destinationName, code: seg.destinationCode,
           isDestination: si === journey.segments.length - 1,
@@ -139,9 +142,13 @@ function buildSingleJourneyGraph(journey: JourneyResult): { nodes: Node<JGraphNo
     // Edge with mode info
     edges.push({
       id: `je_${si}`, source: fromId, target: toId,
-      label: `${MODE_META[seg.mode].label} · ${formatDuration(seg.durationMin)}${seg.provider ? ` · ${seg.provider}` : ''}`,
-      style: { stroke: MODE_META[seg.mode].color, strokeWidth: 2.5 },
-      labelStyle: { fontSize: 10, fontWeight: 600 },
+      label: `${modeMeta(seg.mode).label} · ${formatDuration(seg.durationMin)}${seg.provider ? ` · ${seg.provider}` : ''}`,
+      type: 'smoothstep',
+      animated: true,
+      style: { stroke: modeMeta(seg.mode).color, strokeWidth: 2.5 },
+      labelStyle: { fontSize: 10, fontWeight: 600, fill: modeMeta(seg.mode).color },
+      labelBgStyle: { fill: 'transparent' },
+      labelBgPadding: [6, 4] as [number, number],
     });
   });
 
@@ -285,15 +292,18 @@ function useAutocomplete() {
         const mapped: PlaceSuggestion[] = results.map(loc => {
           const typeMap: Record<string, PlaceSuggestion['type']> = {
             AIRPORT: 'airport', TRAIN_STATION: 'station', BUS_TERMINAL: 'station',
-            FERRY_PORT: 'station', CITY_CENTER: 'city',
+            FERRY_PORT: 'station', CITY_CENTER: 'city', CITY: 'city',
+            STATION: 'station', POI: 'city',
           };
+          // loc.type can be string "AIRPORT" or object {value:"AIRPORT", desc:"..."}
+          const rawType = typeof loc.type === 'object' && loc.type !== null ? (loc.type as any).value : loc.type;
           return {
             id: loc.id,
             name: loc.iataCode ? `${loc.name} (${loc.iataCode})` : loc.name,
             description: [loc.city, loc.countryIsoCode].filter(Boolean).join(', '),
             iataCode: loc.iataCode,
             lat: loc.lat, lon: loc.lon,
-            type: typeMap[loc.type] || 'city',
+            type: typeMap[rawType] || 'airport',
           };
         });
         setSuggestions(mapped);
@@ -328,7 +338,10 @@ function useAutocomplete() {
 export const PlannerPane: React.FC = () => {
   const origin = useAutocomplete();
   const dest = useAutocomplete();
-  const [date, setDate] = useState('2026-03-15');
+  const [date, setDate] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  });
   const formattedDate = new Date(date + 'T00:00:00').toLocaleDateString('tr-TR', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
@@ -376,8 +389,18 @@ export const PlannerPane: React.FC = () => {
     await storeSearch({
       originLocationId: (!originIata && isUuid(originId)) ? originId : undefined,
       originIataCode: originIata || undefined,
+      originQuery: origin.query || undefined,
+      originLat: origin.selected?.lat,
+      originLon: origin.selected?.lon,
+      originType: origin.selected?.type === 'airport' ? 'airport'
+        : origin.selected?.type === 'station' ? 'station' : 'place',
       destinationLocationId: (!destIata && isUuid(destId)) ? destId : undefined,
       destinationIataCode: destIata || undefined,
+      destinationQuery: dest.query || undefined,
+      destinationLat: dest.selected?.lat,
+      destinationLon: dest.selected?.lon,
+      destinationType: dest.selected?.type === 'airport' ? 'airport'
+        : dest.selected?.type === 'station' ? 'station' : 'place',
       departureDate: date,
       sortBy: (sortMap[sortBy] || 'FASTEST') as any,
     });
@@ -425,7 +448,7 @@ export const PlannerPane: React.FC = () => {
       <div className={s.searchPanel}>
         <div className={s.searchRow}>
           {/* Origin */}
-          <div className={s.inputGroup} ref={originRef}>
+          <div className={s.inputGroup} ref={originRef} style={origin.open ? { zIndex: 100 } : undefined}>
             <FiNavigation className={s.inputIcon} />
             <input className={s.searchInput} placeholder="Kalkış noktası (ör. İstanbul, ESB, Frankfurt)"
               value={origin.query} onChange={e => origin.setQuery(e.target.value)}
@@ -458,7 +481,7 @@ export const PlannerPane: React.FC = () => {
           </button>
 
           {/* Destination */}
-          <div className={s.inputGroup} ref={destRef}>
+          <div className={s.inputGroup} ref={destRef} style={dest.open ? { zIndex: 100 } : undefined}>
             <FiMapPin className={s.inputIcon} />
             <input className={s.searchInput} placeholder="Varış noktası (ör. Berlin, LHR, Ankara)"
               value={dest.query} onChange={e => dest.setQuery(e.target.value)}
@@ -522,7 +545,7 @@ export const PlannerPane: React.FC = () => {
             };
 
             return (
-              <div className={s.datePickerWrap} ref={calRef}>
+              <div className={s.datePickerWrap} ref={calRef} style={calOpen ? { zIndex: 100 } : undefined}>
                 <button className={s.dateButton} onClick={() => setCalOpen(!calOpen)}>
                   <FiCalendar size={14} />
                   <span>{formattedDate}</span>
@@ -586,7 +609,7 @@ export const PlannerPane: React.FC = () => {
             );
 
             return (
-              <div className={s.datePickerWrap} ref={paxRef}>
+              <div className={s.datePickerWrap} ref={paxRef} style={paxOpen ? { zIndex: 100 } : undefined}>
                 <button className={s.dateButton} onClick={() => setPaxOpen(!paxOpen)}>
                   <FiUsers size={14} />
                   <span>{paxSummary}</span>
@@ -637,8 +660,8 @@ export const PlannerPane: React.FC = () => {
                 <button key={mode}
                   className={`${s.filterChip} ${activeFilters.has(mode) ? s.active : ''}`}
                   onClick={() => toggleFilter(mode)}>
-                  <span style={{ color: MODE_META[mode].color, display: 'flex' }}>{MODE_META[mode].icon}</span>
-                  {MODE_META[mode].label}
+                  <span style={{ color: modeMeta(mode).color, display: 'flex' }}>{modeMeta(mode).icon}</span>
+                  {modeMeta(mode).label}
                 </button>
               ))}
             </div>
@@ -660,8 +683,13 @@ export const PlannerPane: React.FC = () => {
         </div>
       )}
 
+      {/* ── Loading ── */}
+      {searched && loading && (
+        <LoadingSpinner size={36} message="Rotalar aranıyor..." />
+      )}
+
       {/* ── Results ── */}
-      {searched && (
+      {searched && !loading && filteredResults.length > 0 && (
         <div className={s.resultsGrid}>
           {filteredResults.map((journey, idx) => (
             <div key={journey.id} className={`${s.resultCard} ${journey.tags.includes('recommended') ? s.recommended : ''}`}
@@ -697,8 +725,8 @@ export const PlannerPane: React.FC = () => {
               <div className={s.segmentTimeline}>
                 {journey.segments.map((seg, i) => (
                   <React.Fragment key={i}>
-                    <div className={s.segmentDot} style={{ borderColor: MODE_META[seg.mode].color, backgroundColor: MODE_META[seg.mode].color }} />
-                    <div className={s.segmentLine} style={{ backgroundColor: MODE_META[seg.mode].color }} />
+                    <div className={s.segmentDot} style={{ borderColor: modeMeta(seg.mode).color, backgroundColor: modeMeta(seg.mode).color }} />
+                    <div className={s.segmentLine} style={{ backgroundColor: modeMeta(seg.mode).color }} />
                   </React.Fragment>
                 ))}
                 <div className={s.segmentDot} style={{ borderColor: '#6d7c8a', backgroundColor: '#6d7c8a' }} />
@@ -708,8 +736,8 @@ export const PlannerPane: React.FC = () => {
               <div className={s.segmentDetails}>
                 {journey.segments.map((seg, i) => (
                   <div key={i} className={s.segmentInfo}>
-                    <span className={s.segmentModeIcon} style={{ color: MODE_META[seg.mode].color }}>
-                      {MODE_META[seg.mode].icon}
+                    <span className={s.segmentModeIcon} style={{ color: modeMeta(seg.mode).color }}>
+                      {modeMeta(seg.mode).icon}
                     </span>
                     <span className={s.segmentLabel}>{seg.originCode}→{seg.destinationCode}</span>
                     <span className={s.segmentDuration}>{formatDuration(seg.durationMin)}</span>
@@ -726,8 +754,8 @@ export const PlannerPane: React.FC = () => {
                   <div className={s.expandedTitle}>Detaylı Güzergah</div>
                   {journey.segments.map((seg, i) => (
                     <div key={i} className={s.expandedRow}>
-                      <div className={s.expandedIcon} style={{ backgroundColor: `${MODE_META[seg.mode].color}15`, color: MODE_META[seg.mode].color }}>
-                        {MODE_META[seg.mode].icon}
+                      <div className={s.expandedIcon} style={{ backgroundColor: `${modeMeta(seg.mode).color}15`, color: modeMeta(seg.mode).color }}>
+                        {modeMeta(seg.mode).icon}
                       </div>
                       <div className={s.expandedInfo}>
                         <div className={s.expandedRoute}>
@@ -747,6 +775,20 @@ export const PlannerPane: React.FC = () => {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ── No Results ── */}
+      {searched && !loading && filteredResults.length === 0 && (
+        <div style={{
+          textAlign: 'center',
+          padding: '3rem 1rem',
+          opacity: 0.6,
+          fontSize: '0.9rem',
+        }}>
+          <FiAlertCircle size={28} style={{ marginBottom: 8, opacity: 0.4 }} />
+          <p style={{ fontWeight: 600 }}>Sonuç bulunamadı</p>
+          <p style={{ fontSize: '0.8rem', marginTop: 4 }}>Seçtiğiniz tarih ve güzergah için uygun rota bulunamadı. Farklı tarih veya şehir deneyin.</p>
         </div>
       )}
 

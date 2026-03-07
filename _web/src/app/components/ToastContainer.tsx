@@ -26,7 +26,7 @@ export const ToastContainer: React.FC = () => {
   useEffect(() => {
     if (toasts.length === 0) return;
     const latest = toasts[toasts.length - 1];
-    const timer = setTimeout(() => dismiss(latest.id), latest.duration || 5000);
+    const timer = setTimeout(() => dismiss(latest.id), latest.duration || 2500);
     return () => clearTimeout(timer);
   }, [toasts, dismiss]);
 
