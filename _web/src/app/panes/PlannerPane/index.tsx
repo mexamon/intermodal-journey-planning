@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import * as s from './PlannerPane.module.scss';
+import { fetchTransportModes, TransportModeDto } from '../../api/transportApi';
 import {
   FiNavigation, FiMapPin, FiCalendar, FiSearch, FiRepeat,
   FiDollarSign, FiWind, FiChevronDown, FiChevronLeft, FiChevronRight, FiX, FiUsers, FiFilter, FiClock, FiStar, FiZap,
@@ -66,17 +67,21 @@ interface JourneyResult {
    Mode Metadata
    ═══════════════════════════════════════════════ */
 const MODE_META: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
-  flight:  { icon: <MdFlight size={14} />,          color: '#3b82f6', label: 'Flight' },
-  train:   { icon: <MdTrain size={14} />,           color: '#f97316', label: 'Train' },
-  bus:     { icon: <MdDirectionsBus size={14} />,    color: '#22c55e', label: 'Bus' },
-  metro:   { icon: <MdDirectionsSubway size={14} />, color: '#8b5cf6', label: 'Metro' },
-  walk:    { icon: <MdDirectionsWalk size={14} />,   color: '#94a3b8', label: 'Walk' },
-  walking: { icon: <MdDirectionsWalk size={14} />,   color: '#94a3b8', label: 'Walk' },
-  taxi:    { icon: <MdLocalTaxi size={14} />,        color: '#a855f7', label: 'Taxi' },
-  uber:    { icon: <MdDirectionsCar size={14} />,    color: '#000000', label: 'Uber' },
+  flight:  { icon: <MdFlight size={14} />,          color: '#1E88E5', label: 'Flight' },
+  train:   { icon: <MdTrain size={14} />,           color: '#E53935', label: 'Train' },
+  bus:     { icon: <MdDirectionsBus size={14} />,    color: '#43A047', label: 'Bus' },
+  metro:   { icon: <MdDirectionsSubway size={14} />, color: '#8E24AA', label: 'Metro' },
+  walk:    { icon: <MdDirectionsWalk size={14} />,   color: '#78909C', label: 'Walk' },
+  taxi:    { icon: <MdLocalTaxi size={14} />,        color: '#FFC107', label: 'Taxi' },
+  uber:    { icon: <MdDirectionsCar size={14} />,    color: '#212121', label: 'Uber' },
 };
 const FALLBACK_MODE = { icon: <FiMapPin size={14} />, color: '#6b7280', label: '?' };
 const modeMeta = (m: string) => MODE_META[m] || MODE_META[m?.toLowerCase()] || FALLBACK_MODE;
+// Filter chip display list — default, overridden by API on mount
+const DEFAULT_FILTER_MODES: SegmentMode[] = ['flight', 'train', 'bus', 'metro', 'walk', 'taxi', 'uber'];
+// Normalize backend mode names to filter keys (backend sends WALKING, SUBWAY etc.)
+const MODE_ALIAS: Record<string, string> = { walking: 'walk', subway: 'metro' };
+const normalizeMode = (m: string) => { const low = m?.toLowerCase(); return MODE_ALIAS[low] || low; };
 
 /* ═══════════════════════════════════════════════
    Journey Graph — builds React Flow graph from results
@@ -391,9 +396,31 @@ export const PlannerPane: React.FC = () => {
   const [sortBy, setSortBy] = useState<'fastest' | 'cheapest' | 'greenest'>('fastest');
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set(['all']));
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
+  const [filterModes, setFilterModes] = useState<SegmentMode[]>(DEFAULT_FILTER_MODES);
 
   const originRef = useRef<HTMLDivElement>(null);
   const destRef = useRef<HTMLDivElement>(null);
+
+  /* Load transport modes from API — drives filter chips + colors */
+  useEffect(() => {
+    fetchTransportModes().then((modes: TransportModeDto[]) => {
+      // Build filter list from DB modes (normalized, deduplicated)
+      const seen = new Set<string>();
+      const dbFilters: SegmentMode[] = [];
+      for (const m of modes) {
+        const key = normalizeMode(m.code);
+        if (!seen.has(key)) {
+          seen.add(key);
+          dbFilters.push(key as SegmentMode);
+          // Merge DB color into MODE_META if entry exists
+          if (MODE_META[key] && m.colorHex) {
+            MODE_META[key] = { ...MODE_META[key], color: m.colorHex };
+          }
+        }
+      }
+      if (dbFilters.length > 0) setFilterModes(dbFilters);
+    }).catch(() => { /* keep defaults */ });
+  }, []);
 
   /* Close dropdowns on outside click */
   useEffect(() => {
@@ -475,7 +502,7 @@ export const PlannerPane: React.FC = () => {
 
   const filteredResults = sortedResults.filter(r => {
     if (activeFilters.has('all')) return true;
-    return r.segments.some(seg => activeFilters.has(seg.mode.toLowerCase()));
+    return r.segments.some(seg => activeFilters.has(normalizeMode(seg.mode)));
   });
 
   /* ═══════════ Render ═══════════ */
@@ -693,7 +720,7 @@ export const PlannerPane: React.FC = () => {
             <div className={s.filterChips}>
               <button className={`${s.filterChip} ${activeFilters.has('all') ? s.active : ''}`}
                 onClick={() => toggleFilter('all')}>All</button>
-              {(Object.keys(MODE_META) as SegmentMode[]).map(mode => (
+              {filterModes.map(mode => (
                 <button key={mode}
                   className={`${s.filterChip} ${activeFilters.has(mode) ? s.active : ''}`}
                   onClick={() => toggleFilter(mode)}>

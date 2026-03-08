@@ -19,12 +19,12 @@ const KPI_CARDS = [
 ];
 
 const MODE_DISTRIBUTION = [
-  { mode: 'Flight', icon: <MdFlight />, pct: 42, count: '10,454', color: '#3b82f6' },
-  { mode: 'Train', icon: <MdTrain />, pct: 24, count: '5,974', color: '#22c55e' },
-  { mode: 'Metro', icon: <MdSubway />, pct: 15, count: '3,734', color: '#8b5cf6' },
-  { mode: 'Bus', icon: <MdDirectionsBus />, pct: 11, count: '2,738', color: '#f59e0b' },
-  { mode: 'Taxi', icon: <MdLocalTaxi />, pct: 5, count: '1,245', color: '#ef4444' },
-  { mode: 'Walking', icon: <MdDirectionsWalk />, pct: 3, count: '746', color: '#6b7280' },
+  { mode: 'Flight', icon: <MdFlight />, pct: 42, count: '10,454', color: '#1E88E5' },
+  { mode: 'Train', icon: <MdTrain />, pct: 24, count: '5,974', color: '#E53935' },
+  { mode: 'Metro', icon: <MdSubway />, pct: 15, count: '3,734', color: '#8E24AA' },
+  { mode: 'Bus', icon: <MdDirectionsBus />, pct: 11, count: '2,738', color: '#43A047' },
+  { mode: 'Taxi', icon: <MdLocalTaxi />, pct: 5, count: '1,245', color: '#FFC107' },
+  { mode: 'Walking', icon: <MdDirectionsWalk />, pct: 3, count: '746', color: '#78909C' },
 ];
 
 const HOURLY_DATA = [12, 8, 5, 3, 2, 4, 18, 42, 68, 85, 72, 63, 78, 92, 88, 76, 82, 95, 71, 54, 38, 28, 22, 16];
