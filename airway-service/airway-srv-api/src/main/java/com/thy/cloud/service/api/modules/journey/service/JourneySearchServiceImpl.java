@@ -290,7 +290,10 @@ public class JourneySearchServiceImpl implements JourneySearchService {
                 String res = resolver.getResolution();
                 if ("COMPUTED".equals(res) || "GTFS".equals(res) || "STATIC".equals(res)) {
                     try {
-                        List<ResolvedEdge> edges = resolver.resolve(hub, destination, context);
+                        // STATIC: pass null destination to get ALL outbound edges (to intermediate stations)
+                        // COMPUTED/GTFS: pass actual destination for point-to-point edges
+                        ResolvedLocation resolverDest = "STATIC".equals(res) ? null : destination;
+                        List<ResolvedEdge> edges = resolver.resolve(hub, resolverDest, context);
                         addEdges(adjacency, locKey(hub), edges, locationIndex);
                         // Index newly discovered destinations (e.g. Berlin Hbf from STATIC train edge)
                         for (ResolvedEdge edge : edges) {
