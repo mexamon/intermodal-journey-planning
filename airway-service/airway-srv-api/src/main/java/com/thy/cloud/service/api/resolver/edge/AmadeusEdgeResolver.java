@@ -82,11 +82,11 @@ public class AmadeusEdgeResolver implements EdgeResolver {
                     // Build origin/destination ResolvedLocations for this segment
                     ResolvedLocation segOrigin = new ResolvedLocation(
                             null, seg.departure().iataCode() + " Airport",
-                            seg.departure().iataCode(), 0, 0, "AIRPORT", "AMADEUS", false
+                            seg.departure().iataCode(), 0, 0, "AIRPORT", "AMADEUS", false, null
                     );
                     ResolvedLocation segDest = new ResolvedLocation(
                             null, seg.arrival().iataCode() + " Airport",
-                            seg.arrival().iataCode(), 0, 0, "AIRPORT", "AMADEUS", false
+                            seg.arrival().iataCode(), 0, 0, "AIRPORT", "AMADEUS", false, null
                     );
 
                     // If we have the actual resolved locations, use those

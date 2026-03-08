@@ -76,7 +76,8 @@ public class DbLocationResolver implements LocationResolver {
                 loc.getIataCode(),
                 loc.getLat() != null ? loc.getLat().doubleValue() : 0,
                 loc.getLon() != null ? loc.getLon().doubleValue() : 0,
-                typeValue
+                typeValue,
+                loc.getCountryIsoCode()
         );
     }
 }

@@ -599,7 +599,8 @@ public class JourneySearchServiceImpl implements JourneySearchService {
                 loc.getId(), loc.getName(), loc.getIataCode(),
                 loc.getLat() != null ? loc.getLat().doubleValue() : 0,
                 loc.getLon() != null ? loc.getLon().doubleValue() : 0,
-                loc.getType() != null ? loc.getType().getValue() : "AIRPORT"
+                loc.getType() != null ? loc.getType().getValue() : "AIRPORT",
+                loc.getCountryIsoCode()
         );
     }
 

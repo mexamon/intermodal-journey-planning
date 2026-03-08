@@ -119,8 +119,8 @@ public class ComputedEdgeResolver implements EdgeResolver {
     }
 
     /**
-     * Find a matching service area for the given mode and location.
-     * Checks if either origin or destination falls within a RADIUS-based service area.
+     * Find the best matching service area for the given mode and location.
+     * Priority: RADIUS > CITY > COUNTRY > GLOBAL (most specific wins).
      */
     private TransportServiceArea findMatchingServiceArea(
             TransportMode mode, ResolvedLocation origin, ResolvedLocation destination) {
@@ -128,40 +128,66 @@ public class ComputedEdgeResolver implements EdgeResolver {
         List<TransportServiceArea> areas = serviceAreaRepository
                 .findByTransportModeIdAndIsActiveTrue(mode.getId());
 
+        TransportServiceArea bestMatch = null;
+        int bestPriority = -1; // higher = better
+
         for (TransportServiceArea area : areas) {
             if (area.getAreaType() == null) continue;
-
             String areaType = area.getAreaType().getValue();
 
-            if ("RADIUS".equals(areaType) && area.getCenterLat() != null
-                    && area.getCenterLon() != null && area.getRadiusM() != null) {
-                double centerLat = area.getCenterLat().doubleValue();
-                double centerLon = area.getCenterLon().doubleValue();
-                int radiusM = area.getRadiusM();
-
-                // Check if either origin or destination is within the area radius
-                double distOrigin = haversine(origin.lat(), origin.lon(), centerLat, centerLon);
-                double distDest = haversine(destination.lat(), destination.lon(), centerLat, centerLon);
-
-                if (distOrigin <= radiusM || distDest <= radiusM) {
-                    log.debug("ServiceArea match: {} for mode {} (origin dist={}m, dest dist={}m, radius={}m)",
-                            area.getName(), mode.getCode(), (int) distOrigin, (int) distDest, radiusM);
-                    return area;
+            switch (areaType) {
+                case "RADIUS" -> {
+                    if (bestPriority >= 4) continue; // already have RADIUS match
+                    if (area.getCenterLat() != null && area.getCenterLon() != null && area.getRadiusM() != null) {
+                        double centerLat = area.getCenterLat().doubleValue();
+                        double centerLon = area.getCenterLon().doubleValue();
+                        int radiusM = area.getRadiusM();
+                        double distOrigin = haversine(origin.lat(), origin.lon(), centerLat, centerLon);
+                        double distDest = haversine(destination.lat(), destination.lon(), centerLat, centerLon);
+                        if (distOrigin <= radiusM || distDest <= radiusM) {
+                            log.debug("ServiceArea RADIUS match: {} (origin={}m, dest={}m, radius={}m)",
+                                    area.getName(), (int) distOrigin, (int) distDest, radiusM);
+                            bestMatch = area;
+                            bestPriority = 4;
+                        }
+                    }
                 }
-            } else if ("CITY".equals(areaType) && area.getCity() != null) {
-                // City-based matching — check if origin/destination name contains the city
-                String city = area.getCity().toLowerCase();
-                if ((origin.name() != null && origin.name().toLowerCase().contains(city))
-                        || (destination.name() != null && destination.name().toLowerCase().contains(city))) {
-                    return area;
+                case "CITY" -> {
+                    if (bestPriority >= 3) continue;
+                    if (area.getCity() != null) {
+                        String city = area.getCity().toLowerCase();
+                        boolean originMatch = origin.name() != null && origin.name().toLowerCase().contains(city);
+                        boolean destMatch = destination.name() != null && destination.name().toLowerCase().contains(city);
+                        if (originMatch || destMatch) {
+                            log.debug("ServiceArea CITY match: {} (city={})", area.getName(), area.getCity());
+                            bestMatch = area;
+                            bestPriority = 3;
+                        }
+                    }
                 }
-            } else if ("COUNTRY".equals(areaType) && area.getCountryIsoCode() != null) {
-                // Country-based matching — would need country info on resolved location
-                // For now, fall through to global
+                case "COUNTRY" -> {
+                    if (bestPriority >= 2) continue;
+                    if (area.getCountryIsoCode() != null) {
+                        String areaCountry = area.getCountryIsoCode().toUpperCase();
+                        boolean originMatch = areaCountry.equals(origin.countryIsoCode());
+                        boolean destMatch = areaCountry.equals(destination.countryIsoCode());
+                        if (originMatch || destMatch) {
+                            log.debug("ServiceArea COUNTRY match: {} (country={})", area.getName(), areaCountry);
+                            bestMatch = area;
+                            bestPriority = 2;
+                        }
+                    }
+                }
+                case "GLOBAL" -> {
+                    if (bestPriority >= 1) continue;
+                    log.debug("ServiceArea GLOBAL match: {}", area.getName());
+                    bestMatch = area;
+                    bestPriority = 1;
+                }
             }
         }
 
-        return null; // No matching service area → global fallback
+        return bestMatch;
     }
 
     /**

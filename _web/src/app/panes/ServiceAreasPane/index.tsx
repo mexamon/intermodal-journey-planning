@@ -504,30 +504,47 @@ export const ServiceAreasPane: React.FC = () => {
           </div>
         </div>
 
+        {/* RADIUS fields */}
         {form.areaType === 'RADIUS' && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
-            <div><label className={s.fieldLabel}>Center Lat</label>
+            <div><label className={s.fieldLabel}>Center Lat *</label>
               <input className={paneStyles.formInput} style={{ maxWidth: '100%' }} type="number" step="0.000001"
                 placeholder="40.128100" value={form.centerLat}
                 onChange={e => setForm(f => ({ ...f, centerLat: e.target.value }))} /></div>
-            <div><label className={s.fieldLabel}>Center Lon</label>
+            <div><label className={s.fieldLabel}>Center Lon *</label>
               <input className={paneStyles.formInput} style={{ maxWidth: '100%' }} type="number" step="0.000001"
                 placeholder="32.995100" value={form.centerLon}
                 onChange={e => setForm(f => ({ ...f, centerLon: e.target.value }))} /></div>
-            <div><label className={s.fieldLabel}>Radius (m)</label>
+            <div><label className={s.fieldLabel}>Radius (m) *</label>
               <input className={paneStyles.formInput} style={{ maxWidth: '100%' }} type="number" min={1000}
                 placeholder="60000" value={form.radiusM}
                 onChange={e => setForm(f => ({ ...f, radiusM: e.target.value }))} /></div>
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-          <SearchableDropdown label="Country" items={countryItems} value={form.countryIsoCode}
-            onChange={v => setForm(f => ({ ...f, countryIsoCode: v }))} placeholder="Select country..." allowClear />
-          <div><label className={s.fieldLabel}>City</label>
-            <input className={paneStyles.formInput} style={{ maxWidth: '100%' }}
-              placeholder="e.g. Ankara" value={form.city}
-              onChange={e => setForm(f => ({ ...f, city: e.target.value }))} /></div>
+        {/* Country field — visible for RADIUS, CITY, COUNTRY */}
+        {form.areaType !== 'GLOBAL' && (
+          <div style={{ display: 'grid', gridTemplateColumns: form.areaType === 'COUNTRY' ? '1fr' : '1fr 1fr', gap: '0.75rem' }}>
+            <SearchableDropdown
+              label={`Country${form.areaType === 'COUNTRY' ? ' *' : ''}`}
+              items={countryItems} value={form.countryIsoCode}
+              onChange={v => setForm(f => ({ ...f, countryIsoCode: v }))} placeholder="Select country..." allowClear />
+            {/* City field — visible for RADIUS, CITY */}
+            {(form.areaType === 'RADIUS' || form.areaType === 'CITY') && (
+              <div><label className={s.fieldLabel}>{`City${form.areaType === 'CITY' ? ' *' : ''}`}</label>
+                <input className={paneStyles.formInput} style={{ maxWidth: '100%' }}
+                  placeholder="e.g. Ankara" value={form.city}
+                  onChange={e => setForm(f => ({ ...f, city: e.target.value }))} /></div>
+            )}
+          </div>
+        )}
+
+        {/* Hint per area type */}
+        <div style={{ fontSize: '0.72rem', opacity: 0.45, lineHeight: 1.5 }}>
+          {form.areaType === 'RADIUS' && '📍 Matches when origin/destination coordinates fall within the radius.'}
+          {form.areaType === 'CITY' && '🏙️ Matches when origin/destination location name contains the city name.'}
+          {form.areaType === 'COUNTRY' && '🌍 Matches when origin/destination is in the selected country.'}
+          {form.areaType === 'GLOBAL' && '🌐 Matches all locations. Lowest priority — overridden by RADIUS/CITY/COUNTRY.'}
         </div>
 
         <div><label className={s.fieldLabel}>Config JSON (pricing, max_distance, etc.)</label>
