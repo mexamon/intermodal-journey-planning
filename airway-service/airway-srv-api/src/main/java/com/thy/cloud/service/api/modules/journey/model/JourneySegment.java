@@ -24,6 +24,7 @@ public class JourneySegment {
     private String serviceCode;         // TK1591, ICE 1537
     private String provider;            // Turkish Airlines, Deutsche Bahn
     private int costCents;
+    private String currency;            // ISO currency code: EUR, TRY, USD
     private String edgeId;              // link to transportation_edge
     private String tripId;              // link to edge_trip (if FIXED)
 }

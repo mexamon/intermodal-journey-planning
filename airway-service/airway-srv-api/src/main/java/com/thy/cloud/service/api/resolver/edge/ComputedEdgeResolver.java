@@ -81,8 +81,9 @@ public class ComputedEdgeResolver implements EdgeResolver {
             int speedKmh = mode.getDefaultSpeedKmh() != null ? mode.getDefaultSpeedKmh() : 5;
             int durationMin = (int) Math.ceil((distanceM / 1000.0) / speedKmh * 60);
 
-            // Calculate cost from service area pricing (if available)
+            // Calculate cost and currency from service area pricing (if available)
             int costCents = calculateCost(matchedArea, distanceM);
+            String currency = extractCurrency(matchedArea);
 
             // Resolve provider code from service area
             String providerCode = matchedArea != null && matchedArea.getProvider() != null
@@ -100,6 +101,7 @@ public class ComputedEdgeResolver implements EdgeResolver {
                     durationMin,
                     (int) distanceM,
                     costCents,
+                    currency,
                     0,              // zero emissions for now
                     "COMPUTED",
                     false,          // not persisted
@@ -109,9 +111,9 @@ public class ComputedEdgeResolver implements EdgeResolver {
                             : Map.of()
             ));
 
-            log.debug("ComputedEdge: {} → {} via {} = {}m, {}min, {}cents (area: {})",
+            log.debug("ComputedEdge: {} → {} via {} = {}m, {}min, {}cents {} (area: {})",
                     origin.name(), destination.name(), mode.getCode(),
-                    (int) distanceM, durationMin, costCents,
+                    (int) distanceM, durationMin, costCents, currency,
                     matchedArea != null ? matchedArea.getName() : "GLOBAL");
         }
 
@@ -232,6 +234,25 @@ public class ComputedEdgeResolver implements EdgeResolver {
             log.warn("Failed to calculate cost from service area {}: {}", area.getName(), e.getMessage());
             return 0;
         }
+    }
+
+    /**
+     * Extract currency from service area pricing config.
+     */
+    private String extractCurrency(TransportServiceArea area) {
+        if (area == null || area.getConfigJson() == null) {
+            return "EUR"; // default
+        }
+        try {
+            JsonNode config = mapper.readTree(area.getConfigJson());
+            JsonNode pricing = config.get("pricing");
+            if (pricing != null && pricing.has("currency")) {
+                return pricing.get("currency").asText("EUR");
+            }
+        } catch (Exception e) {
+            log.warn("Failed to extract currency from service area {}: {}", area.getName(), e.getMessage());
+        }
+        return "EUR";
     }
 
     /**

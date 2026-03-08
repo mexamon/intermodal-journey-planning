@@ -114,6 +114,7 @@ public class GoogleDirectionsResolver implements EdgeResolver {
                     durationMin,
                     distanceM,
                     costCents,
+                    "driving".equals(googleMode) ? "TRY" : null,
                     "driving".equals(googleMode)
                             ? (int) (distanceM * 0.12) // ~120g CO₂ per km for cars
                             : 0

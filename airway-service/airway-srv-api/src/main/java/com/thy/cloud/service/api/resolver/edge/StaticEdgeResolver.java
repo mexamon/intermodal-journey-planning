@@ -126,6 +126,7 @@ public class StaticEdgeResolver implements EdgeResolver {
                 trip != null && trip.getEstimatedCostCents() != null
                         ? trip.getEstimatedCostCents()
                         : edge.getEstimatedCostCents(),
+                "EUR",  // TODO: source from fare table currency when available
                 edge.getCo2Grams(),
                 source,
                 true,

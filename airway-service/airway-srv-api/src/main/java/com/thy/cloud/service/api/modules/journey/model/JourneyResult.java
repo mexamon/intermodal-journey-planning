@@ -18,6 +18,7 @@ public class JourneyResult {
     private List<JourneySegment> segments;
     private int totalDurationMin;
     private int totalCostCents;
+    private String currency;                // ISO code of the normalized currency
     private int co2Grams;
     private int transfers;
     private List<String> tags;              // ["fastest", "recommended"]

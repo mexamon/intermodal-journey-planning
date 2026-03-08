@@ -107,6 +107,7 @@ public class AmadeusEdgeResolver implements EdgeResolver {
                             durationMin,
                             0,  // distance calculated from coords if available
                             offer.price().totalCents(),
+                            "EUR",
                             estimateCo2(durationMin)
                     ));
 
@@ -122,6 +123,7 @@ public class AmadeusEdgeResolver implements EdgeResolver {
                             durationMin,
                             last.distanceM(),
                             offer.price().totalCents(),
+                            "EUR",
                             estimateCo2(durationMin),
                             "AMADEUS",
                             false,

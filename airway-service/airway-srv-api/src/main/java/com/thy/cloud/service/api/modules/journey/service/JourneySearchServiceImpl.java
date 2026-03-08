@@ -8,6 +8,7 @@ import com.thy.cloud.service.api.resolver.location.LocationResolver;
 import com.thy.cloud.service.api.resolver.model.EdgeSearchContext;
 import com.thy.cloud.service.api.resolver.model.ResolvedEdge;
 import com.thy.cloud.service.api.resolver.model.ResolvedLocation;
+import com.thy.cloud.service.api.util.CurrencyConverter;
 import com.thy.cloud.service.dao.entity.inventory.Location;
 import com.thy.cloud.service.dao.entity.transport.EdgeTrip;
 import com.thy.cloud.service.dao.entity.transport.TransportationEdge;
@@ -181,7 +182,7 @@ public class JourneySearchServiceImpl implements JourneySearchService {
                                             edge.transportModeCode(), edge.providerCode(), edge.serviceCode(),
                                             edge.departureTime(), edge.arrivalTime(),
                                             edge.durationMin(), edge.distanceM(),
-                                            edge.costCents(), edge.co2Grams(),
+                                            edge.costCents(), edge.currency(), edge.co2Grams(),
                                             edge.source(), edge.persisted(), edge.attrs()
                                     );
                                 } else if (!dest.persisted() && dest.name() != null) {
@@ -194,7 +195,7 @@ public class JourneySearchServiceImpl implements JourneySearchService {
                                                 edge.transportModeCode(), edge.providerCode(), edge.serviceCode(),
                                                 edge.departureTime(), edge.arrivalTime(),
                                                 edge.durationMin(), edge.distanceM(),
-                                                edge.costCents(), edge.co2Grams(),
+                                                edge.costCents(), edge.currency(), edge.co2Grams(),
                                                 edge.source(), edge.persisted(), edge.attrs()
                                         );
                                     }
@@ -278,7 +279,7 @@ public class JourneySearchServiceImpl implements JourneySearchService {
 
         // 5. Convert paths to JourneyResults
         List<JourneyResult> results = completePaths.stream()
-                .map(path -> buildResult(path, date))
+                .map(path -> buildResult(path, date, "EUR"))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
@@ -443,7 +444,7 @@ public class JourneySearchServiceImpl implements JourneySearchService {
                             edge.id(), edge.origin(), edge.destination(),
                             edge.transportModeCode(), edge.providerCode(), edge.serviceCode(),
                             dep, arr, dur, edge.distanceM(),
-                            edge.costCents(), edge.co2Grams(),
+                            edge.costCents(), edge.currency(), edge.co2Grams(),
                             edge.source(), edge.persisted(), edge.attrs()
                     );
 
@@ -465,7 +466,7 @@ public class JourneySearchServiceImpl implements JourneySearchService {
     /* ═══════════════════════════════════════════════
        Path → JourneyResult Conversion
        ═══════════════════════════════════════════════ */
-    private JourneyResult buildResult(List<ResolvedEdge> path, LocalDate date) {
+    private JourneyResult buildResult(List<ResolvedEdge> path, LocalDate date, String targetCurrency) {
         if (path.isEmpty()) return null;
 
         List<JourneySegment> segments = new ArrayList<>();
@@ -473,6 +474,12 @@ public class JourneySearchServiceImpl implements JourneySearchService {
         int totalCO2 = 0;
 
         for (ResolvedEdge edge : path) {
+            int originalCostCents = edge.costCents() != null ? edge.costCents() : 0;
+            String segCurrency = edge.currency() != null ? edge.currency() : "EUR";
+
+            // Convert segment cost to the target display currency
+            int convertedCost = CurrencyConverter.convert(originalCostCents, segCurrency, targetCurrency);
+
             segments.add(JourneySegment.builder()
                     .mode(edge.transportModeCode())
                     .originCode(edge.origin().iataCode() != null ? edge.origin().iataCode() : shortCode(edge.origin().name()))
@@ -484,11 +491,12 @@ public class JourneySearchServiceImpl implements JourneySearchService {
                     .durationMin(edge.durationMin())
                     .serviceCode(edge.serviceCode())
                     .provider(edge.providerCode())
-                    .costCents(edge.costCents() != null ? edge.costCents() : 0)
+                    .costCents(convertedCost)
+                    .currency(targetCurrency)
                     .edgeId(edge.id() != null ? edge.id().toString() : null)
                     .build());
 
-            totalCost += edge.costCents() != null ? edge.costCents() : 0;
+            totalCost += convertedCost;
             if (edge.co2Grams() != null) totalCO2 += edge.co2Grams();
         }
 
@@ -506,6 +514,7 @@ public class JourneySearchServiceImpl implements JourneySearchService {
                 .segments(segments)
                 .totalDurationMin(totalDuration)
                 .totalCostCents(totalCost)
+                .currency(targetCurrency)
                 .co2Grams(totalCO2)
                 .transfers(segments.size() - 1)
                 .tags(new ArrayList<>())

@@ -47,6 +47,7 @@ interface JourneySegment {
   serviceCode?: string;
   provider?: string;
   costCents?: number;
+  currency?: string;
 }
 
 interface JourneyResult {
@@ -112,7 +113,7 @@ const jgNodeTypes = { journeyNode: JGraphNode };
 function buildSingleJourneyGraph(journey: JourneyResult): { nodes: Node<JGraphNodeData>[]; edges: Edge[] } {
   const nodes: Node<JGraphNodeData>[] = [];
   const edges: Edge[] = [];
-  const xSpacing = 400;
+  const xSpacing = 480;
 
   journey.segments.forEach((seg, si) => {
     // Origin node
@@ -147,8 +148,9 @@ function buildSingleJourneyGraph(journey: JourneyResult): { nodes: Node<JGraphNo
       animated: true,
       style: { stroke: modeMeta(seg.mode).color, strokeWidth: 2.5 },
       labelStyle: { fontSize: 10, fontWeight: 600, fill: modeMeta(seg.mode).color },
-      labelBgStyle: { fill: 'transparent' },
-      labelBgPadding: [6, 4] as [number, number],
+      labelBgStyle: { fillOpacity: 0.95, rx: 4, ry: 4 },
+      labelBgClassName: 'jg-edge-label-bg',
+      labelBgPadding: [8, 5] as [number, number],
     });
   });
 
@@ -257,9 +259,17 @@ const DEMO_RESULTS: JourneyResult[] = [
 const formatDuration = (min: number) => {
   const h = Math.floor(min / 60);
   const m = min % 60;
-  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  if (h > 0 && m > 0) return `${h}h ${m} min`;
+  if (h > 0) return `${h}h`;
+  return `${m} min`;
 };
-const formatPrice = (cents: number) => cents >= 10000 ? `€${(cents / 100).toFixed(0)}` : `€${(cents / 100).toFixed(2)}`;
+const CURRENCY_MAP: Record<string, string> = {
+  EUR: '€', TRY: '₺', GBP: '£', USD: '$',
+};
+const formatPrice = (cents: number, currency?: string | null) => {
+  const sym = CURRENCY_MAP[currency || 'EUR'] || currency || '€';
+  return cents >= 10000 ? `${sym}${(cents / 100).toFixed(0)}` : `${sym}${(cents / 100).toFixed(2)}`;
+};
 const formatCo2 = (g: number) => `${(g / 1000).toFixed(0)} kg`;
 
 const PLACE_TYPE_ICON: Record<string, React.ReactNode> = {
@@ -716,7 +726,7 @@ export const PlannerPane: React.FC = () => {
                   </div>
                 </div>
                 <div className={s.cardPricing}>
-                  <div className={s.price}>{formatPrice(journey.totalCostCents)}</div>
+                  <div className={s.price}>{formatPrice(journey.totalCostCents, journey.currency)}</div>
                   <div className={s.co2Badge}><FiWind size={10} /> {formatCo2(journey.co2Grams)} CO₂</div>
                 </div>
               </div>
@@ -766,7 +776,7 @@ export const PlannerPane: React.FC = () => {
                           <span>{formatDuration(seg.durationMin)}</span>
                           {seg.serviceCode && <span className={s.serviceCode}>{seg.serviceCode}</span>}
                           {seg.provider && <span>{seg.provider}</span>}
-                          {seg.costCents != null && <span style={{ fontWeight: 600 }}>{formatPrice(seg.costCents)}</span>}
+                          {seg.costCents != null && <span style={{ fontWeight: 600 }}>{formatPrice(seg.costCents, seg.currency)}</span>}
                         </div>
                       </div>
                     </div>

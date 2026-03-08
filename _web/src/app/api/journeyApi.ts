@@ -36,6 +36,7 @@ export interface JourneySegment {
   serviceCode: string | null;
   provider: string | null;
   costCents: number;
+  currency: string | null;  // ISO: EUR, TRY, GBP, USD
   edgeId: string;
   tripId: string | null;
 }
@@ -46,6 +47,7 @@ export interface JourneyResult {
   segments: JourneySegment[];
   totalDurationMin: number;
   totalCostCents: number;
+  currency: string | null;   // normalized display currency: EUR, TRY, etc.
   co2Grams: number;
   transfers: number;
   tags: string[];

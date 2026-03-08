@@ -119,6 +119,7 @@ public class GtfsEdgeResolver implements EdgeResolver {
                     entry.durationMin,
                     entry.distanceM,
                     750,  // ₺7.50 flat fare
+                    "TRY",
                     0,    // electric metro = zero CO₂
                     "GTFS",
                     false,
