@@ -445,6 +445,19 @@ Journey search sonuçlarını filtreleyen kurallar.
 | Connections | transportation_edge + edge_trip |
 | Fares | fare |
 | Policy Studio | journey_policy_set + constraints + node + transition |
+| **Planner (Journey Search)** | **Hepsini OKUR** — location, edge, trip, fare, service_area, policy |
+
+## Journey Search Veri Akışı
+
+Planner ekranı arama yaparken tüm katmanları sırasıyla okur:
+
+1. **location** → Kullanıcının girdiği origin/destination çözümlenir (IATA → ID)
+2. **location** (tekrar) → Hub discovery: 50km radius'ta yakın havalimanı/istasyon bulunur
+3. **journey_policy_set + constraints** → Rota kısıtlamaları yüklenir (max_legs, max_flights)
+4. **transportation_edge + edge_trip** → Static resolver: DB'deki uçuş/tren/otobüs bağlantıları
+5. **transport_service_area** → Computed resolver: Taxi/Uber first/last-mile hesaplaması
+6. **fare** → Her segment'in fiyatı çözümlenir
+7. **transport_mode** → Transfer süreleri (config_json.transfer_time_min) yüklenir
     `
   },
   {

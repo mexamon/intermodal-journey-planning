@@ -76,7 +76,8 @@ public class InventoryServiceImpl implements InventoryService {
                 }
             }
         }
-        return new PageImpl<>(merged, pageable, merged.size());
+        long totalCount = dbResults.getTotalElements() + (merged.size() - dbResults.getContent().size());
+        return new PageImpl<>(merged, pageable, totalCount);
     }
 
     private EnumLocationType mapLocationType(String type) {

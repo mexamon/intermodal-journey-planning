@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import * as paneStyles from '../Panes.module.scss';
 import * as s from './LocationsPane.module.scss';
-import * as Dialog from '@radix-ui/react-dialog';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import * as Toast from '@radix-ui/react-toast';
 import {
@@ -50,13 +49,17 @@ const TYPE_META: Record<LocationType, { icon: React.ReactNode; color: string; la
   POI:     { icon: <FiMapPin size={14} />,           color: '#f97316', label: 'POI' },
 };
 
-const SOURCE_META: Record<LocationSource, { color: string; label: string }> = {
+const SOURCE_META: Record<string, { color: string; label: string }> = {
   INTERNAL:       { color: '#3b82f6', label: 'Internal' },
   OURAIRPORTS:    { color: '#22c55e', label: 'OurAirports' },
   GOOGLE_PLACES:  { color: '#a855f7', label: 'Google Places' },
   GTFS:           { color: '#f97316', label: 'GTFS' },
   API:            { color: '#6b7280', label: 'API' },
 };
+const DEFAULT_TYPE = { icon: <FiMapPin size={14} />, color: '#6b7280', label: 'Unknown' };
+const DEFAULT_SOURCE = { color: '#6b7280', label: 'Unknown' };
+const getTypeMeta = (t: string) => TYPE_META[t as LocationType] || { ...DEFAULT_TYPE, label: t };
+const getSourceMeta = (s: string) => SOURCE_META[s] || { ...DEFAULT_SOURCE, label: s };
 
 const resolveEnum = (val: unknown): string => {
   if (val && typeof val === 'object' && 'value' in (val as Record<string, unknown>))
@@ -65,6 +68,7 @@ const resolveEnum = (val: unknown): string => {
 };
 
 import { apiGet, apiPost, apiPut, apiDelete } from '../../api/client';
+import { VaulDrawer } from '../../components/shared';
 
 /* ═══════════ Component ═══════════ */
 const emptyForm = (): Omit<Location, 'id' | 'version' | 'createdDate' | 'lastModifiedDate' | 'deleted'> => ({
@@ -75,26 +79,28 @@ const emptyForm = (): Omit<Location, 'id' | 'version' | 'createdDate' | 'lastMod
 });
 
 export const LocationsPane: React.FC = () => {
-  /* ── State ── */
   const [data, setData] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'ALL' | LocationType>('ALL');
   const [sourceFilter, setSourceFilter] = useState<'ALL' | LocationSource>('ALL');
 
-  /* Pagination */
+  /* Server-side pagination */
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(20);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const PAGE_OPTS = [10, 20, 50, 100];
 
   /* CRUD */
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm());
   const [aliasText, setAliasText] = useState('');
 
   /* Delete */
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteDrawerOpen, setDeleteDrawerOpen] = useState(false);
   const [deletingLoc, setDeletingLoc] = useState<Location | null>(null);
 
   /* Toast */
@@ -105,44 +111,47 @@ export const LocationsPane: React.FC = () => {
     setToastMsg(msg); setToastType(type); setToastOpen(true);
   }, []);
 
-  /* ── Load data from API ── */
-  const loadData = useCallback(async () => {
+  /* ── Load data from API (server-side paging) ── */
+  const loadData = useCallback(async (p = page, sz = pageSize) => {
     try {
       setLoading(true);
-      const result = await apiGet<{ content: Location[] }>('/inventory/locations/search', { page: 0, size: 5000 });
-      setData(result?.content || []);
+      const body: Record<string, unknown> = {};
+      if (debouncedSearch.trim()) body.name = debouncedSearch.trim();
+      if (typeFilter !== 'ALL') body.type = typeFilter;
+      const result = await apiPost<any>(`/inventory/locations/search?page=${p}&size=${sz}&sort=name,asc`, body);
+      const items = (result?.content || []).map((raw: any) => ({
+        ...raw,
+        type: resolveEnum(raw.type),
+        source: resolveEnum(raw.source),
+        isSearchable: raw.isSearchable ?? raw.searchable ?? true,
+        searchAliases: raw.searchAliases || [],
+      }));
+      setData(items);
+      setTotalElements(result?.totalElements ?? items.length);
+      setTotalPages(result?.totalPages ?? 1);
     } catch (err) {
       console.error('Failed to load locations:', err);
     } finally { setLoading(false); }
-  }, []);
+  }, [page, pageSize, debouncedSearch, typeFilter]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  /* ── Filtering ── */
-  const filtered = useMemo(() => {
-    let result = data;
-    if (search) {
-      const q = search.toLowerCase();
-      result = result.filter(l =>
-        l.name.toLowerCase().includes(q) ||
-        (l.iataCode ?? '').toLowerCase().includes(q) ||
-        (l.icaoCode ?? '').toLowerCase().includes(q) ||
-        (l.city ?? '').toLowerCase().includes(q) ||
-        l.countryIsoCode.toLowerCase().includes(q) ||
-        l.searchAliases.some(a => a.toLowerCase().includes(q))
-      );
-    }
-    if (typeFilter !== 'ALL') result = result.filter(l => l.type === typeFilter);
-    if (sourceFilter !== 'ALL') result = result.filter(l => l.source === sourceFilter);
-    return result;
-  }, [data, search, typeFilter, sourceFilter]);
+  /* Debounce search input (300ms) */
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(search); setPage(0); }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const safePage = Math.min(page, totalPages - 1);
-  const pageData = filtered.slice(safePage * pageSize, safePage * pageSize + pageSize);
+  /* ── Client-side source filter (backend doesn't support it) ── */
+  const filtered = useMemo(() => {
+    if (sourceFilter === 'ALL') return data;
+    return data.filter(l => l.source === sourceFilter);
+  }, [data, sourceFilter]);
+
+  /* ── Stats (from current page data) ── */
 
   /* ── CRUD Handlers ── */
-  const openAdd = () => { setEditingId(null); setForm(emptyForm()); setAliasText(''); setDialogOpen(true); };
+  const openAdd = () => { setEditingId(null); setForm(emptyForm()); setAliasText(''); setDrawerOpen(true); };
 
   const openEdit = (loc: Location) => {
     setEditingId(loc.id);
@@ -154,7 +163,7 @@ export const LocationsPane: React.FC = () => {
       searchAliases: loc.searchAliases, source: loc.source, sourcePk: loc.sourcePk,
     });
     setAliasText(loc.searchAliases.join(', '));
-    setDialogOpen(true);
+    setDrawerOpen(true);
   };
 
   const handleSave = async () => {
@@ -169,12 +178,12 @@ export const LocationsPane: React.FC = () => {
         await apiPost('/inventory/locations', body);
         flash(`Added "${form.name}"`);
       }
-      setDialogOpen(false);
+      setDrawerOpen(false);
       loadData();
     } catch { /* interceptor handles toast */ }
   };
 
-  const confirmDelete = (l: Location) => { setDeletingLoc(l); setDeleteDialogOpen(true); };
+  const confirmDelete = (l: Location) => { setDeletingLoc(l); setDeleteDrawerOpen(true); };
   const handleDelete = async () => {
     if (!deletingLoc) return;
     try {
@@ -182,23 +191,19 @@ export const LocationsPane: React.FC = () => {
       flash(`Deleted "${deletingLoc.name}"`);
       loadData();
     } catch { /* interceptor handles toast */ }
-    setDeleteDialogOpen(false); setDeletingLoc(null);
+    setDeleteDrawerOpen(false); setDeletingLoc(null);
   };
 
   const toggleSearchable = async (loc: Location) => {
     try {
-      await apiPut(`/inventory/locations/${loc.id}`, { isSearchable: !loc.isSearchable });
+      await apiPut(`/inventory/locations/${loc.id}`, { searchable: !loc.isSearchable, isSearchable: !loc.isSearchable });
       flash(`${loc.name} is now ${loc.isSearchable ? 'hidden' : 'searchable'}`);
       loadData();
     } catch { /* interceptor handles toast */ }
   };
 
   /* ── Stats ── */
-  const stats = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const l of data) counts[l.type] = (counts[l.type] || 0) + 1;
-    return counts;
-  }, [data]);
+
 
   /* ═══════════ Render ═══════════ */
   return (
@@ -209,12 +214,12 @@ export const LocationsPane: React.FC = () => {
           <div className={s.searchInputWrap}>
             <FiSearch className={s.searchIcon} />
             <input className={s.searchInput} placeholder="Search by name, IATA, city, or alias..."
-              value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} />
+              value={search} onChange={e => setSearch(e.target.value)} />
           </div>
           <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
               <button className={s.filterBtn}>
-                {typeFilter === 'ALL' ? 'All Types' : TYPE_META[typeFilter].label}
+                {typeFilter === 'ALL' ? 'All Types' : getTypeMeta(typeFilter).label}
                 <FiChevronDown size={12} />
               </button>
             </DropdownMenu.Trigger>
@@ -226,8 +231,8 @@ export const LocationsPane: React.FC = () => {
                 {(Object.keys(TYPE_META) as LocationType[]).map(t => (
                   <DropdownMenu.Item key={t} className={s.dropdownItem} onSelect={() => { setTypeFilter(t); setPage(0); }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                      <span style={{ color: TYPE_META[t].color, display: 'flex' }}>{TYPE_META[t].icon}</span>
-                      {TYPE_META[t].label} <span style={{ fontSize: '0.7rem', opacity: 0.4 }}>({stats[t] || 0})</span>
+                      <span style={{ color: getTypeMeta(t).color, display: 'flex' }}>{getTypeMeta(t).icon}</span>
+                      {getTypeMeta(t).label} <span style={{ fontSize: '0.7rem', opacity: 0.4 }}>({stats[t] || 0})</span>
                     </span>
                     {typeFilter === t && <FiCheck size={14} />}
                   </DropdownMenu.Item>
@@ -239,7 +244,7 @@ export const LocationsPane: React.FC = () => {
           <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
               <button className={s.filterBtn}>
-                {sourceFilter === 'ALL' ? 'All Sources' : SOURCE_META[sourceFilter].label}
+                {sourceFilter === 'ALL' ? 'All Sources' : getSourceMeta(sourceFilter).label}
                 <FiChevronDown size={12} />
               </button>
             </DropdownMenu.Trigger>
@@ -250,7 +255,7 @@ export const LocationsPane: React.FC = () => {
                 </DropdownMenu.Item>
                 {(Object.keys(SOURCE_META) as LocationSource[]).map(src => (
                   <DropdownMenu.Item key={src} className={s.dropdownItem} onSelect={() => { setSourceFilter(src); setPage(0); }}>
-                    <span style={{ color: SOURCE_META[src].color }}>{SOURCE_META[src].label}</span>
+                    <span style={{ color: getSourceMeta(src).color }}>{getSourceMeta(src).label}</span>
                     {sourceFilter === src && <FiCheck size={14} />}
                   </DropdownMenu.Item>
                 ))}
@@ -261,26 +266,24 @@ export const LocationsPane: React.FC = () => {
           <button className={s.addButton} onClick={openAdd}><FiPlus size={14} /> Add Location</button>
         </div>
 
-        {/* ── Summary Badges (toggle filters) ── */}
+        {/* ── Type Filter Badges (toggle) ── */}
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', width: '100%', marginTop: '0.25rem' }}>
           {(Object.keys(TYPE_META) as LocationType[]).map(type => {
-            const count = stats[type] || 0;
-            if (count === 0) return null;
             const isActive = typeFilter === type;
             return (
-              <button key={type} onClick={() => { setTypeFilter(isActive ? 'ALL' : type); setPage(0); }} style={{
+              <button key={type} onClick={() => { setTypeFilter(isActive ? 'ALL' : type as LocationType); setPage(0); }} style={{
                 display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
                 fontSize: '0.72rem', fontWeight: 600, padding: '0.2rem 0.55rem',
-                borderRadius: 999, border: isActive ? `1.5px solid ${TYPE_META[type].color}` : '1.5px solid transparent',
-                backgroundColor: `${TYPE_META[type].color}12`, color: TYPE_META[type].color, cursor: 'pointer',
+                borderRadius: 999, border: isActive ? `1.5px solid ${getTypeMeta(type).color}` : '1.5px solid transparent',
+                backgroundColor: `${getTypeMeta(type).color}12`, color: getTypeMeta(type).color, cursor: 'pointer',
                 transition: 'border-color 0.2s',
               }}>
-                {TYPE_META[type].icon} {count}
+                {getTypeMeta(type).icon} {getTypeMeta(type).label}
               </button>
             );
           })}
           <span style={{ fontSize: '0.72rem', opacity: 0.4, alignSelf: 'center', marginLeft: '0.25rem' }}>
-            {filtered.length} result{filtered.length !== 1 ? 's' : ''}
+            {totalElements} result{totalElements !== 1 ? 's' : ''}
           </span>
         </div>
       </div>
@@ -300,22 +303,22 @@ export const LocationsPane: React.FC = () => {
               <th>Source</th>
               <th>Coordinates</th>
               <th>Priority</th>
-              <th>Visible</th>
+              <th>Searchable</th>
               <th style={{ width: 36 }}></th>
             </tr>
           </thead>
           <tbody>
-            {pageData.map(loc => (
-              <tr key={loc.id} style={{ opacity: loc.isSearchable ? 1 : 0.5 }}>
+            {filtered.map(loc => (
+              <tr key={loc.id}>
                 <td>
                   <span style={{
                     display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
                     padding: '0.15rem 0.45rem', borderRadius: 999, fontSize: '0.7rem', fontWeight: 700,
-                    backgroundColor: `${TYPE_META[loc.type].color}12`, color: TYPE_META[loc.type].color,
+                    backgroundColor: `${getTypeMeta(loc.type).color}12`, color: getTypeMeta(loc.type).color,
                   }}>
-                    <span style={{ display: 'flex', width: 22, height: 22, alignItems: 'center', justifyContent: 'center',
-                      borderRadius: 6, backgroundColor: `${TYPE_META[loc.type].color}18` }}>
-                      {TYPE_META[loc.type].icon}
+                    <span style={{ display: 'flex', width: 26, height: 26, alignItems: 'center', justifyContent: 'center',
+                      borderRadius: 6, backgroundColor: `${getTypeMeta(loc.type).color}18` }}>
+                      {getTypeMeta(loc.type).icon}
                     </span>
                     {loc.type}
                   </span>
@@ -336,9 +339,9 @@ export const LocationsPane: React.FC = () => {
                 <td>
                   <span style={{
                     fontSize: '0.7rem', fontWeight: 600, padding: '0.12rem 0.4rem', borderRadius: 999,
-                    backgroundColor: `${SOURCE_META[loc.source].color}12`, color: SOURCE_META[loc.source].color,
+                    backgroundColor: `${getSourceMeta(loc.source).color}12`, color: getSourceMeta(loc.source).color,
                   }}>
-                    {SOURCE_META[loc.source].label}
+                    {getSourceMeta(loc.source).label}
                   </span>
                 </td>
                 <td style={{ fontSize: '0.78rem', fontFamily: 'monospace', opacity: 0.6 }}>
@@ -403,26 +406,24 @@ export const LocationsPane: React.FC = () => {
           </DropdownMenu.Root>
         </div>
         <div className={s.paginationCenter}>
-          <button className={s.pageBtn} disabled={safePage === 0} onClick={() => setPage(0)}><FiChevronsLeft size={14} /></button>
-          <button className={s.pageBtn} disabled={safePage === 0} onClick={() => setPage(p => p - 1)}><FiChevronLeft size={14} /></button>
-          <span className={s.paginationInfo}>{safePage + 1} / {totalPages}</span>
-          <button className={s.pageBtn} disabled={safePage >= totalPages - 1} onClick={() => setPage(p => p + 1)}><FiChevronRight size={14} /></button>
-          <button className={s.pageBtn} disabled={safePage >= totalPages - 1} onClick={() => setPage(totalPages - 1)}><FiChevronsRight size={14} /></button>
+          <button className={s.pageBtn} disabled={page === 0} onClick={() => setPage(0)}><FiChevronsLeft size={14} /></button>
+          <button className={s.pageBtn} disabled={page === 0} onClick={() => setPage(p => p - 1)}><FiChevronLeft size={14} /></button>
+          <span className={s.paginationInfo}>{page + 1} / {totalPages}</span>
+          <button className={s.pageBtn} disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}><FiChevronRight size={14} /></button>
+          <button className={s.pageBtn} disabled={page >= totalPages - 1} onClick={() => setPage(totalPages - 1)}><FiChevronsRight size={14} /></button>
         </div>
         <div className={s.paginationRight}>
-          <span style={{ fontSize: '0.72rem', opacity: 0.5 }}>{filtered.length} total</span>
+          <span style={{ fontSize: '0.72rem', opacity: 0.5 }}>{totalElements} total</span>
         </div>
       </div>
 
-      {/* ═══ Add/Edit Dialog ═══ */}
-      <Dialog.Root open={dialogOpen} onOpenChange={setDialogOpen}>
-        <Dialog.Portal>
-          <Dialog.Overlay className={s.overlay} />
-          <Dialog.Content className={s.dialogContent}>
-            <div className={s.dialogHeader}>
-              <Dialog.Title className={s.dialogTitle}>{editingId ? 'Edit Location' : 'Add Location'}</Dialog.Title>
-              <Dialog.Close className={s.dialogClose}><FiX size={16} /></Dialog.Close>
-            </div>
+      {/* ═══ Add/Edit Drawer ═══ */}
+      <VaulDrawer open={drawerOpen} onOpenChange={setDrawerOpen}
+        title={editingId ? 'Edit Location' : 'Add Location'} width={520}
+        footer={<>
+          <button className={s.btnCancel} onClick={() => setDrawerOpen(false)}>Cancel</button>
+          <button className={s.btnPrimary} onClick={handleSave}>{editingId ? 'Update' : 'Create'}</button>
+        </>}>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
               {/* Name & Country */}
@@ -449,25 +450,23 @@ export const LocationsPane: React.FC = () => {
                     <DropdownMenu.Trigger asChild>
                       <button className={paneStyles.formInput} style={{ maxWidth: '100%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.82rem', padding: '0.5rem 0.6rem' }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                          <span style={{ color: TYPE_META[form.type].color, display: 'flex' }}>{TYPE_META[form.type].icon}</span>
-                          {TYPE_META[form.type].label}
+                          <span style={{ color: getTypeMeta(form.type).color, display: 'flex' }}>{getTypeMeta(form.type).icon}</span>
+                          {getTypeMeta(form.type).label}
                         </span>
                         <FiChevronDown size={12} style={{ opacity: 0.4 }} />
                       </button>
                     </DropdownMenu.Trigger>
-                    <DropdownMenu.Portal>
                       <DropdownMenu.Content sideOffset={4} className={s.dropdownContent}>
                         {(Object.keys(TYPE_META) as LocationType[]).map(t => (
                           <DropdownMenu.Item key={t} className={s.dropdownItem} onSelect={() => setForm(f => ({ ...f, type: t }))}>
                             <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                              <span style={{ color: TYPE_META[t].color, display: 'flex' }}>{TYPE_META[t].icon}</span>
-                              {TYPE_META[t].label}
+                              <span style={{ color: getTypeMeta(t).color, display: 'flex' }}>{getTypeMeta(t).icon}</span>
+                              {getTypeMeta(t).label}
                             </span>
                             {form.type === t && <FiCheck size={14} />}
                           </DropdownMenu.Item>
                         ))}
                       </DropdownMenu.Content>
-                    </DropdownMenu.Portal>
                   </DropdownMenu.Root>
                 </div>
                 <div>
@@ -475,20 +474,18 @@ export const LocationsPane: React.FC = () => {
                   <DropdownMenu.Root>
                     <DropdownMenu.Trigger asChild>
                       <button className={paneStyles.formInput} style={{ maxWidth: '100%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.82rem', padding: '0.5rem 0.6rem' }}>
-                        <span style={{ color: SOURCE_META[form.source].color }}>{SOURCE_META[form.source].label}</span>
+                        <span style={{ color: getSourceMeta(form.source).color }}>{getSourceMeta(form.source).label}</span>
                         <FiChevronDown size={12} style={{ opacity: 0.4 }} />
                       </button>
                     </DropdownMenu.Trigger>
-                    <DropdownMenu.Portal>
                       <DropdownMenu.Content sideOffset={4} className={s.dropdownContent}>
                         {(Object.keys(SOURCE_META) as LocationSource[]).map(src => (
                           <DropdownMenu.Item key={src} className={s.dropdownItem} onSelect={() => setForm(f => ({ ...f, source: src }))}>
-                            <span style={{ color: SOURCE_META[src].color }}>{SOURCE_META[src].label}</span>
+                            <span style={{ color: getSourceMeta(src).color }}>{getSourceMeta(src).label}</span>
                             {form.source === src && <FiCheck size={14} />}
                           </DropdownMenu.Item>
                         ))}
                       </DropdownMenu.Content>
-                    </DropdownMenu.Portal>
                   </DropdownMenu.Root>
                 </div>
               </div>
@@ -574,38 +571,23 @@ export const LocationsPane: React.FC = () => {
                   onChange={e => setAliasText(e.target.value)} />
               </div>
             </div>
+      </VaulDrawer>
 
-            <div className={s.dialogFooter}>
-              <button className={s.btnCancel} onClick={() => setDialogOpen(false)}>Cancel</button>
-              <button className={s.btnPrimary} onClick={handleSave}>{editingId ? 'Update' : 'Create'}</button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
-
-      {/* ═══ Delete Dialog ═══ */}
-      <Dialog.Root open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <Dialog.Portal>
-          <Dialog.Overlay className={s.overlay} />
-          <Dialog.Content className={s.dialogContentSmall}>
-            <div className={s.dialogHeader}>
-              <Dialog.Title className={s.dialogTitle}>Delete Location</Dialog.Title>
-              <Dialog.Close className={s.dialogClose}><FiX size={16} /></Dialog.Close>
-            </div>
+      {/* ═══ Delete Drawer ═══ */}
+      <VaulDrawer open={deleteDrawerOpen} onOpenChange={setDeleteDrawerOpen}
+        title="Delete Location" width={400}
+        footer={<>
+          <button className={s.btnCancel} onClick={() => setDeleteDrawerOpen(false)}>Cancel</button>
+          <button className={s.btnDanger} onClick={handleDelete}>Delete</button>
+        </>}>
             <p style={{ fontSize: '0.85rem', margin: '0 0 0.5rem' }}>
               Are you sure you want to delete <strong>{deletingLoc?.name}</strong>?
-              {deletingLoc?.iataCode && <> (<code>{deletingLoc.iataCode}</code>)</>}
+              {deletingLoc?.iataCode && <>(<code>{deletingLoc.iataCode}</code>)</>}
             </p>
             <p style={{ fontSize: '0.75rem', opacity: 0.5, margin: '0 0 0.75rem' }}>
               This may break existing connections that reference this location.
             </p>
-            <div className={s.dialogFooter}>
-              <button className={s.btnCancel} onClick={() => setDeleteDialogOpen(false)}>Cancel</button>
-              <button className={s.btnDanger} onClick={handleDelete}>Delete</button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+      </VaulDrawer>
 
       {/* ═══ Toast ═══ */}
       <Toast.Viewport style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 8 }} />

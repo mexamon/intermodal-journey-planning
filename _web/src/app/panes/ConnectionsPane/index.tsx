@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import * as paneStyles from '../Panes.module.scss';
 import * as s from './ConnectionsPane.module.scss';
-import * as Dialog from '@radix-ui/react-dialog';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import * as Toast from '@radix-ui/react-toast';
 import {
@@ -14,6 +13,7 @@ import {
   MdLocalTaxi, MdDirectionsBoat, MdDirectionsWalk, MdPedalBike,
 } from 'react-icons/md';
 import { apiGet, apiPost, apiPut, apiDelete } from '../../api/client';
+import { VaulDrawer } from '../../components/shared';
 
 /* ═══════════════════════════════════════════════
    Types — matching DB V013 GTFS model
@@ -255,7 +255,8 @@ const mapEdge = (e: any): TransportEdge => ({
 const PAGE_SIZES = [10, 20, 50];
 
 type FormState = {
-  originLabel: string; destinationLabel: string;
+  originLabel: string; originLocationId: string;
+  destinationLabel: string; destinationLocationId: string;
   transportModeCode: string; providerCode: string;
   scheduleType: ScheduleType;
   operatingDaysMask: number;
@@ -267,7 +268,8 @@ type FormState = {
 };
 
 const emptyForm = (): FormState => ({
-  originLabel: '', destinationLabel: '',
+  originLabel: '', originLocationId: '',
+  destinationLabel: '', destinationLocationId: '',
   transportModeCode: 'FLIGHT', providerCode: '',
   scheduleType: 'FIXED',
   operatingDaysMask: 127,
@@ -278,6 +280,10 @@ const emptyForm = (): FormState => ({
   distanceM: '', co2Grams: '',
 });
 
+interface LocOption { id: string; label: string; iata: string | null; type: string; }
+interface ModeOption { id: string; code: string; name: string; }
+interface ProviderOption { id: string; code: string; name: string; }
+
 /* ═══════════════════════════════════════════════
    COMPONENT
    ═══════════════════════════════════════════════ */
@@ -285,43 +291,104 @@ export const ConnectionsPane: React.FC = () => {
   const [edges, setEdges] = useState<TransportEdge[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [modeFilter, setModeFilter] = useState<string>('ALL');
   const [sourceFilter, setSourceFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(20);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm());
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [toastVariant, setToastVariant] = useState<'success' | 'error'>('success');
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteDrawerOpen, setDeleteDrawerOpen] = useState(false);
   const [deletingEdge, setDeletingEdge] = useState<TransportEdge | null>(null);
   const [expandedRoutes, setExpandedRoutes] = useState<Set<string>>(new Set());
 
+  /* ═══ Reference data for dropdowns ═══ */
+  const [modes, setModes] = useState<ModeOption[]>([]);
+  const [providers, setProviders] = useState<ProviderOption[]>([]);
+  const [originSugg, setOriginSugg] = useState<LocOption[]>([]);
+  const [destSugg, setDestSugg] = useState<LocOption[]>([]);
+  const [showOriginSugg, setShowOriginSugg] = useState(false);
+  const [showDestSugg, setShowDestSugg] = useState(false);
+  const originTimer = useRef<ReturnType<typeof setTimeout>>();
+  const destTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  const searchLocations = useCallback(async (q: string, target: 'origin' | 'dest') => {
+    if (q.length < 2) { target === 'origin' ? setOriginSugg([]) : setDestSugg([]); return; }
+    try {
+      const res = await apiPost<{ content: any[] }>('/inventory/locations/search?page=0&size=15', { name: q });
+      const opts: LocOption[] = (res?.content || []).map((l: any) => ({
+        id: l.id, label: `${l.iataCode ? l.iataCode + ' \u2014 ' : ''}${l.name}`, iata: l.iataCode, type: l.type,
+      }));
+      if (target === 'origin') { setOriginSugg(opts); setShowOriginSugg(true); }
+      else { setDestSugg(opts); setShowDestSugg(true); }
+    } catch { /* ignore */ }
+  }, []);
   const showToast = useCallback((msg: string, variant: 'success' | 'error' = 'success') => {
     setToastMsg(msg); setToastVariant(variant); setToastOpen(true);
   }, []);
 
-  /* ═══ Load data from API ═══ */
+  /* ═══ Load reference data once ═══ */
+  useEffect(() => {
+    (async () => {
+      try {
+        const [rawModes, rawProviders] = await Promise.all([
+          apiGet<any[]>('/transport/modes', { all: true }),
+          apiGet<any[]>('/inventory/providers'),
+        ]);
+        setModes((rawModes || []).map((m: any) => ({ id: m.id, code: m.code || resolveEnum(m.code), name: m.name })));
+        setProviders((rawProviders || []).map((p: any) => ({ id: p.id, code: p.code, name: p.name })));
+      } catch (err) { console.error('Failed to load reference data:', err); }
+    })();
+  }, []);
+
+  /* ═══ Load edges from API (server-side paging) ═══ */
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const rawEdges = await apiGet<any[]>('/transport/edges');
-      setEdges((rawEdges || []).map(mapEdge));
-    } catch (err) {
-      console.error('Failed to load edges:', err);
-    } finally { setLoading(false); }
-  }, []);
+      const body: Record<string, unknown> = {};
+      if (statusFilter !== 'ALL') body.status = statusFilter;
+      const result = await apiPost<any>(`/transport/edges/search?page=${page}&size=${pageSize}&sort=id,desc`, body);
+      const items = (result?.content || []).map(mapEdge);
+      setEdges(items);
+      setTotalElements(result?.totalElements ?? items.length);
+      setTotalPages(result?.totalPages ?? 1);
+    } catch (err) { console.error('Failed to load edges:', err); }
+    finally { setLoading(false); }
+  }, [page, pageSize, statusFilter]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  /* ═══ Filtering + Pagination ═══ */
+  /* Debounce search (300ms) */
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(search); setPage(0); }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const onOriginInput = (val: string) => {
+    setForm(f => ({ ...f, originLabel: val, originLocationId: '' }));
+    clearTimeout(originTimer.current);
+    originTimer.current = setTimeout(() => searchLocations(val, 'origin'), 300);
+  };
+  const onDestInput = (val: string) => {
+    setForm(f => ({ ...f, destinationLabel: val, destinationLocationId: '' }));
+    clearTimeout(destTimer.current);
+    destTimer.current = setTimeout(() => searchLocations(val, 'dest'), 300);
+  };
+  const pickOrigin = (o: LocOption) => { setForm(f => ({ ...f, originLabel: o.label, originLocationId: o.id })); setShowOriginSugg(false); };
+  const pickDest = (o: LocOption) => { setForm(f => ({ ...f, destinationLabel: o.label, destinationLocationId: o.id })); setShowDestSugg(false); };
+
+  /* ═══ Client-side filtering (text search, mode, source) ═══ */
   const filtered = useMemo(() => {
     let result = edges.filter(e => !e.deleted);
-    if (search) {
-      const q = search.toLowerCase();
+    if (debouncedSearch) {
+      const q = debouncedSearch.toLowerCase();
       result = result.filter(e =>
         e.originLabel.toLowerCase().includes(q) || e.destinationLabel.toLowerCase().includes(q) ||
         e.trips.some(t => (t.serviceCode ?? '').toLowerCase().includes(q)) || (e.providerCode ?? '').toLowerCase().includes(q)
@@ -329,22 +396,18 @@ export const ConnectionsPane: React.FC = () => {
     }
     if (modeFilter !== 'ALL') result = result.filter(e => e.transportModeCode === modeFilter);
     if (sourceFilter !== 'ALL') result = result.filter(e => e.source === sourceFilter);
-    if (statusFilter !== 'ALL') result = result.filter(e => e.status === statusFilter);
     return result;
-  }, [edges, search, modeFilter, sourceFilter, statusFilter]);
+  }, [edges, debouncedSearch, modeFilter, sourceFilter]);
 
-  const totalElements = filtered.length;
-  const totalPages = Math.max(1, Math.ceil(totalElements / pageSize));
-  const safePage = Math.min(page, totalPages - 1);
-  const paged = filtered.slice(safePage * pageSize, (safePage + 1) * pageSize);
   const goPage = (p: number) => setPage(Math.max(0, Math.min(p, totalPages - 1)));
 
   /* ═══ CRUD ═══ */
-  const openAdd = () => { setEditingId(null); setForm(emptyForm()); setDialogOpen(true); };
+  const openAdd = () => { setEditingId(null); setForm(emptyForm()); setDrawerOpen(true); };
   const openEdit = (e: TransportEdge) => {
     setEditingId(e.id);
     setForm({
-      originLabel: e.originLabel, destinationLabel: e.destinationLabel,
+      originLabel: e.originLabel, originLocationId: e.originLocationId,
+      destinationLabel: e.destinationLabel, destinationLocationId: e.destinationLocationId,
       transportModeCode: e.transportModeCode, providerCode: e.providerCode ?? '',
       scheduleType: e.scheduleType, operatingDaysMask: e.operatingDaysMask,
       operatingStartTime: e.operatingStartTime ?? '', operatingEndTime: e.operatingEndTime ?? '',
@@ -354,15 +417,12 @@ export const ConnectionsPane: React.FC = () => {
       distanceM: e.distanceM != null ? String(e.distanceM) : '',
       co2Grams: e.co2Grams != null ? String(e.co2Grams) : '',
     });
-    setDialogOpen(true);
+    setDrawerOpen(true);
   };
 
   const handleSave = async () => {
-    if (!form.originLabel.trim() || !form.destinationLabel.trim()) {
-      showToast('Origin and Destination are required.', 'error'); return;
-    }
     const n = (v: string) => v ? parseInt(v) : null;
-    const body: Record<string, unknown> = {
+    const sharedBody: Record<string, unknown> = {
       scheduleType: form.scheduleType,
       operatingDaysMask: form.operatingDaysMask,
       operatingStartTime: form.operatingStartTime || null,
@@ -376,18 +436,32 @@ export const ConnectionsPane: React.FC = () => {
     };
     try {
       if (editingId) {
-        await apiPut(`/transport/edges/${editingId}`, body);
+        await apiPut(`/transport/edges/${editingId}`, sharedBody);
         showToast('Route updated.');
       } else {
-        showToast('Create edges via DB or use an existing edge.', 'error');
-        return;
+        /* ── Create new edge ── */
+        if (!form.originLocationId || !form.destinationLocationId) {
+          showToast('Please select Origin and Destination from the suggestions.', 'error'); return;
+        }
+        const modeObj = modes.find(m => m.code === form.transportModeCode);
+        if (!modeObj) { showToast('Please select a Transport Mode.', 'error'); return; }
+        const provObj = form.providerCode ? providers.find(p => p.code === form.providerCode) : null;
+        const createBody = {
+          ...sharedBody,
+          originLocation: { id: form.originLocationId },
+          destinationLocation: { id: form.destinationLocationId },
+          transportMode: { id: modeObj.id },
+          ...(provObj ? { provider: { id: provObj.id } } : {}),
+        };
+        await apiPost('/transport/edges', createBody);
+        showToast('Route created.');
       }
-      setDialogOpen(false);
+      setDrawerOpen(false);
       loadData();
     } catch { /* interceptor handles toast */ }
   };
 
-  const confirmDelete = (e: TransportEdge) => { setDeletingEdge(e); setDeleteDialogOpen(true); };
+  const confirmDelete = (e: TransportEdge) => { setDeletingEdge(e); setDeleteDrawerOpen(true); };
   const handleDelete = async () => {
     if (!deletingEdge) return;
     try {
@@ -395,7 +469,7 @@ export const ConnectionsPane: React.FC = () => {
       showToast('Connection deleted.');
       loadData();
     } catch { /* interceptor handles toast */ }
-    setDeleteDialogOpen(false); setDeletingEdge(null);
+    setDeleteDrawerOpen(false); setDeletingEdge(null);
   };
   const toggleStatus = async (e: TransportEdge) => {
     const newStatus: EdgeStatus = e.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
@@ -533,10 +607,10 @@ export const ConnectionsPane: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {paged.length === 0 && (
+            {filtered.length === 0 && (
               <tr><td colSpan={11} style={{ textAlign: 'center', padding: '2rem', opacity: 0.4 }}>No routes found.</td></tr>
             )}
-            {paged.map(edge => {
+            {filtered.map(edge => {
               const meta = MODE_META[edge.transportModeCode] ?? { icon: null, color: '#6d7c8a', label: edge.transportModeCode };
               const isExpanded = expandedRoutes.has(edge.id);
               const toggleExpand = () => setExpandedRoutes(prev => {
@@ -546,7 +620,7 @@ export const ConnectionsPane: React.FC = () => {
               });
               const schedBadge = {
                 FIXED: { color: '#3b82f6', label: 'Fixed' },
-                FREQUENCY: { color: '#8b5cf6', label: `Every ${edge.frequencyMinutes}m` },
+                FREQUENCY: { color: '#8b5cf6', label: `Every ${edge.frequencyMinutes ?? '?'}m` },
                 ON_DEMAND: { color: '#6b7280', label: 'On Demand' },
               }[edge.scheduleType];
               return (
@@ -672,9 +746,70 @@ export const ConnectionsPane: React.FC = () => {
                     </td>
                     <td></td>
                     <td></td>
-                    <td></td>
+                    <td>
+                      <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', opacity: 0.6, padding: '0.2rem' }}
+                        title="Delete trip"
+                        onClick={async () => {
+                          try { await apiDelete(`/transport/trips/${trip.id}`); showToast('Trip deleted.'); loadData(); }
+                          catch { /* interceptor */ }
+                        }}>
+                        <FiTrash2 size={13} />
+                      </button>
+                    </td>
                   </tr>
                 ))}
+                {/* ── Add Trip Row ── */}
+                {isExpanded && (
+                  <tr style={{ backgroundColor: 'rgba(34,197,94,0.04)' }}>
+                    <td></td>
+                    <td style={{ paddingLeft: '1.5rem' }}>
+                      <input placeholder="Code" style={{ width: 70, fontSize: '0.75rem', padding: '0.25rem 0.35rem', border: '1px solid rgba(128,128,128,0.2)', borderRadius: 4, background: 'transparent', color: 'inherit', fontFamily: 'monospace' }}
+                        id={`trip-code-${edge.id}`} />
+                    </td>
+                    <td>
+                      <input type="time" style={{ fontSize: '0.75rem', padding: '0.25rem', border: '1px solid rgba(128,128,128,0.2)', borderRadius: 4, background: 'transparent', color: 'inherit' }}
+                        id={`trip-dep-${edge.id}`} />
+                    </td>
+                    <td>
+                      <input type="time" style={{ fontSize: '0.75rem', padding: '0.25rem', border: '1px solid rgba(128,128,128,0.2)', borderRadius: 4, background: 'transparent', color: 'inherit' }}
+                        id={`trip-arr-${edge.id}`} />
+                    </td>
+                    <td>
+                      <input type="number" placeholder="127" style={{ width: 40, fontSize: '0.75rem', padding: '0.25rem', border: '1px solid rgba(128,128,128,0.2)', borderRadius: 4, background: 'transparent', color: 'inherit', textAlign: 'center' }}
+                        id={`trip-days-${edge.id}`} defaultValue="127" />
+                    </td>
+                    <td>
+                      <input type="number" placeholder="cents" style={{ width: 60, fontSize: '0.75rem', padding: '0.25rem', border: '1px solid rgba(128,128,128,0.2)', borderRadius: 4, background: 'transparent', color: 'inherit' }}
+                        id={`trip-cost-${edge.id}`} />
+                    </td>
+                    <td colSpan={4}></td>
+                    <td>
+                      <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#22c55e', padding: '0.2rem' }}
+                        title="Add trip"
+                        onClick={async () => {
+                          const code = (document.getElementById(`trip-code-${edge.id}`) as HTMLInputElement)?.value || '';
+                          const dep = (document.getElementById(`trip-dep-${edge.id}`) as HTMLInputElement)?.value || '';
+                          const arr = (document.getElementById(`trip-arr-${edge.id}`) as HTMLInputElement)?.value || '';
+                          const days = parseInt((document.getElementById(`trip-days-${edge.id}`) as HTMLInputElement)?.value || '127');
+                          const cost = (document.getElementById(`trip-cost-${edge.id}`) as HTMLInputElement)?.value;
+                          if (!dep || !arr) { showToast('Departure and arrival times are required.', 'error'); return; }
+                          try {
+                            await apiPost(`/transport/edges/${edge.id}/trips`, {
+                              serviceCode: code || null,
+                              departureTime: dep,
+                              arrivalTime: arr,
+                              operatingDaysMask: days,
+                              estimatedCostCents: cost ? parseInt(cost) : null,
+                            });
+                            showToast('Trip added.');
+                            loadData();
+                          } catch { /* interceptor */ }
+                        }}>
+                        <FiPlus size={14} />
+                      </button>
+                    </td>
+                  </tr>
+                )}
                 </React.Fragment>
               );
             })}
@@ -685,14 +820,14 @@ export const ConnectionsPane: React.FC = () => {
       {/* ── Pagination Bar ── */}
       <div className={s.paginationBar}>
         <div className={s.paginationLeft}>
-          <span style={{ fontSize: '0.75rem' }}>{safePage * pageSize + 1}–{Math.min((safePage + 1) * pageSize, totalElements)} of {totalElements}</span>
+          <span style={{ fontSize: '0.75rem' }}>{page * pageSize + 1}–{Math.min((page + 1) * pageSize, totalElements)} of {totalElements}</span>
         </div>
         <div className={s.paginationCenter}>
-          <button className={s.pageBtn} disabled={safePage <= 0} onClick={() => goPage(0)}><FiChevronsLeft size={14} /></button>
-          <button className={s.pageBtn} disabled={safePage <= 0} onClick={() => goPage(safePage - 1)}><FiChevronLeft size={14} /></button>
-          <span className={s.paginationInfo}>Page {safePage + 1} of {totalPages}</span>
-          <button className={s.pageBtn} disabled={safePage >= totalPages - 1} onClick={() => goPage(safePage + 1)}><FiChevronRight size={14} /></button>
-          <button className={s.pageBtn} disabled={safePage >= totalPages - 1} onClick={() => goPage(totalPages - 1)}><FiChevronsRight size={14} /></button>
+          <button className={s.pageBtn} disabled={page <= 0} onClick={() => goPage(0)}><FiChevronsLeft size={14} /></button>
+          <button className={s.pageBtn} disabled={page <= 0} onClick={() => goPage(page - 1)}><FiChevronLeft size={14} /></button>
+          <span className={s.paginationInfo}>Page {page + 1} of {totalPages}</span>
+          <button className={s.pageBtn} disabled={page >= totalPages - 1} onClick={() => goPage(page + 1)}><FiChevronRight size={14} /></button>
+          <button className={s.pageBtn} disabled={page >= totalPages - 1} onClick={() => goPage(totalPages - 1)}><FiChevronsRight size={14} /></button>
         </div>
         <div className={s.paginationRight}>
           <DropdownMenu.Root>
@@ -712,33 +847,54 @@ export const ConnectionsPane: React.FC = () => {
         </div>
       </div>
 
-      {/* ══════════ Add / Edit Dialog ══════════ */}
-      <Dialog.Root open={dialogOpen} onOpenChange={setDialogOpen}>
-        <Dialog.Portal>
-          <Dialog.Overlay className={s.overlay} />
-          <Dialog.Content className={s.dialogContent}>
-            <div className={s.dialogHeader}>
-              <Dialog.Title className={s.dialogTitle}>
-                {editingId ? 'Edit Route' : 'New Route'}
-              </Dialog.Title>
-              <Dialog.Close asChild>
-                <button className={s.dialogClose}><FiX size={18} /></button>
-              </Dialog.Close>
-            </div>
-
+      {/* ══════════ Add / Edit Drawer ══════════ */}
+      <VaulDrawer open={drawerOpen} onOpenChange={setDrawerOpen}
+        title={editingId ? 'Edit Route' : 'New Route'} width={560}
+        footer={<>
+          <button className={s.btnCancel} onClick={() => setDrawerOpen(false)}>Cancel</button>
+          <button className={s.btnPrimary} onClick={handleSave}>
+            {editingId ? 'Save Changes' : 'Create Connection'}
+          </button>
+        </>}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
               {/* ── Route ── */}
               <div className={s.sectionTitle}>Route</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
-                <div>
-                  <label className={s.fieldLabel}>Origin *</label>
-                  <input className={paneStyles.formInput} style={{ maxWidth: '100%', fontSize: '0.82rem', padding: '0.5rem 0.6rem' }} placeholder="e.g. IST — Istanbul Airport"
-                    value={form.originLabel} onChange={e => setForm(f => ({ ...f, originLabel: e.target.value }))} />
+                <div style={{ position: 'relative' }}>
+                  <label className={s.fieldLabel}>Origin *{form.originLocationId && <FiCheck size={12} style={{ color: '#22c55e', marginLeft: 4 }} />}</label>
+                  <input className={paneStyles.formInput} style={{ maxWidth: '100%', fontSize: '0.82rem', padding: '0.5rem 0.6rem' }} placeholder="Type to search... (e.g. IST, Barcelona)"
+                    value={form.originLabel} onChange={e => onOriginInput(e.target.value)}
+                    onFocus={() => originSugg.length > 0 && setShowOriginSugg(true)}
+                    onBlur={() => setTimeout(() => setShowOriginSugg(false), 200)}
+                    readOnly={!!editingId} />
+                  {showOriginSugg && originSugg.length > 0 && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, background: 'var(--surface, #1a1a2e)', border: '1px solid rgba(128,128,128,0.2)', borderRadius: 8, maxHeight: 200, overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.3)' }}>
+                      {originSugg.map(o => (
+                        <div key={o.id} style={{ padding: '0.45rem 0.6rem', cursor: 'pointer', fontSize: '0.78rem', borderBottom: '1px solid rgba(128,128,128,0.08)' }}
+                          onMouseDown={() => pickOrigin(o)}>
+                          <span style={{ opacity: 0.4, fontSize: '0.65rem', marginRight: 6 }}>{o.type}</span>{o.label}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <label className={s.fieldLabel}>Destination *</label>
-                  <input className={paneStyles.formInput} style={{ maxWidth: '100%', fontSize: '0.82rem', padding: '0.5rem 0.6rem' }} placeholder="e.g. LHR — London Heathrow"
-                    value={form.destinationLabel} onChange={e => setForm(f => ({ ...f, destinationLabel: e.target.value }))} />
+                <div style={{ position: 'relative' }}>
+                  <label className={s.fieldLabel}>Destination *{form.destinationLocationId && <FiCheck size={12} style={{ color: '#22c55e', marginLeft: 4 }} />}</label>
+                  <input className={paneStyles.formInput} style={{ maxWidth: '100%', fontSize: '0.82rem', padding: '0.5rem 0.6rem' }} placeholder="Type to search... (e.g. LHR, Brussels)"
+                    value={form.destinationLabel} onChange={e => onDestInput(e.target.value)}
+                    onFocus={() => destSugg.length > 0 && setShowDestSugg(true)}
+                    onBlur={() => setTimeout(() => setShowDestSugg(false), 200)}
+                    readOnly={!!editingId} />
+                  {showDestSugg && destSugg.length > 0 && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, background: 'var(--surface, #1a1a2e)', border: '1px solid rgba(128,128,128,0.2)', borderRadius: 8, maxHeight: 200, overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.3)' }}>
+                      {destSugg.map(o => (
+                        <div key={o.id} style={{ padding: '0.45rem 0.6rem', cursor: 'pointer', fontSize: '0.78rem', borderBottom: '1px solid rgba(128,128,128,0.08)' }}
+                          onMouseDown={() => pickDest(o)}>
+                          <span style={{ opacity: 0.4, fontSize: '0.65rem', marginRight: 6 }}>{o.type}</span>{o.label}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.6rem' }}>
@@ -754,7 +910,6 @@ export const ConnectionsPane: React.FC = () => {
                         <FiChevronDown size={12} style={{ opacity: 0.4 }} />
                       </button>
                     </DropdownMenu.Trigger>
-                    <DropdownMenu.Portal>
                       <DropdownMenu.Content sideOffset={4} align="start" className={s.dropdownContent}>
                         {Object.entries(MODE_META).map(([code, meta]) => (
                           <DropdownMenu.Item key={code} className={s.dropdownItem} onSelect={() => setForm(f => ({ ...f, transportModeCode: code }))}>
@@ -765,13 +920,29 @@ export const ConnectionsPane: React.FC = () => {
                           </DropdownMenu.Item>
                         ))}
                       </DropdownMenu.Content>
-                    </DropdownMenu.Portal>
                   </DropdownMenu.Root>
                 </div>
                 <div>
                   <label className={s.fieldLabel}>Provider</label>
-                  <input className={paneStyles.formInput} style={{ maxWidth: '100%', fontSize: '0.82rem', padding: '0.5rem 0.6rem' }} placeholder="e.g. TK, DB"
-                    value={form.providerCode} onChange={e => setForm(f => ({ ...f, providerCode: e.target.value.toUpperCase() }))} />
+                  <DropdownMenu.Root>
+                    <DropdownMenu.Trigger asChild>
+                      <button className={paneStyles.formInput} style={{ maxWidth: '100%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.82rem', padding: '0.5rem 0.6rem' }}>
+                        {form.providerCode ? `${form.providerCode}` : <span style={{ opacity: 0.4 }}>Select provider...</span>}
+                        <FiChevronDown size={12} style={{ opacity: 0.4 }} />
+                      </button>
+                    </DropdownMenu.Trigger>
+                      <DropdownMenu.Content sideOffset={4} align="start" className={s.dropdownContent} style={{ maxHeight: 250, overflowY: 'auto' }}>
+                        <DropdownMenu.Item className={s.dropdownItem} onSelect={() => setForm(f => ({ ...f, providerCode: '' }))}>
+                          <span style={{ opacity: 0.5 }}>None</span>
+                        </DropdownMenu.Item>
+                        {providers.map(p => (
+                          <DropdownMenu.Item key={p.id} className={s.dropdownItem} onSelect={() => setForm(f => ({ ...f, providerCode: p.code }))}>
+                            {p.code} — {p.name}
+                            {form.providerCode === p.code && <FiCheck size={14} />}
+                          </DropdownMenu.Item>
+                        ))}
+                      </DropdownMenu.Content>
+                  </DropdownMenu.Root>
                 </div>
                 <div>
                   <label className={s.fieldLabel}>Schedule Type</label>
@@ -782,7 +953,6 @@ export const ConnectionsPane: React.FC = () => {
                         <FiChevronDown size={12} style={{ opacity: 0.4 }} />
                       </button>
                     </DropdownMenu.Trigger>
-                    <DropdownMenu.Portal>
                       <DropdownMenu.Content sideOffset={4} align="start" className={s.dropdownContent}>
                         {(['FIXED', 'FREQUENCY', 'ON_DEMAND'] as ScheduleType[]).map(st => (
                           <DropdownMenu.Item key={st} className={s.dropdownItem} onSelect={() => setForm(f => ({ ...f, scheduleType: st }))}>
@@ -790,7 +960,6 @@ export const ConnectionsPane: React.FC = () => {
                           </DropdownMenu.Item>
                         ))}
                       </DropdownMenu.Content>
-                    </DropdownMenu.Portal>
                   </DropdownMenu.Root>
                 </div>
               </div>
@@ -866,7 +1035,6 @@ export const ConnectionsPane: React.FC = () => {
                         <FiChevronDown size={12} style={{ opacity: 0.4 }} />
                       </button>
                     </DropdownMenu.Trigger>
-                    <DropdownMenu.Portal>
                       <DropdownMenu.Content sideOffset={4} align="start" className={s.dropdownContent}>
                         {(Object.keys(SOURCE_META) as EdgeSource[]).map(src => (
                           <DropdownMenu.Item key={src} className={s.dropdownItem} onSelect={() => setForm(f => ({ ...f, source: src }))}>
@@ -881,7 +1049,6 @@ export const ConnectionsPane: React.FC = () => {
                           </DropdownMenu.Item>
                         ))}
                       </DropdownMenu.Content>
-                    </DropdownMenu.Portal>
                   </DropdownMenu.Root>
                 </div>
                 <div>
@@ -893,7 +1060,6 @@ export const ConnectionsPane: React.FC = () => {
                         <FiChevronDown size={12} style={{ opacity: 0.4 }} />
                       </button>
                     </DropdownMenu.Trigger>
-                    <DropdownMenu.Portal>
                       <DropdownMenu.Content sideOffset={4} align="start" className={s.dropdownContent}>
                         {(['ACTIVE', 'INACTIVE'] as EdgeStatus[]).map(st => (
                           <DropdownMenu.Item key={st} className={s.dropdownItem} onSelect={() => setForm(f => ({ ...f, status: st }))}>
@@ -902,41 +1068,23 @@ export const ConnectionsPane: React.FC = () => {
                           </DropdownMenu.Item>
                         ))}
                       </DropdownMenu.Content>
-                    </DropdownMenu.Portal>
                   </DropdownMenu.Root>
                 </div>
               </div>
             </div>
+      </VaulDrawer>
 
-            <div className={s.dialogFooter}>
-              <Dialog.Close asChild><button className={s.btnCancel}>Cancel</button></Dialog.Close>
-              <button className={s.btnPrimary} onClick={handleSave}>
-                {editingId ? 'Save Changes' : 'Create Connection'}
-              </button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
-
-      {/* ══════════ Delete Confirm ══════════ */}
-      <Dialog.Root open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <Dialog.Portal>
-          <Dialog.Overlay className={s.overlay} />
-          <Dialog.Content className={s.dialogContentSmall}>
-            <div className={s.dialogHeader}>
-              <Dialog.Title className={s.dialogTitle}>Delete Connection</Dialog.Title>
-              <Dialog.Close asChild><button className={s.dialogClose}><FiX size={18} /></button></Dialog.Close>
-            </div>
+      {/* ══════════ Delete Confirm Drawer ══════════ */}
+      <VaulDrawer open={deleteDrawerOpen} onOpenChange={setDeleteDrawerOpen}
+        title="Delete Connection" width={400}
+        footer={<>
+          <button className={s.btnCancel} onClick={() => setDeleteDrawerOpen(false)}>Cancel</button>
+          <button className={s.btnDanger} onClick={handleDelete}>Delete</button>
+        </>}>
             <p style={{ fontSize: '0.85rem', margin: '0 0 0.5rem', lineHeight: 1.5 }}>
               Delete connection <strong>{deletingEdge?.originLabel}</strong> → <strong>{deletingEdge?.destinationLabel}</strong>?
             </p>
-            <div className={s.dialogFooter}>
-              <Dialog.Close asChild><button className={s.btnCancel}>Cancel</button></Dialog.Close>
-              <button className={s.btnDanger} onClick={handleDelete}>Delete</button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+      </VaulDrawer>
 
       {/* ── Toast ── */}
       <Toast.Viewport style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 999, display: 'flex', flexDirection: 'column', gap: 8 }} />

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import * as paneStyles from '../Panes.module.scss';
 import * as s from './TransportModesPane.module.scss';
-import * as Dialog from '@radix-ui/react-dialog';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import * as Toast from '@radix-ui/react-toast';
 import {
@@ -13,6 +12,7 @@ import {
   MdLocalTaxi, MdDirectionsBoat, MdDirectionsWalk, MdPedalBike,
 } from 'react-icons/md';
 import { apiGet, apiPost, apiPut, apiDelete } from '../../api/client';
+import { VaulDrawer } from '../../components/shared';
 
 /* ═══════════════════════════════════════════════
    Types — matching DB transport_mode exactly (V005)
@@ -119,13 +119,13 @@ export const TransportModesPane: React.FC = () => {
   const [modes, setModes] = useState<TransportMode[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm());
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [toastVariant, setToastVariant] = useState<'success' | 'error'>('success');
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteDrawerOpen, setDeleteDrawerOpen] = useState(false);
   const [deletingMode, setDeletingMode] = useState<TransportMode | null>(null);
 
   const showToast = useCallback((msg: string, variant: 'success' | 'error' = 'success') => {
@@ -155,7 +155,7 @@ export const TransportModesPane: React.FC = () => {
     return result.sort((a, b) => a.sortOrder - b.sortOrder);
   }, [modes, search]);
 
-  const openAdd = () => { setEditingId(null); setForm(emptyForm()); setDialogOpen(true); };
+  const openAdd = () => { setEditingId(null); setForm(emptyForm()); setDrawerOpen(true); };
   const openEdit = (m: TransportMode) => {
     setEditingId(m.id);
     setForm({
@@ -165,7 +165,7 @@ export const TransportModesPane: React.FC = () => {
       apiProvider: m.apiProvider, icon: m.icon, colorHex: m.colorHex,
       isActive: m.isActive, configJson: m.configJson, sortOrder: m.sortOrder,
     });
-    setDialogOpen(true);
+    setDrawerOpen(true);
   };
 
   const handleSave = async () => {
@@ -186,12 +186,12 @@ export const TransportModesPane: React.FC = () => {
         await apiPost('/transport/modes', body);
         showToast(`Mode "${form.name}" created.`);
       }
-      setDialogOpen(false);
+      setDrawerOpen(false);
       loadData();
     } catch { /* interceptor handles toast */ }
   };
 
-  const confirmDelete = (m: TransportMode) => { setDeletingMode(m); setDeleteDialogOpen(true); };
+  const confirmDelete = (m: TransportMode) => { setDeletingMode(m); setDeleteDrawerOpen(true); };
   const handleDelete = async () => {
     if (!deletingMode) return;
     try {
@@ -199,7 +199,7 @@ export const TransportModesPane: React.FC = () => {
       showToast(`Mode "${deletingMode.name}" deleted.`);
       loadData();
     } catch { /* interceptor handles toast */ }
-    setDeleteDialogOpen(false); setDeletingMode(null);
+    setDeleteDrawerOpen(false); setDeletingMode(null);
   };
 
   const toggleActive = async (m: TransportMode) => {
@@ -336,19 +336,15 @@ export const TransportModesPane: React.FC = () => {
         })}
       </div>
 
-      {/* ══════════ Add / Edit Dialog ══════════ */}
-      <Dialog.Root open={dialogOpen} onOpenChange={setDialogOpen}>
-        <Dialog.Portal>
-          <Dialog.Overlay className={s.overlay} />
-          <Dialog.Content className={s.dialogContent}>
-            <div className={s.dialogHeader}>
-              <Dialog.Title className={s.dialogTitle}>
-                {editingId ? 'Edit Transport Mode' : 'New Transport Mode'}
-              </Dialog.Title>
-              <Dialog.Close asChild>
-                <button className={s.dialogClose}><FiX size={18} /></button>
-              </Dialog.Close>
-            </div>
+      {/* ══════════ Add / Edit Drawer ══════════ */}
+      <VaulDrawer open={drawerOpen} onOpenChange={setDrawerOpen}
+        title={editingId ? 'Edit Transport Mode' : 'New Transport Mode'} width={520}
+        footer={<>
+          <button className={s.btnCancel} onClick={() => setDrawerOpen(false)}>Cancel</button>
+          <button className={s.btnPrimary} onClick={handleSave}>
+            {editingId ? 'Save Changes' : 'Create Mode'}
+          </button>
+        </>}>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
@@ -378,7 +374,6 @@ export const TransportModesPane: React.FC = () => {
                         <FiChevronDown size={13} style={{ opacity: 0.4 }} />
                       </button>
                     </DropdownMenu.Trigger>
-                    <DropdownMenu.Portal>
                       <DropdownMenu.Content sideOffset={4} align="start" className={s.dropdownContent}>
                         {(Object.entries(CATEGORY_LABELS) as [ModeCategory, string][]).map(([key, label]) => (
                           <DropdownMenu.Item key={key} className={s.dropdownItem} onSelect={() => setForm(f => ({ ...f, category: key }))}>
@@ -386,7 +381,6 @@ export const TransportModesPane: React.FC = () => {
                           </DropdownMenu.Item>
                         ))}
                       </DropdownMenu.Content>
-                    </DropdownMenu.Portal>
                   </DropdownMenu.Root>
                 </div>
 
@@ -403,7 +397,6 @@ export const TransportModesPane: React.FC = () => {
                         <FiChevronDown size={13} style={{ opacity: 0.4 }} />
                       </button>
                     </DropdownMenu.Trigger>
-                    <DropdownMenu.Portal>
                       <DropdownMenu.Content sideOffset={4} align="start" className={s.dropdownContent}>
                         {(Object.keys(COVERAGE_COLORS) as CoverageType[]).map(key => (
                           <DropdownMenu.Item key={key} className={s.dropdownItem} onSelect={() => setForm(f => ({ ...f, coverageType: key }))}>
@@ -412,7 +405,6 @@ export const TransportModesPane: React.FC = () => {
                           </DropdownMenu.Item>
                         ))}
                       </DropdownMenu.Content>
-                    </DropdownMenu.Portal>
                   </DropdownMenu.Root>
                 </div>
               </div>
@@ -431,7 +423,6 @@ export const TransportModesPane: React.FC = () => {
                         <FiChevronDown size={13} style={{ opacity: 0.4 }} />
                       </button>
                     </DropdownMenu.Trigger>
-                    <DropdownMenu.Portal>
                       <DropdownMenu.Content sideOffset={4} align="start" className={s.dropdownContent}>
                         {(Object.keys(RESOLUTION_COLORS) as EdgeResolution[]).map(key => (
                           <DropdownMenu.Item key={key} className={s.dropdownItem} onSelect={() => setForm(f => ({ ...f, edgeResolution: key }))}>
@@ -440,7 +431,6 @@ export const TransportModesPane: React.FC = () => {
                           </DropdownMenu.Item>
                         ))}
                       </DropdownMenu.Content>
-                    </DropdownMenu.Portal>
                   </DropdownMenu.Root>
                 </div>
 
@@ -495,41 +485,20 @@ export const TransportModesPane: React.FC = () => {
                 </label>
               </div>
             </div>
+      </VaulDrawer>
 
-            <div className={s.dialogFooter}>
-              <Dialog.Close asChild>
-                <button className={s.btnCancel}>Cancel</button>
-              </Dialog.Close>
-              <button className={s.btnPrimary} onClick={handleSave}>
-                {editingId ? 'Save Changes' : 'Create Mode'}
-              </button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
-
-      {/* ══════════ Delete Confirm Dialog ══════════ */}
-      <Dialog.Root open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <Dialog.Portal>
-          <Dialog.Overlay className={s.overlay} />
-          <Dialog.Content className={s.dialogContentSmall}>
-            <div className={s.dialogHeader}>
-              <Dialog.Title className={s.dialogTitle}>Delete Mode</Dialog.Title>
-              <Dialog.Close asChild>
-                <button className={s.dialogClose}><FiX size={18} /></button>
-              </Dialog.Close>
-            </div>
+      {/* ══════════ Delete Confirm Drawer ══════════ */}
+      <VaulDrawer open={deleteDrawerOpen} onOpenChange={setDeleteDrawerOpen}
+        title="Delete Mode" width={400}
+        footer={<>
+          <button className={s.btnCancel} onClick={() => setDeleteDrawerOpen(false)}>Cancel</button>
+          <button className={s.btnDanger} onClick={handleDelete}>Delete</button>
+        </>}>
             <p style={{ fontSize: '0.9rem', margin: '0 0 0.5rem', lineHeight: 1.5 }}>
               Are you sure you want to delete <strong>{deletingMode?.name}</strong>?
               This cannot be undone.
             </p>
-            <div className={s.dialogFooter}>
-              <Dialog.Close asChild><button className={s.btnCancel}>Cancel</button></Dialog.Close>
-              <button className={s.btnDanger} onClick={handleDelete}>Delete</button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+      </VaulDrawer>
 
       {/* ── Toast ── */}
       <Toast.Viewport style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 999, display: 'flex', flexDirection: 'column', gap: 8 }} />
