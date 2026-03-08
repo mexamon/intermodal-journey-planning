@@ -588,8 +588,10 @@ export const ConnectionsPane: React.FC = () => {
         </div>
       </div>
 
+      {loading && <div style={{ textAlign: 'center', padding: '3rem', opacity: 0.5 }}>Loading...</div>}
+
       {/* ── Table ── */}
-      <div className={paneStyles.tableWrapper} style={{ maxHeight: 'calc(100vh - 280px)', minHeight: 'calc(100vh - 280px)', overflow: 'auto' }}>
+      {!loading && <div className={paneStyles.tableWrapper} style={{ maxHeight: 'calc(100vh - 280px)', minHeight: 'calc(100vh - 280px)', overflow: 'auto' }}>
         <table className={paneStyles.dataTable}>
           <thead>
           <tr>
@@ -815,7 +817,7 @@ export const ConnectionsPane: React.FC = () => {
             })}
           </tbody>
         </table>
-      </div>
+      </div>}
 
       {/* ── Pagination Bar ── */}
       <div className={s.paginationBar}>

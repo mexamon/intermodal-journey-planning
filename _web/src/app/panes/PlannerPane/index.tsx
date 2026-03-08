@@ -799,7 +799,7 @@ export const PlannerPane: React.FC = () => {
 
       {/* ── Loading ── */}
       {searched && loading && (
-        <LoadingSpinner size={36} message="Searching routes..." />
+        <div style={{ textAlign: 'center', padding: '3rem', opacity: 0.5 }}>Loading...</div>
       )}
 
       {/* ── Results ── */}
