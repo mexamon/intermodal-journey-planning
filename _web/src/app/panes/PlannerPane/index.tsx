@@ -8,7 +8,7 @@ import {
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import {
   MdFlight, MdDirectionsBus, MdTrain, MdDirectionsWalk, MdLocalTaxi,
-  MdDirectionsSubway, MdSwapVert, MdPlace, MdFlightTakeoff,
+  MdDirectionsSubway, MdSwapVert, MdPlace, MdFlightTakeoff, MdDirectionsCar,
 } from 'react-icons/md';
 import {
   ReactFlow, Background, Controls, BackgroundVariant, MiniMap,
@@ -34,7 +34,7 @@ interface PlaceSuggestion {
   type: 'address' | 'city' | 'airport' | 'station' | 'poi';
 }
 
-type SegmentMode = 'flight' | 'train' | 'bus' | 'metro' | 'walk' | 'taxi';
+type SegmentMode = 'flight' | 'train' | 'bus' | 'metro' | 'walk' | 'walking' | 'taxi' | 'uber' | string;
 
 interface JourneySegment {
   mode: SegmentMode;
@@ -66,14 +66,16 @@ interface JourneyResult {
    Mode Metadata
    ═══════════════════════════════════════════════ */
 const MODE_META: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
-  flight: { icon: <MdFlight size={14} />,          color: '#3b82f6', label: 'Flight' },
-  train:  { icon: <MdTrain size={14} />,           color: '#f97316', label: 'Train' },
-  bus:    { icon: <MdDirectionsBus size={14} />,    color: '#22c55e', label: 'Bus' },
-  metro:  { icon: <MdDirectionsSubway size={14} />, color: '#8b5cf6', label: 'Metro' },
-  walk:   { icon: <MdDirectionsWalk size={14} />,   color: '#94a3b8', label: 'Walk' },
-  taxi:   { icon: <MdLocalTaxi size={14} />,        color: '#a855f7', label: 'Taxi' },
+  flight:  { icon: <MdFlight size={14} />,          color: '#3b82f6', label: 'Flight' },
+  train:   { icon: <MdTrain size={14} />,           color: '#f97316', label: 'Train' },
+  bus:     { icon: <MdDirectionsBus size={14} />,    color: '#22c55e', label: 'Bus' },
+  metro:   { icon: <MdDirectionsSubway size={14} />, color: '#8b5cf6', label: 'Metro' },
+  walk:    { icon: <MdDirectionsWalk size={14} />,   color: '#94a3b8', label: 'Walk' },
+  walking: { icon: <MdDirectionsWalk size={14} />,   color: '#94a3b8', label: 'Walk' },
+  taxi:    { icon: <MdLocalTaxi size={14} />,        color: '#a855f7', label: 'Taxi' },
+  uber:    { icon: <MdDirectionsCar size={14} />,    color: '#000000', label: 'Uber' },
 };
-const FALLBACK_MODE = { icon: <MdFlight size={14} />, color: '#6b7280', label: '?' };
+const FALLBACK_MODE = { icon: <FiMapPin size={14} />, color: '#6b7280', label: '?' };
 const modeMeta = (m: string) => MODE_META[m] || MODE_META[m?.toLowerCase()] || FALLBACK_MODE;
 
 /* ═══════════════════════════════════════════════

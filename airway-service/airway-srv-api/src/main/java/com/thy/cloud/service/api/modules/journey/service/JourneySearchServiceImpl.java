@@ -283,16 +283,48 @@ public class JourneySearchServiceImpl implements JourneySearchService {
         }
 
         // ── Phase C: Last-mile edges (each dest hub → destination) ──
+        // Also consider STATIC edges (TRAIN, BUS) from airport hubs to nearby stations
         for (ResolvedLocation hub : destHubs) {
             if (locKey(hub).equals(locKey(destination))) continue;
             for (EdgeResolver resolver : edgeResolvers) {
                 String res = resolver.getResolution();
-                if ("COMPUTED".equals(res) || "GTFS".equals(res)) {
+                if ("COMPUTED".equals(res) || "GTFS".equals(res) || "STATIC".equals(res)) {
                     try {
                         List<ResolvedEdge> edges = resolver.resolve(hub, destination, context);
                         addEdges(adjacency, locKey(hub), edges, locationIndex);
+                        // Index newly discovered destinations (e.g. Berlin Hbf from STATIC train edge)
+                        for (ResolvedEdge edge : edges) {
+                            indexLocation(locationIndex, edge.destination());
+                        }
                     } catch (Exception e) {
                         log.warn("Last-mile {} failed: {}", res, e.getMessage());
+                    }
+                }
+            }
+        }
+
+        // ── Phase C.2: Extend last-mile from intermediate stations to destination ──
+        // If STATIC edges lead to intermediate hubs (e.g. BER→Berlin Hbf via TRAIN),
+        // add COMPUTED edges from those intermediate locations to the final destination
+        Set<String> intermediateKeys = new HashSet<>();
+        for (ResolvedLocation hub : destHubs) {
+            List<ResolvedEdge> hubEdges = adjacency.getOrDefault(locKey(hub), List.of());
+            for (ResolvedEdge edge : hubEdges) {
+                String destEdgeKey = locKey(edge.destination());
+                if (!destEdgeKey.equals(locKey(destination)) && !intermediateKeys.contains(destEdgeKey)) {
+                    intermediateKeys.add(destEdgeKey);
+                    ResolvedLocation intermediate = locationIndex.get(destEdgeKey);
+                    if (intermediate != null) {
+                        for (EdgeResolver resolver : edgeResolvers) {
+                            if ("COMPUTED".equals(resolver.getResolution())) {
+                                try {
+                                    List<ResolvedEdge> computedEdges = resolver.resolve(intermediate, destination, context);
+                                    addEdges(adjacency, destEdgeKey, computedEdges, locationIndex);
+                                } catch (Exception e) {
+                                    log.warn("Last-mile extension from {} failed: {}", intermediate.name(), e.getMessage());
+                                }
+                            }
+                        }
                     }
                 }
             }
