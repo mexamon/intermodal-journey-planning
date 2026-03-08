@@ -17,3 +17,6 @@ export * from './FaresPane';
 // ── Admin ──
 export * from './FlowStudioPane';
 export * from './AnalyticsPane';
+
+// ── Help ──
+export * from './KnowledgeBasePane';

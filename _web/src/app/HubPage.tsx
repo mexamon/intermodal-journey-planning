@@ -10,7 +10,7 @@ import * as paneStyles from './panes/Panes.module.scss';
 import {
     UsersPane, AccountSettingsPane, PlannerPane, LocationsPane, RoutesPane,
     AnalyticsPane, FlowStudioPane, ConnectionsPane, TransportModesPane, ProvidersPane,
-    ServiceAreasPane, FaresPane,
+    ServiceAreasPane, FaresPane, KnowledgeBasePane,
 } from './panes';
 import { navItemsFlat, navSections } from './data/navigation';
 
@@ -52,6 +52,7 @@ export const HubPage = () => {
             case 'flows': return <FlowStudioPane />;
             case 'users': return <UsersPane />;
             case 'analytics': return <AnalyticsPane />;
+            case 'knowledge-base': return <KnowledgeBasePane />;
             default: {
                 const activeItem = navItemsFlat.find(item => item.id === activeTab);
                 if (!activeItem) return null;

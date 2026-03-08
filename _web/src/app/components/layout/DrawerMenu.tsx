@@ -108,7 +108,7 @@ export const DrawerMenu: React.FC<DrawerMenuProps> = (props) => {
                     <button className={styles.footerIconButton} onClick={toggleTheme}>
                         {theme.variant === 'light' ? <FiMoon /> : <FiSun />}
                     </button>
-                     <button className={styles.footerIconButton}>
+                     <button className={styles.footerIconButton} onClick={() => onWorkspaceTabSelect('knowledge-base')}>
                         <FiHelpCircle />
                     </button>
                 </div>

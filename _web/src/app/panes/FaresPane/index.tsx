@@ -23,8 +23,8 @@ const resolveEnum = (val: unknown): string => {
 /* Types */
 interface FareEdge {
   id: string;
-  originLocation?: { code: string; name: string };
-  destinationLocation?: { code: string; name: string };
+  originLocation?: { iataCode: string; name: string };
+  destinationLocation?: { iataCode: string; name: string };
   transportMode?: { code: string; name: string };
   provider?: { code: string; name: string } | null;
   trips?: FareTrip[];
@@ -181,7 +181,7 @@ export const FaresPane: React.FC = () => {
   /* Derived data */
   const edgeItems = useMemo(() => edges.map(e => ({
     key: e.id,
-    label: `${e.originLocation?.code || '?'} → ${e.destinationLocation?.code || '?'}`,
+    label: `${e.originLocation?.iataCode || '?'} → ${e.destinationLocation?.iataCode || '?'}`,
     sublabel: `${resolveEnum(e.transportMode?.code || '')} · ${e.provider?.code || '—'}`,
   })), [edges]);
 
@@ -201,7 +201,7 @@ export const FaresPane: React.FC = () => {
       result = result.filter(f => {
         const fc = resolveEnum(f.fareClass).toLowerCase();
         const pt = resolveEnum(f.pricingType).toLowerCase();
-        const route = `${f.edge?.originLocation?.code || ''} ${f.edge?.destinationLocation?.code || ''}`.toLowerCase();
+        const route = `${f.edge?.originLocation?.iataCode || ''} ${f.edge?.destinationLocation?.iataCode || ''}`.toLowerCase();
         const provider = (f.edge?.provider?.code || '').toLowerCase();
         const trip = (f.trip?.serviceCode || '').toLowerCase();
         return fc.includes(q) || pt.includes(q) || route.includes(q) || provider.includes(q) || trip.includes(q);
@@ -336,7 +336,7 @@ export const FaresPane: React.FC = () => {
                     onMouseEnter={e => (e.currentTarget.style.background = 'rgba(128,128,128,0.04)')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                     <td style={{ padding: '0.55rem 0.75rem', fontWeight: 600, fontSize: '0.82rem', borderBottom: '1px solid rgba(128,128,128,0.06)' }}>
-                      {fare.edge?.originLocation?.code || '?'} → {fare.edge?.destinationLocation?.code || '?'}
+                      {fare.edge?.originLocation?.iataCode || '?'} → {fare.edge?.destinationLocation?.iataCode || '?'}
                     </td>
                     <td style={{ padding: '0.55rem 0.75rem', borderBottom: '1px solid rgba(128,128,128,0.06)' }}>
                       <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '0.12rem 0.45rem', borderRadius: 999, backgroundColor: `${mColor}15`, color: mColor, display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>{mIcon} {modeCode}</span>
@@ -511,7 +511,7 @@ export const FaresPane: React.FC = () => {
         </>}>
         <p style={{ fontSize: '0.9rem', margin: 0, lineHeight: 1.5 }}>
           Are you sure you want to delete this <strong>{resolveEnum(deletingFare?.fareClass || '')}</strong> fare
-          for <strong>{deletingFare?.edge?.originLocation?.code} → {deletingFare?.edge?.destinationLocation?.code}</strong>?
+          for <strong>{deletingFare?.edge?.originLocation?.iataCode} → {deletingFare?.edge?.destinationLocation?.iataCode}</strong>?
         </p>
       </VaulDrawer>
     </>
