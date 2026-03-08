@@ -673,8 +673,8 @@ export const PlannerPane: React.FC = () => {
               </div>
             );
           })()}
-          <button className={s.searchButton} onClick={handleSearch}>
-            <FiSearch size={15} /> Search
+          <button className={s.searchButton} onClick={handleSearch} disabled={loading}>
+            {loading ? <><FiLoader size={15} className={s.spinning} /> Searching...</> : <><FiSearch size={15} /> Search</>}
           </button>
         </div>
       </div>
@@ -774,67 +774,69 @@ export const PlannerPane: React.FC = () => {
       {searched && !loading && filteredResults.length > 0 && (
         <div className={s.resultsGrid}>
           {filteredResults.map((journey, idx) => (
-            <div key={journey.id} className={`${s.resultCard} ${journey.tags.includes('recommended') ? s.recommended : ''}`}
-              onClick={() => setExpandedCard(expandedCard === journey.id ? null : journey.id)}>
+            <div key={journey.id} className={`${s.resultCard} ${journey.tags.includes('recommended') ? s.recommended : ''}`}>
 
-              {/* Tags */}
-              {journey.tags.length > 0 && (
-                <div className={s.cardTags}>
-                  {journey.tags.includes('recommended') && <span className={s.tagRecommended}><FiStar size={11} /> Recommended</span>}
-                  {journey.tags.includes('fastest') && <span className={s.tagFastest}><FiZap size={11} /> Fastest</span>}
-                  {journey.tags.includes('cheapest') && <span className={s.tagCheapest}><FiDollarSign size={11} /> Cheapest</span>}
-                  {journey.tags.includes('greenest') && <span className={s.tagGreenest}><FiWind size={11} /> Greenest</span>}
-                </div>
-              )}
+              {/* Clickable header area — toggles expand/collapse */}
+              <div className={s.cardClickable} onClick={() => setExpandedCard(expandedCard === journey.id ? null : journey.id)}>
+                {/* Tags */}
+                {journey.tags.length > 0 && (
+                  <div className={s.cardTags}>
+                    {journey.tags.includes('recommended') && <span className={s.tagRecommended}><FiStar size={11} /> Recommended</span>}
+                    {journey.tags.includes('fastest') && <span className={s.tagFastest}><FiZap size={11} /> Fastest</span>}
+                    {journey.tags.includes('cheapest') && <span className={s.tagCheapest}><FiDollarSign size={11} /> Cheapest</span>}
+                    {journey.tags.includes('greenest') && <span className={s.tagGreenest}><FiWind size={11} /> Greenest</span>}
+                  </div>
+                )}
 
-              {/* Card Header */}
-              <div className={s.cardTop}>
-                <div className={s.cardSummary}>
-                  <h3>{journey.segments[0].originName} → {journey.segments[journey.segments.length - 1].destinationName}</h3>
-                  <div className={s.cardMeta}>
-                    <span><FiClock size={12} /> {formatDuration(journey.totalDurationMin)}</span>
-                    <span>{journey.transfers === 0 ? 'Direct' : `${journey.transfers} transfers`}</span>
-                    <span>
-                      {journey.departureCode && <><MdFlight size={12} style={{marginRight: 2}} />{journey.departureCode} </>}
-                      {journey.departureTime || journey.segments[0]?.departureTime || '–'}
-                      {' → '}
-                      {journey.arrivalCode && <>{journey.arrivalCode} </>}
-                      {journey.arrivalTime || journey.segments[journey.segments.length - 1]?.arrivalTime || '–'}
-                    </span>
+                {/* Card Header */}
+                <div className={s.cardTop}>
+                  <div className={s.cardSummary}>
+                    <h3>{journey.segments[0].originName} → {journey.segments[journey.segments.length - 1].destinationName}</h3>
+                    <div className={s.cardMeta}>
+                      <span><FiClock size={12} /> {formatDuration(journey.totalDurationMin)}</span>
+                      <span>{journey.transfers === 0 ? 'Direct' : `${journey.transfers} transfers`}</span>
+                      <span>
+                        {journey.departureCode && <><MdFlight size={12} style={{marginRight: 2}} />{journey.departureCode} </>}
+                        {journey.departureTime || journey.segments[0]?.departureTime || '–'}
+                        {' → '}
+                        {journey.arrivalCode && <>{journey.arrivalCode} </>}
+                        {journey.arrivalTime || journey.segments[journey.segments.length - 1]?.arrivalTime || '–'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className={s.cardPricing}>
+                    <div className={s.price}>{formatPrice(journey.totalCostCents, journey.currency)}</div>
+                    <div className={s.co2Badge}><FiWind size={10} /> {formatCo2(journey.co2Grams)} CO₂</div>
                   </div>
                 </div>
-                <div className={s.cardPricing}>
-                  <div className={s.price}>{formatPrice(journey.totalCostCents, journey.currency)}</div>
-                  <div className={s.co2Badge}><FiWind size={10} /> {formatCo2(journey.co2Grams)} CO₂</div>
+
+                {/* Timeline */}
+                <div className={s.segmentTimeline}>
+                  {journey.segments.map((seg, i) => (
+                    <React.Fragment key={i}>
+                      <div className={s.segmentDot} style={{ borderColor: modeMeta(seg.mode).color, backgroundColor: modeMeta(seg.mode).color }} />
+                      <div className={s.segmentLine} style={{ backgroundColor: modeMeta(seg.mode).color, flex: seg.durationMin || 1 }} />
+                    </React.Fragment>
+                  ))}
+                  <div className={s.segmentDot} style={{ borderColor: '#6d7c8a', backgroundColor: '#6d7c8a' }} />
+                </div>
+
+                {/* Segment Labels */}
+                <div className={s.segmentDetails}>
+                  {journey.segments.map((seg, i) => (
+                    <div key={i} className={s.segmentInfo}>
+                      <span className={s.segmentModeIcon} style={{ color: modeMeta(seg.mode).color }}>
+                        {modeMeta(seg.mode).icon}
+                      </span>
+                      <span className={s.segmentLabel}>{seg.originCode}→{seg.destinationCode}</span>
+                      <span className={s.segmentDuration}>{formatDuration(seg.durationMin)}</span>
+                      {seg.provider && <span className={s.providerTag}>{seg.provider}</span>}
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              {/* Timeline */}
-              <div className={s.segmentTimeline}>
-                {journey.segments.map((seg, i) => (
-                  <React.Fragment key={i}>
-                    <div className={s.segmentDot} style={{ borderColor: modeMeta(seg.mode).color, backgroundColor: modeMeta(seg.mode).color }} />
-                    <div className={s.segmentLine} style={{ backgroundColor: modeMeta(seg.mode).color, flex: seg.durationMin || 1 }} />
-                  </React.Fragment>
-                ))}
-                <div className={s.segmentDot} style={{ borderColor: '#6d7c8a', backgroundColor: '#6d7c8a' }} />
-              </div>
-
-              {/* Segment Labels */}
-              <div className={s.segmentDetails}>
-                {journey.segments.map((seg, i) => (
-                  <div key={i} className={s.segmentInfo}>
-                    <span className={s.segmentModeIcon} style={{ color: modeMeta(seg.mode).color }}>
-                      {modeMeta(seg.mode).icon}
-                    </span>
-                    <span className={s.segmentLabel}>{seg.originCode}→{seg.destinationCode}</span>
-                    <span className={s.segmentDuration}>{formatDuration(seg.durationMin)}</span>
-                    {seg.provider && <span className={s.providerTag}>{seg.provider}</span>}
-                  </div>
-                ))}
-              </div>
-
-              {/* Expanded Details */}
+              {/* Expanded Details — NOT clickable for toggle */}
               {expandedCard === journey.id && (
                 <div className={s.expandedDetails}>
                   {/* Inline Route Graph */}

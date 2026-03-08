@@ -298,11 +298,21 @@
   font-size: 0.85rem;
   background-color: $brand-color;
   color: #fff;
-  transition: background-color 0.2s, transform 0.1s;
+  transition: background-color 0.2s, transform 0.1s, opacity 0.2s;
   white-space: nowrap;
   margin-left: auto;
-  &:hover { background-color: $brand-color-hover; }
-  &:active { transform: scale(0.97); }
+  &:hover:not(:disabled) { background-color: $brand-color-hover; }
+  &:active:not(:disabled) { transform: scale(0.97); }
+  &:disabled { opacity: 0.65; cursor: not-allowed; }
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 // ─── PASSENGER POPUP ─────────────────────────────────
@@ -576,7 +586,6 @@
   border-radius: 14px;
   border: 1px solid;
   transition: all 0.25s;
-  cursor: pointer;
 
   :global(.dark) & {
     background-color: $dark-bg-secondary;
@@ -593,6 +602,10 @@
     :global(.dark) & { border-color: rgba($brand-color, 0.3); }
     :global(.light) & { border-color: rgba($brand-color, 0.2); }
   }
+}
+
+.cardClickable {
+  cursor: pointer;
 }
 
 .cardTags {
@@ -740,8 +753,35 @@
   margin-top: 0.75rem;
   padding-top: 0.75rem;
   border-top: 1px solid;
+  position: relative;
   :global(.dark) & { border-color: $dark-border; }
   :global(.light) & { border-color: $light-border; }
+}
+
+.expandedClose {
+  position: absolute;
+  top: 0.75rem;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  z-index: 5;
+  transition: all 0.15s;
+  :global(.dark) & {
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.6);
+    &:hover { background: rgba(255,255,255,0.15); color: #fff; }
+  }
+  :global(.light) & {
+    background: rgba(0,0,0,0.05);
+    color: rgba(0,0,0,0.5);
+    &:hover { background: rgba(0,0,0,0.1); color: #000; }
+  }
 }
 
 .expandedTitle {
