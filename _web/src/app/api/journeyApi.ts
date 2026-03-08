@@ -22,6 +22,7 @@ export interface JourneySearchRequest {
   maxDurationMinutes?: number;
   preferredModes?: string[];
   sortBy?: 'FASTEST' | 'CHEAPEST' | 'GREENEST' | 'FEWEST_TRANSFERS';
+  targetCurrency?: string;  // display currency: EUR, TRY, GBP, USD
 }
 
 export interface JourneySegment {

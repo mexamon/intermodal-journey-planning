@@ -9,12 +9,18 @@ import com.thy.cloud.service.api.resolver.model.EdgeSearchContext;
 import com.thy.cloud.service.api.resolver.model.ResolvedEdge;
 import com.thy.cloud.service.api.resolver.model.ResolvedLocation;
 import com.thy.cloud.service.api.util.CurrencyConverter;
+import com.thy.cloud.service.api.modules.policy.service.PolicyResolver;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.thy.cloud.service.dao.entity.policy.JourneyPolicyConstraints;
 import com.thy.cloud.service.dao.entity.inventory.Location;
 import com.thy.cloud.service.dao.entity.transport.EdgeTrip;
 import com.thy.cloud.service.dao.entity.transport.TransportationEdge;
+import com.thy.cloud.service.dao.entity.transport.TransportMode;
 import com.thy.cloud.service.dao.enums.EnumEdgeStatus;
 import com.thy.cloud.service.dao.enums.EnumLocationType;
 import com.thy.cloud.service.dao.repository.inventory.LocationRepository;
+import com.thy.cloud.service.dao.repository.transport.TransportModeRepository;
 import com.thy.cloud.service.dao.repository.transport.TransportationEdgeRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -35,23 +41,47 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class JourneySearchServiceImpl implements JourneySearchService {
 
+    private static final ObjectMapper JSON = new ObjectMapper();
+
     private final TransportationEdgeRepository edgeRepository;
     private final LocationRepository locationRepository;
+    private final TransportModeRepository transportModeRepository;
 
     // Resolver chains (injected by Spring — ordered by @Order or registration order)
     private final List<LocationResolver> locationResolvers;
     private final List<EdgeResolver> edgeResolvers;
+    private final PolicyResolver policyResolver;
 
-    // Transfer times (minutes) per mode arriving at
-    private static final Map<String, Integer> TRANSFER_TIMES = Map.of(
-            "FLIGHT", 60,    // need 1h for check-in after arriving at airport
-            "TRAIN", 15,
-            "BUS", 10,
-            "SUBWAY", 5,
-            "FERRY", 15,
-            "WALKING", 0,
-            "UBER", 5
-    );
+    // Transfer times — loaded from DB on first access (transport_mode.config_json.transfer_time_min)
+    private volatile Map<String, Integer> transferTimesCache;
+
+    private Map<String, Integer> getTransferTimes() {
+        if (transferTimesCache != null) return transferTimesCache;
+        synchronized (this) {
+            if (transferTimesCache != null) return transferTimesCache;
+            Map<String, Integer> map = new HashMap<>();
+            // Hardcoded fallbacks in case DB has no config_json
+            map.put("FLIGHT", 60); map.put("TRAIN", 15); map.put("BUS", 10);
+            map.put("SUBWAY", 5);  map.put("FERRY", 15); map.put("WALKING", 0);
+            map.put("UBER", 5);    map.put("TAXI", 5);   map.put("BIKE", 5);
+            try {
+                for (TransportMode tm : transportModeRepository.findByIsActiveTrueOrderBySortOrderAsc()) {
+                    if (tm.getConfigJson() != null) {
+                        JsonNode node = JSON.readTree(tm.getConfigJson());
+                        JsonNode ttNode = node.get("transfer_time_min");
+                        if (ttNode != null && ttNode.isNumber()) {
+                            map.put(tm.getCode(), ttNode.intValue());
+                        }
+                    }
+                }
+                log.info("Loaded transfer times from DB: {}", map);
+            } catch (Exception e) {
+                log.warn("Failed to load transfer times from DB, using defaults: {}", e.getMessage());
+            }
+            transferTimesCache = Collections.unmodifiableMap(map);
+            return transferTimesCache;
+        }
+    }
 
     private static final int MAX_RESULTS = 10;
     private static final double HUB_SEARCH_RADIUS_M = 50_000; // 50km for hub discovery
@@ -77,8 +107,35 @@ public class JourneySearchServiceImpl implements JourneySearchService {
 
         LocalDate date = request.getDepartureDate() != null ? request.getDepartureDate() : LocalDate.now();
         LocalTime earliest = request.getEarliestDeparture() != null ? request.getEarliestDeparture() : LocalTime.of(0, 0);
-        int maxTransfers = Math.min(request.getMaxTransfers(), 6);
-        int maxDuration = request.getMaxDurationMinutes();
+        // ── Policy Resolution ─────────────────────────────────
+        String originIata = origin.iataCode();
+        String destIata = destination.iataCode();
+        // For non-airport origins, find first origin hub IATA
+        if (originIata == null) {
+            originIata = request.getOriginIataCode();
+        }
+        if (destIata == null) {
+            destIata = request.getDestinationIataCode();
+        }
+
+        JourneyPolicyConstraints policyConstraints = policyResolver.resolveForRoute(originIata, destIata);
+        int maxTransfers;
+        int maxDuration;
+        if (policyConstraints != null) {
+            maxTransfers = policyConstraints.getMaxTransfers();
+            maxDuration = policyConstraints.getMaxTotalDurationMin() != null
+                    ? policyConstraints.getMaxTotalDurationMin()
+                    : request.getMaxDurationMinutes();
+            log.info("Policy applied: maxLegs={}, maxTransfers={}, maxFlights={}, maxDuration={}min",
+                    policyConstraints.getMaxLegs(), maxTransfers,
+                    policyConstraints.getMaxFlights(), maxDuration);
+        } else {
+            maxTransfers = Math.min(request.getMaxTransfers(), 6);
+            maxDuration = request.getMaxDurationMinutes();
+            log.info("No policy found, using defaults: maxTransfers={}, maxDuration={}min",
+                    maxTransfers, maxDuration);
+        }
+
         Set<String> allowedModes = request.getPreferredModes() != null
                 ? new HashSet<>(request.getPreferredModes()) : Set.of();
 
@@ -277,13 +334,18 @@ public class JourneySearchServiceImpl implements JourneySearchService {
             }
         }
 
-        // 5. Convert paths to JourneyResults
+        // 5. Apply per-hub policy constraints (filter invalid paths)
+        int preFilterCount = completePaths.size();
+        completePaths = applyHubPolicies(completePaths, policyConstraints);
+        log.info("Policy filter: {} paths → {} paths", preFilterCount, completePaths.size());
+
+        // 6. Convert paths to JourneyResults
         List<JourneyResult> results = completePaths.stream()
-                .map(path -> buildResult(path, date, "EUR"))
+                .map(path -> buildResult(path, date, request.getTargetCurrency()))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
-        // 6. Sort & label
+        // 7. Sort & label
         return rankAndLabel(results, request.getSortBy());
     }
 
@@ -427,7 +489,7 @@ public class JourneySearchServiceImpl implements JourneySearchService {
                     if (destinationKeys.contains(destKey)) {
                         completePaths.add(newPath);
                     } else if (newPath.size() <= maxTransfers) {
-                        int transferMin = TRANSFER_TIMES.getOrDefault(edge.transportModeCode(), 10);
+                        int transferMin = getTransferTimes().getOrDefault(edge.transportModeCode(), 10);
                         queue.add(new BfsState(destKey, newPath,
                                 arrTime.plusMinutes(transferMin), newTotal + transferMin));
                     }
@@ -454,13 +516,112 @@ public class JourneySearchServiceImpl implements JourneySearchService {
                     if (destinationKeys.contains(destKey)) {
                         completePaths.add(newPath);
                     } else if (newPath.size() <= maxTransfers) {
-                        int transferMin = TRANSFER_TIMES.getOrDefault(edge.transportModeCode(), 10);
+                        int transferMin = getTransferTimes().getOrDefault(edge.transportModeCode(), 10);
                         queue.add(new BfsState(destKey, newPath,
                                 arr.plusMinutes(transferMin), newTotal + transferMin));
                     }
                 }
             }
         }
+    }
+
+    /* ═══════════════════════════════════════════════
+       Per-Hub Policy Filter — applied after BFS
+       ═══════════════════════════════════════════════ */
+
+    /**
+     * Filter BFS paths by per-hub policy constraints:
+     * - Per origin hub: max first-mile edges (before first FLIGHT)
+     * - Per dest hub: max last-mile edges (after last FLIGHT)
+     * - Route-level: max_legs, min_flights, max_flights
+     */
+    private List<List<ResolvedEdge>> applyHubPolicies(List<List<ResolvedEdge>> paths,
+                                                       JourneyPolicyConstraints routeConstraints) {
+        List<List<ResolvedEdge>> filtered = new ArrayList<>();
+
+        for (List<ResolvedEdge> path : paths) {
+            if (path.isEmpty()) continue;
+
+            // Classify edges: find first/last FLIGHT indices
+            int firstFlightIdx = -1;
+            int lastFlightIdx = -1;
+            int flightCount = 0;
+
+            for (int i = 0; i < path.size(); i++) {
+                if ("FLIGHT".equals(path.get(i).transportModeCode())) {
+                    if (firstFlightIdx == -1) firstFlightIdx = i;
+                    lastFlightIdx = i;
+                    flightCount++;
+                }
+            }
+
+            // Must have at least one flight
+            if (firstFlightIdx == -1) {
+                log.debug("Policy filter: path rejected — no FLIGHT edge");
+                continue;
+            }
+
+            int firstMileEdges = firstFlightIdx;           // edges before first FLIGHT
+            int lastMileEdges = path.size() - lastFlightIdx - 1; // edges after last FLIGHT
+            int totalLegs = path.size();
+
+            // ── Route-level constraints ──
+            if (routeConstraints != null) {
+                // max_legs
+                if (totalLegs > routeConstraints.getMaxLegs()) {
+                    log.debug("Policy filter: path rejected — {} legs > max_legs {}",
+                            totalLegs, routeConstraints.getMaxLegs());
+                    continue;
+                }
+
+                // min_flights
+                if (flightCount < routeConstraints.getMinFlights()) {
+                    log.debug("Policy filter: path rejected — {} flights < min_flights {}",
+                            flightCount, routeConstraints.getMinFlights());
+                    continue;
+                }
+
+                // max_flights
+                if (flightCount > routeConstraints.getMaxFlights()) {
+                    log.debug("Policy filter: path rejected — {} flights > max_flights {}",
+                            flightCount, routeConstraints.getMaxFlights());
+                    continue;
+                }
+            }
+
+            // ── Per-hub: first-mile constraint ──
+            // Origin hub = the airport where the first FLIGHT departs from
+            ResolvedEdge firstFlight = path.get(firstFlightIdx);
+            String originHubIata = firstFlight.origin().iataCode();
+
+            if (originHubIata != null && firstMileEdges > 0) {
+                int maxFirstMile = policyResolver.getMaxFirstMileEdges(originHubIata);
+                if (firstMileEdges > maxFirstMile) {
+                    log.debug("Policy filter: path rejected — {} first-mile edges > {} hub {} max",
+                            firstMileEdges, maxFirstMile, originHubIata);
+                    continue;
+                }
+            }
+
+            // ── Per-hub: last-mile constraint ──
+            // Dest hub = the airport where the last FLIGHT arrives at
+            ResolvedEdge lastFlight = path.get(lastFlightIdx);
+            String destHubIata = lastFlight.destination().iataCode();
+
+            if (destHubIata != null && lastMileEdges > 0) {
+                int maxLastMile = policyResolver.getMaxLastMileEdges(destHubIata);
+                if (lastMileEdges > maxLastMile) {
+                    log.debug("Policy filter: path rejected — {} last-mile edges > {} hub {} max",
+                            lastMileEdges, maxLastMile, destHubIata);
+                    continue;
+                }
+            }
+
+            // Path passed all policy checks
+            filtered.add(path);
+        }
+
+        return filtered;
     }
 
     /* ═══════════════════════════════════════════════

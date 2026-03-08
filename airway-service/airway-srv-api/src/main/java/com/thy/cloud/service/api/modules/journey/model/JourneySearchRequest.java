@@ -35,5 +35,7 @@ public class JourneySearchRequest {
     private List<String> preferredModes; // optional filter: ["FLIGHT","TRAIN"]
 
     private String sortBy = "FASTEST"; // FASTEST, CHEAPEST, GREENEST, FEWEST_TRANSFERS
+
+    private String targetCurrency = "EUR"; // display currency — all costs normalized to this
 }
 

@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import * as styles from './AppHeader.module.scss';
-import { FiMenu, FiPlus, FiChevronRight } from 'react-icons/fi';
+import { FiMenu, FiPlus, FiChevronRight, FiChevronDown } from 'react-icons/fi';
 import { ThyLogo } from './ThyLogo';
+import { useSettingsStore, CURRENCIES, CurrencyCode } from '../../stores/settingsStore';
 
 interface AppHeaderProps {
     toggleDrawer: () => void;
@@ -22,6 +23,23 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
     primaryActionLabel,
     onPrimaryAction
 }) => {
+    const { currency, setCurrency } = useSettingsStore();
+    const [currencyOpen, setCurrencyOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    const currentCurrency = CURRENCIES.find(c => c.code === currency) || CURRENCIES[0];
+
+    // Close dropdown on outside click
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+                setCurrencyOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
     return (
         <header className={styles.appHeader}>
             <div className={styles.headerLeft}>
@@ -31,14 +49,12 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                 <nav className={styles.breadcrumb}>
                     {activeView === 'account' ? (
                         <>
-                            {/* DÜZELTME: "Workspaces" yerine "Account" yazıldı ve tıklama özelliği kaldırıldı. */}
                             <span>Account</span>
                             <FiChevronRight size={16} />
                             <span className={styles.activeCrumb}>Account Settings</span>
                         </>
                     ) : (
                         <>
-                            {/* Workspace görünümü için breadcrumb aynı kalıyor */}
                             <span>Intermodal</span>
                             <FiChevronRight size={16} />
                             <span className={styles.activeCrumb}>{activeTabLabel}</span>
@@ -50,6 +66,33 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                 )}
             </div>
             <div className={styles.headerRight}>
+                {/* Currency Selector */}
+                <div className={styles.currencySelector} ref={dropdownRef}>
+                    <button
+                        className={styles.currencyButton}
+                        onClick={() => setCurrencyOpen(!currencyOpen)}
+                    >
+                        <span className={styles.currencySymbol}>{currentCurrency.symbol}</span>
+                        <span className={styles.currencyCode}>{currentCurrency.code}</span>
+                        <FiChevronDown size={14} className={currencyOpen ? styles.chevronOpen : ''} />
+                    </button>
+                    {currencyOpen && (
+                        <div className={styles.currencyDropdown}>
+                            {CURRENCIES.map(c => (
+                                <button
+                                    key={c.code}
+                                    className={`${styles.currencyOption} ${c.code === currency ? styles.active : ''}`}
+                                    onClick={() => { setCurrency(c.code); setCurrencyOpen(false); }}
+                                >
+                                    <span className={styles.currencySymbol}>{c.symbol}</span>
+                                    <span>{c.code}</span>
+                                    <span className={styles.currencyLabel}>{c.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
                 {primaryActionLabel && onPrimaryAction && (
                     <button className={`${styles.actionButton} ${styles.primary}`} onClick={onPrimaryAction}>
                         <FiPlus />

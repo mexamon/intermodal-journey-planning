@@ -113,3 +113,104 @@
     }
   }
 }
+
+/* ── Currency Selector ────────────────────── */
+.currencySelector {
+  position: relative;
+}
+
+.currencyButton {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all 0.2s;
+
+  :global(.dark) & {
+    background: $dark-bg;
+    border-color: $dark-border;
+    color: $dark-text-primary;
+    &:hover { background: $dark-border; }
+  }
+  :global(.light) & {
+    background: $light-bg;
+    border-color: $light-border;
+    color: $light-text-primary;
+    &:hover { background: $light-border; }
+  }
+}
+
+.currencySymbol {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.currencyCode {
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+  transition: transform 0.2s;
+}
+
+.currencyDropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 180px;
+  border-radius: 10px;
+  padding: 0.35rem;
+  z-index: 1000;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+
+  :global(.dark) & {
+    background: $dark-bg-secondary;
+    border: 1px solid $dark-border;
+  }
+  :global(.light) & {
+    background: $light-bg;
+    border: 1px solid $light-border;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  }
+}
+
+.currencyOption {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-align: left;
+  transition: background 0.15s;
+
+  :global(.dark) & {
+    background: transparent;
+    color: $dark-text-secondary;
+    &:hover { background: $dark-border; color: $dark-text-primary; }
+    &.active { background: rgba($brand-color, 0.15); color: $brand-color; }
+  }
+  :global(.light) & {
+    background: transparent;
+    color: $light-text-secondary;
+    &:hover { background: $light-border; color: $light-text-primary; }
+    &.active { background: rgba($brand-color, 0.1); color: $brand-color; }
+  }
+}
+
+.currencyLabel {
+  margin-left: auto;
+  font-size: 0.75rem;
+  opacity: 0.6;
+}

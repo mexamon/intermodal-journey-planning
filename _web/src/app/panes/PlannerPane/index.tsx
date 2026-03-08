@@ -19,6 +19,7 @@ import '@xyflow/react/dist/style.css';
 import { useThemeContext } from '../../contexts/ThemeContext';
 import { searchLocations, LocationResult } from '../../api/locationApi';
 import { useJourneyStore } from '../../stores/journeyStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 
 /* ═══════════════════════════════════════════════
    Types
@@ -361,6 +362,7 @@ export const PlannerPane: React.FC = () => {
   const cabinLabels = { economy: 'Ekonomi', business: 'Business', first: 'First' };
   const paxSummary = `${totalPax} Yolcu · ${cabinLabels[cabinClass]}`;
   const { results: storeResults, loading, error, search: storeSearch, selectedJourney, clearError } = useJourneyStore();
+  const currency = useSettingsStore(s => s.currency);
   const [searched, setSearched] = useState(false);
   const [sortBy, setSortBy] = useState<'fastest' | 'cheapest' | 'greenest'>('fastest');
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set(['all']));
@@ -413,6 +415,7 @@ export const PlannerPane: React.FC = () => {
         : dest.selected?.type === 'station' ? 'station' : 'place',
       departureDate: date,
       sortBy: (sortMap[sortBy] || 'FASTEST') as any,
+      targetCurrency: currency,
     });
   };
 
