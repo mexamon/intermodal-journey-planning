@@ -11,6 +11,7 @@ export { LocationsPane } from './LocationsPane';
 export * from './ConnectionsPane';
 export * from './TransportModesPane';
 export * from './ProvidersPane';
+export * from './ServiceAreasPane';
 
 // ── Admin ──
 export * from './FlowStudioPane';

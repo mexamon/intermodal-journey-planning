@@ -10,6 +10,7 @@ import {
   FiMap,
   FiLink,
   FiBox,
+  FiTarget,
 } from 'react-icons/fi';
 
 export interface NavItem {
@@ -71,6 +72,12 @@ export const navSections: NavSection[] = [
         label: 'Providers',
         description: 'Manage airlines, railway operators, and ride-share providers.',
         icon: FiBox,
+      },
+      {
+        id: 'service-areas',
+        label: 'Service Areas',
+        description: 'Configure geographic zones for transport modes (taxi zones, uber coverage).',
+        icon: FiTarget,
       },
     ],
   },

@@ -7,6 +7,8 @@ import com.thy.cloud.service.dao.entity.reference.RefCountry;
 import lombok.*;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.math.BigDecimal;
 import java.util.Date;
 
@@ -46,6 +48,7 @@ public class TransportServiceArea extends AbstractAuditionGuidKeyEntity {
     private Integer radiusM;
 
     @Column(name = "boundary_geojson", columnDefinition = "JSONB")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String boundaryGeojson;
 
     @Column(name = "country_iso_code", length = 2)
@@ -71,5 +74,6 @@ public class TransportServiceArea extends AbstractAuditionGuidKeyEntity {
     private Date validTo;
 
     @Column(name = "config_json", columnDefinition = "JSONB")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String configJson;
 }

@@ -6,6 +6,7 @@ import com.thy.cloud.service.dao.entity.transport.TransportMode;
 import com.thy.cloud.service.dao.entity.transport.TransportServiceArea;
 import com.thy.cloud.service.dao.entity.transport.TransportStop;
 import com.thy.cloud.service.dao.entity.transport.TransportationEdge;
+import com.thy.cloud.service.dao.repository.inventory.ProviderRepository;
 import com.thy.cloud.service.dao.repository.transport.TransportModeRepository;
 import com.thy.cloud.service.dao.repository.transport.TransportServiceAreaRepository;
 import com.thy.cloud.service.dao.repository.transport.TransportStopRepository;
@@ -29,12 +30,18 @@ public class TransportServiceImpl implements TransportService {
     private final TransportServiceAreaRepository serviceAreaRepository;
     private final TransportStopRepository transportStopRepository;
     private final TransportationEdgeRepository edgeRepository;
+    private final ProviderRepository providerRepository;
 
     // ── Mode ──────────────────────────────────────────────────
 
     @Override
     public List<TransportMode> listActiveModes() {
         return transportModeRepository.findByIsActiveTrueOrderBySortOrderAsc();
+    }
+
+    @Override
+    public List<TransportMode> listAllModes() {
+        return transportModeRepository.findAll();
     }
 
     @Override
@@ -49,6 +56,12 @@ public class TransportServiceImpl implements TransportService {
                 .orElseThrow(() -> new EntityNotFoundException("Transport mode not found for code: " + code));
     }
 
+    @Override
+    @Transactional
+    public TransportMode saveMode(TransportMode mode) {
+        return transportModeRepository.save(mode);
+    }
+
     // ── Service Area ──────────────────────────────────────────
 
     @Override
@@ -60,9 +73,39 @@ public class TransportServiceImpl implements TransportService {
     }
 
     @Override
+    public List<TransportServiceArea> listAllServiceAreas() {
+        return serviceAreaRepository.findAll();
+    }
+
+    @Override
     public TransportServiceArea getServiceArea(UUID id) {
         return serviceAreaRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Service area not found: " + id));
+    }
+
+    @Override
+    @Transactional
+    public TransportServiceArea saveServiceArea(TransportServiceArea area) {
+        // Resolve managed FK references to prevent TransientPropertyValueException
+        if (area.getTransportMode() != null && area.getTransportMode().getId() != null) {
+            area.setTransportMode(transportModeRepository.findById(area.getTransportMode().getId())
+                    .orElseThrow(() -> new EntityNotFoundException(
+                            "Transport mode not found: " + area.getTransportMode().getId())));
+        }
+        if (area.getProvider() != null && area.getProvider().getId() != null) {
+            area.setProvider(providerRepository.findById(area.getProvider().getId())
+                    .orElseThrow(() -> new EntityNotFoundException(
+                            "Provider not found: " + area.getProvider().getId())));
+        }
+        return serviceAreaRepository.save(area);
+    }
+
+    @Override
+    @Transactional
+    public void deleteServiceArea(UUID id) {
+        TransportServiceArea area = getServiceArea(id);
+        area.setDeleted(true);
+        serviceAreaRepository.save(area);
     }
 
     // ── Stops ─────────────────────────────────────────────────
@@ -84,3 +127,4 @@ public class TransportServiceImpl implements TransportService {
         return edgeRepository.findByOriginLocationId(originId);
     }
 }
+

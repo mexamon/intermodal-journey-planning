@@ -9,3 +9,6 @@ export type { ActionMenuItem } from './ActionMenu/ActionMenu';
 export { ConfirmDialog } from './ConfirmDialog/ConfirmDialog';
 
 export { EmptyState } from './EmptyState/EmptyState';
+
+export { VaulDrawer } from './VaulDrawer';
+export type { VaulDrawerProps } from './VaulDrawer';

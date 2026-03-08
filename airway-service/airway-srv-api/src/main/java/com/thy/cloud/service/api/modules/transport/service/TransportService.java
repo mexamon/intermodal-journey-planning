@@ -15,21 +15,23 @@ public interface TransportService {
 
     // Mode
     List<TransportMode> listActiveModes();
-
+    List<TransportMode> listAllModes();
     TransportMode getMode(UUID id);
-
     TransportMode getModeByCode(String code);
+    TransportMode saveMode(TransportMode mode);
 
     // Service Area
     List<TransportServiceArea> listServiceAreas(UUID modeId);
-
+    List<TransportServiceArea> listAllServiceAreas();
     TransportServiceArea getServiceArea(UUID id);
+    TransportServiceArea saveServiceArea(TransportServiceArea area);
+    void deleteServiceArea(UUID id);
 
     // Stops
     List<TransportStop> listStopsByServiceArea(UUID serviceAreaId);
 
     // Edges
     Page<TransportationEdge> searchEdges(EdgeSearchRequest request, Pageable pageable);
-
     List<TransportationEdge> getEdgesFromOrigin(UUID originId);
 }
+

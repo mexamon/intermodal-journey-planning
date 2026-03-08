@@ -12,5 +12,9 @@ public interface TransportServiceAreaRepository extends GenericRepository<Transp
 
     List<TransportServiceArea> findByTransportModeId(UUID transportModeId);
 
+    List<TransportServiceArea> findByTransportModeIdAndIsActiveTrue(UUID transportModeId);
+
     List<TransportServiceArea> findByIsActiveTrueAndCountryIsoCode(String countryIsoCode);
+
+    List<TransportServiceArea> findByIsActiveTrue();
 }
