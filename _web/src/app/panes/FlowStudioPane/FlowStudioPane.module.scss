@@ -984,3 +984,202 @@ select.inspInput {
     flex-shrink: 0;
   }
 }
+
+/* ═══════════ POLICY LIST DRAWER ═══════════ */
+.policyListOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 6vh;
+  animation: fadeIn 0.2s ease;
+}
+
+.policyListDrawer {
+  width: 520px;
+  max-height: 70vh;
+  border-radius: 16px;
+  border: 1px solid;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4);
+  :global(.dark) & {
+    background: #0f1720;
+    border-color: $dark-border;
+  }
+  :global(.light) & {
+    background: #fff;
+    border-color: $light-border;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.15);
+  }
+}
+
+.policyListHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid;
+  :global(.dark) & { border-color: $dark-border; }
+  :global(.light) & { border-color: $light-border; }
+  h3 {
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin: 0;
+    :global(.dark) & { color: $dark-text-primary; }
+    :global(.light) & { color: $light-text-primary; }
+  }
+}
+
+.policyListSearch {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid;
+  :global(.dark) & {
+    border-color: $dark-border;
+    color: $dark-text-secondary;
+  }
+  :global(.light) & {
+    border-color: $light-border;
+    color: $light-text-secondary;
+  }
+  input {
+    border: none;
+    background: transparent;
+    outline: none;
+    width: 100%;
+    font-size: 0.85rem;
+    :global(.dark) & { color: $dark-text-primary; }
+    :global(.light) & { color: $light-text-primary; }
+  }
+}
+
+.policyListItems {
+  overflow-y: auto;
+  flex: 1;
+  padding: 0.5rem;
+}
+
+.policyListItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+  :global(.dark) & {
+    &:hover { background: rgba(255, 255, 255, 0.04); }
+  }
+  :global(.light) & {
+    &:hover { background: rgba(0, 0, 0, 0.03); }
+  }
+}
+
+.policyListItemActive {
+  :global(.dark) & { background: rgba(200, 16, 46, 0.12); }
+  :global(.light) & { background: rgba(200, 16, 46, 0.06); }
+  border-left: 3px solid $brand-color;
+}
+
+.policyListItemInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  strong {
+    font-size: 0.9rem;
+    :global(.dark) & { color: $dark-text-primary; }
+    :global(.light) & { color: $light-text-primary; }
+  }
+}
+
+.policyListScope {
+  font-size: 0.72rem;
+  font-weight: 500;
+  :global(.dark) & { color: $dark-text-tertiary; }
+  :global(.light) & { color: $light-text-tertiary; }
+}
+
+.policyListDesc {
+  font-size: 0.72rem;
+  :global(.dark) & { color: $dark-text-secondary; }
+  :global(.light) & { color: $light-text-secondary; }
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
+}
+
+.policyListItemActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.policyDeleteBtn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: #ef4444;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+  .policyListItem:hover & { opacity: 1; }
+  &:hover { background: rgba(239, 68, 68, 0.12); }
+}
+
+/* ═══════════ NEW POLICY DIALOG ═══════════ */
+.newPolicyDialog {
+  width: 400px;
+  border-radius: 16px;
+  border: 1px solid;
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4);
+  :global(.dark) & {
+    background: #0f1720;
+    border-color: $dark-border;
+  }
+  :global(.light) & {
+    background: #fff;
+    border-color: $light-border;
+  }
+}
+
+.newPolicyLabel {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.25rem;
+  :global(.dark) & { color: $dark-text-tertiary; }
+  :global(.light) & { color: $light-text-tertiary; }
+}
+
+/* ═══════════ SPIN ANIMATION ═══════════ */
+.spinIcon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

@@ -27,9 +27,16 @@ import type {
 } from './flowTypes';
 import {
   FiChevronLeft, FiChevronRight, FiChevronDown, FiDownload, FiLayout,
-  FiPlus, FiSave, FiSearch, FiX, FiTarget,
+  FiPlus, FiSave, FiSearch, FiX, FiTarget, FiList, FiTrash2, FiEdit2,
+  FiLoader, FiCheck, FiAlertCircle,
 } from 'react-icons/fi';
 import { MdFlight } from 'react-icons/md';
+import {
+  searchPolicySets, createPolicySet, updatePolicySet, deletePolicySet,
+  saveConstraints, saveNodes, saveTransitions, getConstraints, listNodes, listTransitions,
+  type PolicySetDto,
+} from './policyApi';
+import { emitToast } from '../../api/client';
 
 /* ━━━━━━━━━━━ Custom Inspector Select ━━━━━━━━━━━ */
 interface InspSelectProps {
@@ -129,6 +136,228 @@ export const FlowStudioPane: React.FC = () => {
   const [showAirportDropdown, setShowAirportDropdown] = useState(false);
   const [showNodeLibrary, setShowNodeLibrary] = useState(false);
   const [inspectorWidth] = useState(400);
+
+  // ── Policy List State ──
+  const [showPolicyList, setShowPolicyList] = useState(false);
+  const [policyList, setPolicyList] = useState<PolicySetDto[]>([]);
+  const [policyListLoading, setPolicyListLoading] = useState(false);
+  const [policySearch, setPolicySearch] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [activePolicyId, setActivePolicyId] = useState<string | null>(null);
+  const [showNewDialog, setShowNewDialog] = useState(false);
+  const [newPolicyForm, setNewPolicyForm] = useState({ code: '', scopeKey: '*', description: '' });
+
+  // ── Fetch policy list ──
+  const fetchPolicyList = useCallback(async () => {
+    setPolicyListLoading(true);
+    try {
+      const page = await searchPolicySets({}, 0, 100);
+      setPolicyList(page.content);
+    } catch (e) {
+      console.error('Failed to fetch policy list:', e);
+    } finally {
+      setPolicyListLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchPolicyList(); }, [fetchPolicyList]);
+
+  // ── Load a policy from backend ──
+  const loadPolicy = useCallback(async (policy: PolicySetDto) => {
+    try {
+      setActivePolicyId(policy.id);
+      setPolicySet({
+        id: policy.id,
+        name: policy.code,
+        code: policy.code,
+        scope: policy.scopeType.value as PolicySet['scope'],
+        scopeKey: policy.scopeKey,
+        segment: policy.segment.value as PolicySet['segment'],
+        status: policy.status.value as PolicySet['status'],
+        description: policy.description,
+        constraints: { ...defaultPolicySet.constraints },
+        lastSaved: policy.lastModifiedDate || policy.createdDate || 'never',
+      });
+      // Load constraints
+      try {
+        const c = await getConstraints(policy.id);
+        setPolicySet(prev => ({
+          ...prev,
+          constraints: {
+            maxLegs: c.maxLegs,
+            minFlights: c.minFlights,
+            maxFlights: c.maxFlights,
+            maxTransfers: c.maxTransfers,
+            maxWalkingTotalM: c.maxWalkingTotalM ?? 2000,
+            maxTotalDurationMin: c.maxTotalDurationMin ?? 720,
+            minConnectionMin: c.minConnectionMinutes ?? 60,
+            maxTotalCo2Grams: c.maxTotalCo2Grams,
+          },
+        }));
+      } catch { /* constraints may not exist yet */ }
+      // Load nodes → convert to React Flow nodes
+      try {
+        const apiNodes = await listNodes(policy.id);
+        if (apiNodes.length > 0) {
+          const flowNodes: Node<RouteNodeData>[] = apiNodes.map((n, i) => ({
+            id: n.id || `node_${i}`,
+            type: 'routePhase',
+            position: { x: n.uiX ?? 60 + i * 260, y: n.uiY ?? 200 },
+            data: {
+              label: n.nodeKey.desc || n.nodeKey.value,
+              phase: n.nodeKey.value.toLowerCase().replace(/ /g, '_') as JourneyPhase,
+              modeConfigs: n.propsJson ? JSON.parse(n.propsJson).modeConfigs || [] : [],
+              minVisits: n.minVisits,
+              maxVisits: n.maxVisits,
+            },
+          }));
+          setNodes(flowNodes as any);
+        }
+      } catch { /* nodes may not exist yet */ }
+      // Load transitions → convert to React Flow edges
+      try {
+        const apiTransitions = await listTransitions(policy.id);
+        if (apiTransitions.length > 0) {
+          const flowEdges: Edge<RouteEdgeData>[] = apiTransitions.map((t, i) => ({
+            id: t.id || `e_${i}`,
+            source: t.fromNode.id,
+            target: t.toNode.id,
+            label: 'transition',
+            data: {
+              ...defaultEdgeData,
+              priority: t.priority,
+              guardJson: t.guardJson || '',
+              ...(t.uiJson ? JSON.parse(t.uiJson) : {}),
+            },
+          }));
+          setEdges(flowEdges as any);
+        }
+      } catch { /* transitions may not exist yet */ }
+      setShowPolicyList(false);
+      emitToast('success', `Policy "${policy.code}" loaded`);
+    } catch (e) {
+      emitToast('error', 'Failed to load policy');
+    }
+  }, [setNodes, setEdges]);
+
+  // ── Save policy to backend ──
+  const handleSave = useCallback(async () => {
+    setSaving(true);
+    try {
+      let policyId = activePolicyId;
+      // Create or update the policy set
+      if (!policyId) {
+        const created = await createPolicySet({
+          code: policySet.code,
+          scopeType: { value: policySet.scope, desc: '' },
+          scopeKey: policySet.scopeKey,
+          segment: { value: policySet.segment, desc: '' },
+          status: { value: policySet.status, desc: '' },
+          description: policySet.description,
+        } as any);
+        policyId = created.id;
+        setActivePolicyId(policyId);
+      } else {
+        await updatePolicySet(policyId, {
+          code: policySet.code,
+          scopeType: { value: policySet.scope, desc: '' },
+          scopeKey: policySet.scopeKey,
+          segment: { value: policySet.segment, desc: '' },
+          status: { value: policySet.status, desc: '' },
+          description: policySet.description,
+        } as any);
+      }
+      // Save constraints
+      await saveConstraints(policyId, {
+        maxLegs: policySet.constraints.maxLegs,
+        minFlights: policySet.constraints.minFlights,
+        maxFlights: policySet.constraints.maxFlights,
+        minTransfers: 0,
+        maxTransfers: policySet.constraints.maxTransfers,
+        maxTotalDurationMin: policySet.constraints.maxTotalDurationMin,
+        maxWalkingTotalM: policySet.constraints.maxWalkingTotalM,
+        minConnectionMinutes: policySet.constraints.minConnectionMin,
+        maxTotalCo2Grams: policySet.constraints.maxTotalCo2Grams,
+      });
+      // Save nodes
+      const nodePayload = nodes.map(n => ({
+        nodeKey: { value: (n.data.phase || 'START').toUpperCase().replace(/_/g, '_'), desc: n.data.label },
+        minVisits: n.data.minVisits,
+        maxVisits: n.data.maxVisits,
+        propsJson: JSON.stringify({ modeConfigs: n.data.modeConfigs, maxLegsInPhase: n.data.maxLegsInPhase, notes: n.data.notes }),
+        uiX: Math.round(n.position.x),
+        uiY: Math.round(n.position.y),
+      }));
+      const savedNodes = await saveNodes(policyId, nodePayload as any);
+      // Build node ID map for transitions
+      const nodeIdMap: Record<string, string> = {};
+      nodes.forEach((n, i) => { if (savedNodes[i]?.id) nodeIdMap[n.id] = savedNodes[i].id!; });
+      // Save transitions
+      const transPayload = edges.map(e => ({
+        fromNode: { id: nodeIdMap[e.source] || e.source },
+        toNode: { id: nodeIdMap[e.target] || e.target },
+        priority: (e.data as RouteEdgeData)?.priority ?? 1,
+        guardJson: (e.data as RouteEdgeData)?.guardJson || null,
+        uiJson: JSON.stringify({
+          sameAirport: (e.data as RouteEdgeData)?.sameAirport,
+          requireSameTerminal: (e.data as RouteEdgeData)?.requireSameTerminal,
+          maxDurationMin: (e.data as RouteEdgeData)?.maxDurationMin,
+          maxWalkingM: (e.data as RouteEdgeData)?.maxWalkingM,
+          minConnectionMin: (e.data as RouteEdgeData)?.minConnectionMin,
+        }),
+      }));
+      await saveTransitions(policyId, transPayload as any);
+      setPolicySet(prev => ({ ...prev, lastSaved: new Date().toLocaleTimeString() }));
+      emitToast('success', `Policy "${policySet.code}" saved`);
+      fetchPolicyList();
+    } catch (e: any) {
+      emitToast('error', e.message || 'Failed to save policy');
+    } finally {
+      setSaving(false);
+    }
+  }, [activePolicyId, policySet, nodes, edges, fetchPolicyList]);
+
+  // ── Create new policy ──
+  const handleCreatePolicy = useCallback(async () => {
+    if (!newPolicyForm.code.trim()) {
+      emitToast('error', 'Policy code is required');
+      return;
+    }
+    try {
+      const created = await createPolicySet({
+        code: newPolicyForm.code.trim().toUpperCase(),
+        scopeType: { value: 'GLOBAL', desc: '' },
+        scopeKey: newPolicyForm.scopeKey || '*',
+        segment: { value: 'DEFAULT', desc: '' },
+        status: { value: 'DRAFT', desc: '' },
+        description: newPolicyForm.description,
+      } as any);
+      setShowNewDialog(false);
+      setNewPolicyForm({ code: '', scopeKey: '*', description: '' });
+      await fetchPolicyList();
+      await loadPolicy(created);
+      emitToast('success', `Policy "${created.code}" created`);
+    } catch (e: any) {
+      emitToast('error', e.message || 'Failed to create policy');
+    }
+  }, [newPolicyForm, fetchPolicyList, loadPolicy]);
+
+  // ── Delete a policy ──
+  const handleDeletePolicy = useCallback(async (id: string) => {
+    try {
+      await deletePolicySet(id);
+      if (activePolicyId === id) {
+        setActivePolicyId(null);
+        setPolicySet({ ...defaultPolicySet });
+        setNodes(initialNodes as any);
+        setEdges(initialEdges as any);
+      }
+      await fetchPolicyList();
+      emitToast('success', 'Policy deleted');
+    } catch (e: any) {
+      emitToast('error', e.message || 'Failed to delete policy');
+    }
+  }, [activePolicyId, fetchPolicyList, setNodes, setEdges]);
 
   const selectedNode = useMemo(() => nodes.find(n => n.id === selectedNodeId) ?? null, [nodes, selectedNodeId]);
   const selectedEdge = useMemo(() => edges.find(e => e.id === selectedEdgeId) ?? null, [edges, selectedEdgeId]);
@@ -303,9 +532,12 @@ export const FlowStudioPane: React.FC = () => {
           </div>
         </div>
         <div className={styles.topBarRight}>
+          <button className={styles.toolBtn} onClick={() => setShowPolicyList(!showPolicyList)} title="Policy List"><FiList /></button>
           <button className={styles.toolBtn} onClick={handleAutoLayout} title="Auto Layout"><FiLayout /></button>
           <button className={styles.toolBtn} onClick={handleExport} title="Export JSON"><FiDownload /></button>
-          <button className={`${styles.toolBtn} ${styles.primary}`} title="Save"><FiSave /></button>
+          <button className={`${styles.toolBtn} ${styles.primary}`} onClick={handleSave} disabled={saving} title="Save">
+            {saving ? <FiLoader className={styles.spinIcon} /> : <FiSave />}
+          </button>
         </div>
       </div>
 
@@ -715,6 +947,114 @@ export const FlowStudioPane: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* ── POLICY LIST DRAWER ── */}
+      {showPolicyList && (
+        <div className={styles.policyListOverlay} onClick={() => setShowPolicyList(false)}>
+          <div className={styles.policyListDrawer} onClick={e => e.stopPropagation()}>
+            <div className={styles.policyListHeader}>
+              <h3>Policy Sets</h3>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button className={styles.toolBtn} onClick={() => setShowNewDialog(true)} title="New Policy">
+                  <FiPlus />
+                </button>
+                <button className={styles.toolBtn} onClick={() => setShowPolicyList(false)}>
+                  <FiX />
+                </button>
+              </div>
+            </div>
+
+            <div className={styles.policyListSearch}>
+              <FiSearch size={14} />
+              <input placeholder="Search policies..." value={policySearch} onChange={e => setPolicySearch(e.target.value)} />
+            </div>
+
+            {policyListLoading ? (
+              <div style={{ textAlign: 'center', padding: '2rem', opacity: 0.5 }}>
+                <FiLoader className={styles.spinIcon} size={20} />
+              </div>
+            ) : (
+              <div className={styles.policyListItems}>
+                {policyList
+                  .filter(p => !policySearch || p.code.toLowerCase().includes(policySearch.toLowerCase()) ||
+                    p.scopeKey.toLowerCase().includes(policySearch.toLowerCase()))
+                  .map(p => (
+                    <div key={p.id}
+                      className={`${styles.policyListItem} ${p.id === activePolicyId ? styles.policyListItemActive : ''}`}
+                      onClick={() => loadPolicy(p)}
+                    >
+                      <div className={styles.policyListItemInfo}>
+                        <strong>{p.code}</strong>
+                        <span className={styles.policyListScope}>
+                          {p.scopeType.value} · {p.scopeKey}
+                        </span>
+                        {p.description && <span className={styles.policyListDesc}>{p.description}</span>}
+                      </div>
+                      <div className={styles.policyListItemActions}>
+                        <span className={`${styles.statusBadge} ${styles[p.status.value.toLowerCase()]}`}>
+                          {p.status.value}
+                        </span>
+                        <button className={styles.policyDeleteBtn}
+                          onClick={e => { e.stopPropagation(); handleDeletePolicy(p.id); }}
+                          title="Delete"
+                        >
+                          <FiTrash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                {policyList.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '2rem', opacity: 0.4 }}>
+                    No policies found. Create one to get started.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── NEW POLICY DIALOG ── */}
+      {showNewDialog && (
+        <div className={styles.policyListOverlay} onClick={() => setShowNewDialog(false)}>
+          <div className={styles.newPolicyDialog} onClick={e => e.stopPropagation()}>
+            <div className={styles.policyListHeader}>
+              <h3>New Policy Set</h3>
+              <button className={styles.toolBtn} onClick={() => setShowNewDialog(false)}><FiX /></button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0 1rem 1rem' }}>
+              <div>
+                <label className={styles.newPolicyLabel}>Code *</label>
+                <input className={styles.inspInput} placeholder="e.g. SAW_DEFAULT"
+                  value={newPolicyForm.code}
+                  onChange={e => setNewPolicyForm(f => ({ ...f, code: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className={styles.newPolicyLabel}>Scope Key</label>
+                <input className={styles.inspInput} placeholder="* (global) or IATA code"
+                  value={newPolicyForm.scopeKey}
+                  onChange={e => setNewPolicyForm(f => ({ ...f, scopeKey: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className={styles.newPolicyLabel}>Description</label>
+                <textarea className={styles.inspTextarea} rows={2}
+                  placeholder="Optional description..."
+                  value={newPolicyForm.description}
+                  onChange={e => setNewPolicyForm(f => ({ ...f, description: e.target.value }))}
+                />
+              </div>
+              <button className={`${styles.toolBtn} ${styles.primary}`}
+                style={{ alignSelf: 'flex-end', padding: '0.5rem 1.25rem', fontSize: '0.85rem' }}
+                onClick={handleCreatePolicy}
+              >
+                <FiPlus size={14} /> Create Policy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

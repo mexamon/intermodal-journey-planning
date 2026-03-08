@@ -13,19 +13,32 @@ import java.util.UUID;
 
 public interface PolicyService {
 
-    // Policy Set
+    // Policy Set — Read
     Page<JourneyPolicySet> searchPolicySets(PolicySetSearchRequest request, Pageable pageable);
 
     JourneyPolicySet getPolicySet(UUID id);
 
     JourneyPolicySet getPolicySetByCode(String code);
 
+    // Policy Set — Write
+    JourneyPolicySet createPolicySet(JourneyPolicySet policySet);
+
+    JourneyPolicySet updatePolicySet(UUID id, JourneyPolicySet policySet);
+
+    void deletePolicySet(UUID id);
+
     // Constraints
     JourneyPolicyConstraints getConstraints(UUID policySetId);
+
+    JourneyPolicyConstraints saveConstraints(UUID policySetId, JourneyPolicyConstraints constraints);
 
     // Nodes
     List<JourneyPolicyNode> listNodes(UUID policySetId);
 
+    List<JourneyPolicyNode> saveNodes(UUID policySetId, List<JourneyPolicyNode> nodes);
+
     // Transitions
     List<JourneyPolicyTransition> listTransitions(UUID policySetId);
+
+    List<JourneyPolicyTransition> saveTransitions(UUID policySetId, List<JourneyPolicyTransition> transitions);
 }
