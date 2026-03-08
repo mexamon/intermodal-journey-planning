@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import * as s from './PlannerPane.module.scss';
 import {
   FiNavigation, FiMapPin, FiCalendar, FiSearch, FiRepeat,
-  FiDollarSign, FiWind, FiChevronDown, FiX, FiUsers, FiFilter, FiClock, FiStar, FiZap,
+  FiDollarSign, FiWind, FiChevronDown, FiChevronLeft, FiChevronRight, FiX, FiUsers, FiFilter, FiClock, FiStar, FiZap,
   FiAlertCircle, FiLoader,
 } from 'react-icons/fi';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
@@ -353,7 +353,7 @@ export const PlannerPane: React.FC = () => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   });
-  const formattedDate = new Date(date + 'T00:00:00').toLocaleDateString('tr-TR', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
+  const formattedDate = new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
   const [infants, setInfants] = useState(0);
@@ -695,6 +695,53 @@ export const PlannerPane: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* ── Date Tab Bar ── */}
+      {searched && !loading && filteredResults.length > 0 && (() => {
+        const DAY_MS = 86400000;
+        const sel = new Date(date + 'T00:00:00');
+        const offsets = [-2, -1, 0, 1, 2];
+        const tabs = offsets.map(o => {
+          const d = new Date(sel.getTime() + o * DAY_MS);
+          return {
+            iso: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
+            dayName: d.toLocaleDateString('en-US', { weekday: 'short' }),
+            dayNum: d.getDate(),
+            month: d.toLocaleDateString('en-US', { month: 'short' }),
+            isSelected: o === 0,
+          };
+        });
+        const shift = (dir: number) => {
+          const next = new Date(sel.getTime() + dir * DAY_MS);
+          const iso = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`;
+          setDate(iso);
+          setTimeout(() => handleSearch(), 50);
+        };
+        const pick = (iso: string) => {
+          setDate(iso);
+          setTimeout(() => handleSearch(), 50);
+        };
+        return (
+          <div className={s.dateTabBar}>
+            <button className={s.dateTabArrow} onClick={() => shift(-1)}>
+              <FiChevronLeft size={18} />
+            </button>
+            {tabs.map(t => (
+              <button
+                key={t.iso}
+                className={`${s.dateTab} ${t.isSelected ? s.dateTabActive : ''}`}
+                onClick={() => !t.isSelected && pick(t.iso)}
+              >
+                <span className={s.dateTabDay}>{t.dayName}</span>
+                <span className={s.dateTabNum}>{t.dayNum} {t.month}</span>
+              </button>
+            ))}
+            <button className={s.dateTabArrow} onClick={() => shift(1)}>
+              <FiChevronRight size={18} />
+            </button>
+          </div>
+        );
+      })()}
 
       {/* ── Loading ── */}
       {searched && loading && (

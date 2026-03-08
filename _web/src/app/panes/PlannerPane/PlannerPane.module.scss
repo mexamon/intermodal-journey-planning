@@ -983,3 +983,111 @@
   :global(.dark) & { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.5); }
   :global(.light) & { background: rgba(0,0,0,0.04); color: rgba(0,0,0,0.5); }
 }
+
+/* ── Date Tab Bar ─────────────────────── */
+.dateTabBar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin-bottom: 1rem;
+  border-radius: 12px;
+  padding: 0.25rem;
+  border: 1px solid;
+
+  :global(.dark) & {
+    background: rgba(255,255,255,0.03);
+    border-color: rgba(255,255,255,0.08);
+  }
+  :global(.light) & {
+    background: rgba(0,0,0,0.02);
+    border-color: rgba(0,0,0,0.08);
+  }
+}
+
+.dateTabArrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 52px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+
+  :global(.dark) & {
+    background: transparent;
+    color: rgba(255,255,255,0.5);
+    &:hover { background: rgba(255,255,255,0.08); color: #fff; }
+  }
+  :global(.light) & {
+    background: transparent;
+    color: rgba(0,0,0,0.4);
+    &:hover { background: rgba(0,0,0,0.06); color: #000; }
+  }
+}
+
+.dateTab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 0.45rem 0.5rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+
+  :global(.dark) & {
+    background: transparent;
+    color: rgba(255,255,255,0.5);
+    &:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.8); }
+  }
+  :global(.light) & {
+    background: transparent;
+    color: rgba(0,0,0,0.45);
+    &:hover { background: rgba(0,0,0,0.04); color: rgba(0,0,0,0.75); }
+  }
+}
+
+.dateTabActive {
+  cursor: default;
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 20%;
+    right: 20%;
+    height: 2px;
+    border-radius: 2px;
+    background: #e63946;
+  }
+
+  :global(.dark) & {
+    background: rgba(230,57,70,0.12);
+    color: #fff;
+    &:hover { background: rgba(230,57,70,0.12); }
+  }
+  :global(.light) & {
+    background: rgba(230,57,70,0.08);
+    color: #1a1a2e;
+    &:hover { background: rgba(230,57,70,0.08); }
+  }
+}
+
+.dateTabDay {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dateTabNum {
+  font-size: 0.8rem;
+  font-weight: 700;
+}
