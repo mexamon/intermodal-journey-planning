@@ -86,7 +86,8 @@ const InspSelect: React.FC<InspSelectProps> = ({ value, options, onChange }) => 
 /* ━━━━━━━━━━━ Route Phase Node ━━━━━━━━━━━ */
 type RoutePhaseNodeType = Node<RouteNodeData>;
 const RoutePhaseNode: React.FC<NodeProps<RoutePhaseNodeType>> = ({ data, selected }) => {
-  const colors = phaseColors[data.phase as JourneyPhase];
+  const defaultColors = { bg: '#374151', border: '#6b7280', text: '#f9fafb' };
+  const colors = phaseColors[data.phase as JourneyPhase] || defaultColors;
   const isTerminal = data.phase === 'start' || data.phase === 'end';
   const enabledModes = data.modeConfigs.filter(m => m.enabled);
 
@@ -216,20 +217,31 @@ export const FlowStudioPane: React.FC = () => {
       } catch { /* constraints may not exist yet */ }
       // Load nodes → convert to React Flow nodes
       try {
+        // Map backend nodeKey → frontend JourneyPhase
+        const nodeKeyToPhase: Record<string, JourneyPhase> = {
+          START: 'start', BEFORE: 'first_mile', FLIGHT: 'main_haul',
+          AFTER: 'last_mile', END: 'end', WALK_ACCESS: 'interchange',
+          INTERCHANGE: 'interchange', FIRST_MILE: 'first_mile',
+          LAST_MILE: 'last_mile', MAIN_HAUL: 'main_haul',
+        };
         const apiNodes = await listNodes(policy.id);
         if (apiNodes.length > 0) {
-          const flowNodes: Node<RouteNodeData>[] = apiNodes.map((n, i) => ({
-            id: n.id || `node_${i}`,
-            type: 'routePhase',
-            position: { x: n.uiX ?? 60 + i * 260, y: n.uiY ?? 200 },
-            data: {
-              label: n.nodeKey.desc || n.nodeKey.value,
-              phase: n.nodeKey.value.toLowerCase().replace(/ /g, '_') as JourneyPhase,
-              modeConfigs: n.propsJson ? JSON.parse(n.propsJson).modeConfigs || [] : [],
-              minVisits: n.minVisits,
-              maxVisits: n.maxVisits,
-            },
-          }));
+          const flowNodes: Node<RouteNodeData>[] = apiNodes.map((n, i) => {
+            const nkValue = n.nodeKey.value;
+            const phase = nodeKeyToPhase[nkValue] || nkValue.toLowerCase().replace(/ /g, '_') as JourneyPhase;
+            return {
+              id: n.id || `node_${i}`,
+              type: 'routePhase',
+              position: { x: n.uiX ?? 60 + i * 260, y: n.uiY ?? 200 },
+              data: {
+                label: n.nodeKey.desc || nkValue,
+                phase,
+                modeConfigs: n.propsJson ? JSON.parse(n.propsJson).modeConfigs || [] : [],
+                minVisits: n.minVisits,
+                maxVisits: n.maxVisits,
+              },
+            };
+          });
           setNodes(flowNodes as any);
         }
       } catch { /* nodes may not exist yet */ }
