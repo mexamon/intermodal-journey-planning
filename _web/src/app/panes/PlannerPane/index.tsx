@@ -725,7 +725,13 @@ export const PlannerPane: React.FC = () => {
                   <div className={s.cardMeta}>
                     <span><FiClock size={12} /> {formatDuration(journey.totalDurationMin)}</span>
                     <span>{journey.transfers === 0 ? 'Direct' : `${journey.transfers} transfers`}</span>
-                    <span>{(journey.departureTime || journey.segments[0]?.departureTime || '–')} – {(journey.arrivalTime || journey.segments[journey.segments.length - 1]?.arrivalTime || '–')}</span>
+                    <span>
+                      {journey.departureCode && <><MdFlight size={12} style={{marginRight: 2}} />{journey.departureCode} </>}
+                      {journey.departureTime || journey.segments[0]?.departureTime || '–'}
+                      {' → '}
+                      {journey.arrivalCode && <>{journey.arrivalCode} </>}
+                      {journey.arrivalTime || journey.segments[journey.segments.length - 1]?.arrivalTime || '–'}
+                    </span>
                   </div>
                 </div>
                 <div className={s.cardPricing}>

@@ -669,6 +669,8 @@ public class JourneySearchServiceImpl implements JourneySearchService {
         String lastFlightArr = null;
         String depTimezone = null;
         String arrTimezone = null;
+        String depCode = null;
+        String arrCode = null;
 
         for (ResolvedEdge edge : path) {
             if ("FLIGHT".equals(edge.transportModeCode())) {
@@ -676,10 +678,12 @@ public class JourneySearchServiceImpl implements JourneySearchService {
                 if (firstFlightDep == null && edge.departureTime() != null) {
                     firstFlightDep = edge.departureTime().toString().substring(0, 5);
                     depTimezone = edge.origin().timezone();
+                    depCode = edge.origin().iataCode() != null ? edge.origin().iataCode() : shortCode(edge.origin().name());
                 }
                 if (edge.arrivalTime() != null) {
                     lastFlightArr = edge.arrivalTime().toString().substring(0, 5);
                     arrTimezone = edge.destination().timezone();
+                    arrCode = edge.destination().iataCode() != null ? edge.destination().iataCode() : shortCode(edge.destination().name());
                 }
             }
         }
@@ -704,6 +708,8 @@ public class JourneySearchServiceImpl implements JourneySearchService {
                 .arrivalTime(lastFlightArr)
                 .departureTimezone(depTimezone)
                 .arrivalTimezone(arrTimezone)
+                .departureCode(depCode)
+                .arrivalCode(arrCode)
                 .build();
     }
 

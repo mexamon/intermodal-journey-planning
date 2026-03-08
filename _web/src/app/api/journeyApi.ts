@@ -58,6 +58,8 @@ export interface JourneyResult {
   arrivalTime: string | null;        // last FLIGHT arrival: "09:20"
   departureTimezone: string | null;  // IANA: Europe/Istanbul
   arrivalTimezone: string | null;    // IANA: Europe/London
+  departureCode: string | null;      // IATA: IST
+  arrivalCode: string | null;        // IATA: LHR
 }
 
 /* ═══════════════════════════════════════════════

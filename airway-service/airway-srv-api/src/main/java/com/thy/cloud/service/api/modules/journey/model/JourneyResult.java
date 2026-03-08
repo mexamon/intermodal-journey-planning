@@ -26,4 +26,6 @@ public class JourneyResult {
     private String arrivalTime;             // last FLIGHT arrival: "09:20"
     private String departureTimezone;       // IANA: Europe/Istanbul
     private String arrivalTimezone;         // IANA: Europe/London
+    private String departureCode;           // first FLIGHT origin IATA: IST
+    private String arrivalCode;             // last FLIGHT dest IATA: LHR
 }
