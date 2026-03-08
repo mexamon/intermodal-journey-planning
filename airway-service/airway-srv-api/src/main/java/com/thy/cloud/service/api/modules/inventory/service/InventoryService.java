@@ -25,6 +25,9 @@ public interface InventoryService {
 
     List<AirportProfile> getScheduledAirports();
 
+    record AirportLookupDto(String iata, String name, String city, String country) {}
+    List<AirportLookupDto> lookupAirports(String query);
+
     // Provider
     List<Provider> listProviders();
 

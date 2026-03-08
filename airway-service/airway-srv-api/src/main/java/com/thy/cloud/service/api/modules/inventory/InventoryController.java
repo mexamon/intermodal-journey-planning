@@ -45,6 +45,15 @@ public class InventoryController {
 
     // ── Airport ───────────────────────────────────────────────
 
+    /**
+     * Lightweight airport lookup for dropdowns — returns simple DTOs, no N+1.
+     * Supports optional search query parameter for typeahead.
+     */
+    @GetMapping("/airports/lookup")
+    public Result<List<InventoryService.AirportLookupDto>> lookupAirports(@RequestParam(required = false) String q) {
+        return Result.success(inventoryService.lookupAirports(q));
+    }
+
     @GetMapping("/airports/{locationId}/profile")
     public Result<AirportProfile> getAirportProfile(@PathVariable UUID locationId) {
         return Result.success(inventoryService.getAirportProfile(locationId));

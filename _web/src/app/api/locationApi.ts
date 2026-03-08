@@ -39,3 +39,19 @@ export async function searchLocations(request: LocationSearchRequest, page = 0, 
 export async function getLocationByIata(iataCode: string): Promise<LocationResult> {
   return apiGet<LocationResult>(`/inventory/locations/iata/${iataCode}`);
 }
+
+/* ═══════════════════════════════════════════════
+   Lightweight Airport Lookup (no N+1)
+   ═══════════════════════════════════════════════ */
+export interface AirportLookup {
+  iata: string;
+  name: string;
+  city: string;
+  country: string;
+}
+
+export async function lookupAirports(query?: string): Promise<AirportLookup[]> {
+  const params = query ? `?q=${encodeURIComponent(query)}` : '';
+  const result = await apiGet<AirportLookup[]>(`/inventory/airports/lookup${params}`);
+  return result;
+}

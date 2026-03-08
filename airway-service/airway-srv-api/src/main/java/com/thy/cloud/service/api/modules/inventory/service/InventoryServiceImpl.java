@@ -114,6 +114,26 @@ public class InventoryServiceImpl implements InventoryService {
         return airportProfileRepository.findByScheduledServiceTrue();
     }
 
+    @Override
+    public List<InventoryService.AirportLookupDto> lookupAirports(String query) {
+        List<Location> airports;
+        if (query != null && !query.isBlank()) {
+            String q = "%" + query.trim().toLowerCase() + "%";
+            airports = locationRepository.findAirportsByQuery(q);
+        } else {
+            airports = locationRepository.findAllAirports();
+        }
+        return airports.stream()
+                .filter(l -> l.getIataCode() != null && !l.getIataCode().isBlank())
+                .map(l -> new InventoryService.AirportLookupDto(
+                        l.getIataCode(),
+                        l.getName(),
+                        l.getCity() != null ? l.getCity() : "",
+                        l.getCountryIsoCode() != null ? l.getCountryIsoCode() : ""
+                ))
+                .toList();
+    }
+
     // ── Provider ──────────────────────────────────────────────
 
     @Override

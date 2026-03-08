@@ -21,7 +21,7 @@ import {
   defaultEdgeData, defaultPolicySet, initialEdges, initialNodes,
   mockProviders, phaseColors, phaseLibrary, transportModesMeta,
 } from './flowData';
-import { searchLocations, type LocationResult } from '../../api/locationApi';
+import { lookupAirports, type AirportLookup } from '../../api/locationApi';
 import type {
   JourneyPhase, ModeConfig, PhaseLibraryItem, PolicySet,
   RouteEdgeData, RouteNodeData, TransportMode,
@@ -167,20 +167,29 @@ export const FlowStudioPane: React.FC = () => {
 
   useEffect(() => { fetchPolicyList(); }, [fetchPolicyList]);
 
-  // ── Fetch airports from DB on mount ──
+  // ── Debounced airport search ──
+  const airportSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [airportLoading, setAirportLoading] = useState(false);
+
   useEffect(() => {
-    (async () => {
+    // If search is empty or just 1 char, don't query
+    if (!airportSearch || airportSearch.length < 2) {
+      // Show nothing until user types — no eager mount load
+      if (!airportSearch) setAirportList([]);
+      return;
+    }
+    // Debounce 300ms
+    if (airportSearchTimer.current) clearTimeout(airportSearchTimer.current);
+    airportSearchTimer.current = setTimeout(async () => {
+      setAirportLoading(true);
       try {
-        const locs = await searchLocations({ type: 'AIRPORT' }, 0, 200);
-        setAirportList(locs.map(l => ({
-          iata: l.iataCode || l.name.substring(0, 3).toUpperCase(),
-          name: l.name,
-          city: l.city || '',
-          country: l.countryIsoCode || '',
-        })));
-      } catch (e) { console.error('Failed to fetch airports:', e); }
-    })();
-  }, []);
+        const results = await lookupAirports(airportSearch);
+        setAirportList(results);
+      } catch (e) { console.error('Airport lookup failed:', e); }
+      finally { setAirportLoading(false); }
+    }, 300);
+    return () => { if (airportSearchTimer.current) clearTimeout(airportSearchTimer.current); };
+  }, [airportSearch]);
 
   // ── Load a policy from backend ──
   const loadPolicy = useCallback(async (policy: PolicySetDto) => {
@@ -395,13 +404,7 @@ export const FlowStudioPane: React.FC = () => {
   const selectedNode = useMemo(() => nodes.find(n => n.id === selectedNodeId) ?? null, [nodes, selectedNodeId]);
   const selectedEdge = useMemo(() => edges.find(e => e.id === selectedEdgeId) ?? null, [edges, selectedEdgeId]);
 
-  const filteredAirports = useMemo(() => {
-    const q = airportSearch.toLowerCase();
-    if (!q) return airportList;
-    return airportList.filter(a =>
-      a.iata.toLowerCase().includes(q) || a.name.toLowerCase().includes(q) || a.city.toLowerCase().includes(q)
-    );
-  }, [airportSearch, airportList]);
+  const filteredAirports = airportList;
 
   const edgeColor = theme.variant === 'dark' ? 'rgba(200, 16, 46, 0.55)' : 'rgba(200, 16, 46, 0.4)';
   const bgGridColor = theme.variant === 'dark' ? 'rgba(148, 163, 184, 0.12)' : 'rgba(200, 16, 46, 0.12)';
@@ -544,6 +547,21 @@ export const FlowStudioPane: React.FC = () => {
                   >
                     <strong>*</strong><span>Global (All Airports)</span><span className={styles.airportCity}>Worldwide</span>
                   </button>
+                  {airportLoading && (
+                    <div className={styles.airportItem} style={{ justifyContent: 'center', opacity: 0.6 }}>
+                      <FiLoader size={14} className={styles.spin} /><span>Searching...</span>
+                    </div>
+                  )}
+                  {!airportLoading && filteredAirports.length === 0 && airportSearch.length >= 2 && (
+                    <div className={styles.airportItem} style={{ justifyContent: 'center', opacity: 0.5 }}>
+                      <span>No airports found</span>
+                    </div>
+                  )}
+                  {!airportLoading && filteredAirports.length === 0 && airportSearch.length < 2 && (
+                    <div className={styles.airportItem} style={{ justifyContent: 'center', opacity: 0.5 }}>
+                      <FiSearch size={14} /><span>Type at least 2 characters to search...</span>
+                    </div>
+                  )}
                   {filteredAirports.map(a => (
                     <button
                       key={a.iata}
