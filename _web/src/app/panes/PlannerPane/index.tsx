@@ -8,7 +8,7 @@ import {
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import {
   MdFlight, MdDirectionsBus, MdTrain, MdDirectionsWalk, MdLocalTaxi,
-  MdDirectionsSubway, MdSwapVert,
+  MdDirectionsSubway, MdSwapVert, MdPlace, MdFlightTakeoff,
 } from 'react-icons/md';
 import {
   ReactFlow, Background, Controls, BackgroundVariant, MiniMap,
@@ -88,6 +88,7 @@ type JGraphNodeData = {
   cost?: string;
   isOrigin?: boolean;
   isDestination?: boolean;
+  locationType?: string;  // Airport, Station, City, Place
 };
 
 const JGraphNode: React.FC<NodeProps<Node<JGraphNodeData>>> = ({ data }) => {
@@ -97,6 +98,13 @@ const JGraphNode: React.FC<NodeProps<Node<JGraphNodeData>>> = ({ data }) => {
     <div className={s.jgNode} style={{ borderColor: color }}>
       {!data.isOrigin && <Handle type="target" position={Position.Left} className={s.jgHandle} />}
       {!data.isDestination && <Handle type="source" position={Position.Right} className={s.jgHandle} />}
+      {data.locationType && (
+        <span className={`${s.jgTypeBadge} ${s['jgType' + data.locationType]}`}>
+          {data.locationType === 'Airport' && <MdFlightTakeoff size={11} />}
+          {data.locationType === 'Station' && <MdTrain size={11} />}
+          {data.locationType === 'Place' && <MdPlace size={11} />}
+        </span>
+      )}
       {data.mode && (
         <span className={s.jgModeIcon} style={{ color }}>{modeMeta(data.mode).icon}</span>
       )}
@@ -116,6 +124,18 @@ function buildSingleJourneyGraph(journey: JourneyResult): { nodes: Node<JGraphNo
   const edges: Edge[] = [];
   const xSpacing = 480;
 
+  // Helper: derive location type from surrounding segment modes
+  const inferType = (segIdx: number, isOriginOfSeg: boolean): string => {
+    const seg = journey.segments[segIdx];
+    const prevSeg = segIdx > 0 ? journey.segments[segIdx - 1] : null;
+    const mode = (isOriginOfSeg ? (prevSeg?.mode || seg.mode) : seg.mode)?.toLowerCase();
+    const nextMode = (isOriginOfSeg ? seg.mode : (segIdx < journey.segments.length - 1 ? journey.segments[segIdx + 1]?.mode : null))?.toLowerCase();
+    if (mode === 'flight' || nextMode === 'flight') return 'Airport';
+    if (mode === 'train' || nextMode === 'train') return 'Station';
+    if (mode === 'metro' || nextMode === 'metro') return 'Station';
+    return 'Place';
+  };
+
   journey.segments.forEach((seg, si) => {
     // Origin node
     const fromId = `jn_${si}_from`;
@@ -126,6 +146,7 @@ function buildSingleJourneyGraph(journey: JourneyResult): { nodes: Node<JGraphNo
         data: {
           label: seg.originName, code: seg.originCode,
           isOrigin: si === 0,
+          locationType: inferType(si, true),
         },
       });
     }
@@ -138,6 +159,7 @@ function buildSingleJourneyGraph(journey: JourneyResult): { nodes: Node<JGraphNo
         data: {
           label: seg.destinationName, code: seg.destinationCode,
           isDestination: si === journey.segments.length - 1,
+          locationType: inferType(si, false),
         },
       });
     }
@@ -792,7 +814,7 @@ export const PlannerPane: React.FC = () => {
                 {journey.segments.map((seg, i) => (
                   <React.Fragment key={i}>
                     <div className={s.segmentDot} style={{ borderColor: modeMeta(seg.mode).color, backgroundColor: modeMeta(seg.mode).color }} />
-                    <div className={s.segmentLine} style={{ backgroundColor: modeMeta(seg.mode).color }} />
+                    <div className={s.segmentLine} style={{ backgroundColor: modeMeta(seg.mode).color, flex: seg.durationMin || 1 }} />
                   </React.Fragment>
                 ))}
                 <div className={s.segmentDot} style={{ borderColor: '#6d7c8a', backgroundColor: '#6d7c8a' }} />

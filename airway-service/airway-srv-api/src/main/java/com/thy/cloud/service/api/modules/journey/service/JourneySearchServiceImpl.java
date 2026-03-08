@@ -130,7 +130,7 @@ public class JourneySearchServiceImpl implements JourneySearchService {
                     policyConstraints.getMaxLegs(), maxTransfers,
                     policyConstraints.getMaxFlights(), maxDuration);
         } else {
-            maxTransfers = Math.min(request.getMaxTransfers(), 6);
+            maxTransfers = Math.min(request.getMaxTransfers(), 4);
             maxDuration = request.getMaxDurationMinutes();
             log.info("No policy found, using defaults: maxTransfers={}, maxDuration={}min",
                     maxTransfers, maxDuration);
@@ -453,10 +453,23 @@ public class JourneySearchServiceImpl implements JourneySearchService {
         record BfsState(String locationKey, List<ResolvedEdge> path,
                         LocalTime earliestDep, int totalMinutes) {}
 
+        final int MAX_BFS_ITERATIONS = 5000;
+        final int MAX_QUEUE_SIZE = 2000;
+
         Queue<BfsState> queue = new LinkedList<>();
         queue.add(new BfsState(originKey, new ArrayList<>(), earliestDeparture, 0));
 
+        // Track best depth to reach each location — prune worse attempts
+        Map<String, Integer> bestDepth = new HashMap<>();
+        bestDepth.put(originKey, 0);
+
+        int iterations = 0;
         while (!queue.isEmpty() && completePaths.size() < MAX_RESULTS * 3) {
+            if (++iterations > MAX_BFS_ITERATIONS) {
+                log.warn("BFS iteration limit reached ({}) — returning {} paths", MAX_BFS_ITERATIONS, completePaths.size());
+                break;
+            }
+
             BfsState state = queue.poll();
 
             if (state.path.size() > maxTransfers + 1) continue;
@@ -469,6 +482,12 @@ public class JourneySearchServiceImpl implements JourneySearchService {
 
                 // Avoid cycles
                 if (isLocationInPath(state.path, destKey)) continue;
+
+                // Visited-depth pruning: skip if we've reached this node at fewer hops
+                int newDepth = state.path.size() + 1;
+                Integer prev = bestDepth.get(destKey);
+                if (prev != null && prev < newDepth && !destinationKeys.contains(destKey)) continue;
+                if (prev == null || newDepth < prev) bestDepth.put(destKey, newDepth);
 
                 // Time compatibility
                 LocalTime depTime = edge.departureTime();
@@ -488,7 +507,7 @@ public class JourneySearchServiceImpl implements JourneySearchService {
 
                     if (destinationKeys.contains(destKey)) {
                         completePaths.add(newPath);
-                    } else if (newPath.size() <= maxTransfers) {
+                    } else if (newPath.size() <= maxTransfers && queue.size() < MAX_QUEUE_SIZE) {
                         int transferMin = getTransferTimes().getOrDefault(edge.transportModeCode(), 10);
                         queue.add(new BfsState(destKey, newPath,
                                 arrTime.plusMinutes(transferMin), newTotal + transferMin));
@@ -515,7 +534,7 @@ public class JourneySearchServiceImpl implements JourneySearchService {
 
                     if (destinationKeys.contains(destKey)) {
                         completePaths.add(newPath);
-                    } else if (newPath.size() <= maxTransfers) {
+                    } else if (newPath.size() <= maxTransfers && queue.size() < MAX_QUEUE_SIZE) {
                         int transferMin = getTransferTimes().getOrDefault(edge.transportModeCode(), 10);
                         queue.add(new BfsState(destKey, newPath,
                                 arr.plusMinutes(transferMin), newTotal + transferMin));
