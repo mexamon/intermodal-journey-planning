@@ -27,4 +27,6 @@ public class JourneySegment {
     private String currency;            // ISO currency code: EUR, TRY, USD
     private String edgeId;              // link to transportation_edge
     private String tripId;              // link to edge_trip (if FIXED)
+    private String originTimezone;      // IANA: Europe/Istanbul
+    private String destinationTimezone; // IANA: Europe/London
 }

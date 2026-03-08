@@ -655,19 +655,29 @@ public class JourneySearchServiceImpl implements JourneySearchService {
                     .costCents(convertedCost)
                     .currency(targetCurrency)
                     .edgeId(edge.id() != null ? edge.id().toString() : null)
+                    .originTimezone(edge.origin().timezone())
+                    .destinationTimezone(edge.destination().timezone())
                     .build());
 
             totalCost += convertedCost;
             if (edge.co2Grams() != null) totalCO2 += edge.co2Grams();
         }
 
-        // Total duration = first departure to last arrival
+        // Total duration = first departure to last arrival, OR sum of edge durations + transfers
         ResolvedEdge first = path.get(0);
         ResolvedEdge last = path.get(path.size() - 1);
         int totalDuration = 0;
         if (first.departureTime() != null && last.arrivalTime() != null) {
             totalDuration = (int) first.departureTime().until(last.arrivalTime(), ChronoUnit.MINUTES);
             if (totalDuration <= 0) totalDuration += 24 * 60;
+        } else {
+            // Fallback: sum edge durations + transfer times between segments
+            for (int i = 0; i < path.size(); i++) {
+                totalDuration += path.get(i).durationMin();
+                if (i > 0) {
+                    totalDuration += getTransferTimes().getOrDefault(path.get(i).transportModeCode(), 10);
+                }
+            }
         }
 
         return JourneyResult.builder()
@@ -770,7 +780,8 @@ public class JourneySearchServiceImpl implements JourneySearchService {
                 loc.getLat() != null ? loc.getLat().doubleValue() : 0,
                 loc.getLon() != null ? loc.getLon().doubleValue() : 0,
                 loc.getType() != null ? loc.getType().getValue() : "AIRPORT",
-                loc.getCountryIsoCode()
+                loc.getCountryIsoCode(),
+                loc.getTimezone()
         );
     }
 

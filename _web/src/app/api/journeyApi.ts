@@ -40,6 +40,8 @@ export interface JourneySegment {
   currency: string | null;  // ISO: EUR, TRY, GBP, USD
   edgeId: string;
   tripId: string | null;
+  originTimezone: string | null;       // IANA: Europe/Istanbul
+  destinationTimezone: string | null;  // IANA: Europe/London
 }
 
 export interface JourneyResult {
