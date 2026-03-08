@@ -3,16 +3,19 @@ package com.thy.cloud.service.api.modules.transport.service;
 import com.thy.cloud.service.api.modules.transport.model.EdgeSearchRequest;
 import com.thy.cloud.service.api.modules.transport.specs.EdgeSpecs;
 import com.thy.cloud.service.dao.entity.transport.Fare;
+import com.thy.cloud.service.dao.entity.transport.EdgeTrip;
 import com.thy.cloud.service.dao.entity.transport.TransportMode;
 import com.thy.cloud.service.dao.entity.transport.TransportServiceArea;
 import com.thy.cloud.service.dao.entity.transport.TransportStop;
 import com.thy.cloud.service.dao.entity.transport.TransportationEdge;
+import com.thy.cloud.service.dao.repository.inventory.LocationRepository;
 import com.thy.cloud.service.dao.repository.inventory.ProviderRepository;
 import com.thy.cloud.service.dao.repository.transport.FareRepository;
 import com.thy.cloud.service.dao.repository.transport.TransportModeRepository;
 import com.thy.cloud.service.dao.repository.transport.TransportServiceAreaRepository;
 import com.thy.cloud.service.dao.repository.transport.TransportStopRepository;
 import com.thy.cloud.service.dao.repository.transport.TransportationEdgeRepository;
+import com.thy.cloud.service.dao.repository.transport.EdgeTripRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -32,7 +35,9 @@ public class TransportServiceImpl implements TransportService {
     private final TransportServiceAreaRepository serviceAreaRepository;
     private final TransportStopRepository transportStopRepository;
     private final TransportationEdgeRepository edgeRepository;
+    private final EdgeTripRepository edgeTripRepository;
     private final ProviderRepository providerRepository;
+    private final LocationRepository locationRepository;
     private final FareRepository fareRepository;
 
     // ── Mode ──────────────────────────────────────────────────
@@ -63,6 +68,18 @@ public class TransportServiceImpl implements TransportService {
     @Transactional
     public TransportMode saveMode(TransportMode mode) {
         return transportModeRepository.save(mode);
+    }
+
+    @Override
+    @Transactional
+    public void deleteMode(UUID id) {
+        TransportMode mode = getMode(id);
+        if (edgeRepository.existsByTransportModeId(id)) {
+            throw new IllegalStateException("Cannot delete transport mode '" + mode.getCode()
+                    + "' — it is used by existing edges.");
+        }
+        mode.setDeleted(true);
+        transportModeRepository.save(mode);
     }
 
     // ── Service Area ──────────────────────────────────────────
@@ -132,6 +149,71 @@ public class TransportServiceImpl implements TransportService {
     @Override
     public List<TransportationEdge> listAllEdges() {
         return edgeRepository.findAllWithRelations();
+    }
+
+    @Override
+    public TransportationEdge getEdge(UUID id) {
+        return edgeRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Edge not found: " + id));
+    }
+
+    @Override
+    @Transactional
+    public TransportationEdge saveEdge(TransportationEdge edge) {
+        // Resolve managed FK references
+        if (edge.getTransportMode() != null && edge.getTransportMode().getId() != null) {
+            edge.setTransportMode(transportModeRepository.findById(edge.getTransportMode().getId())
+                    .orElseThrow(() -> new EntityNotFoundException(
+                            "Transport mode not found: " + edge.getTransportMode().getId())));
+        }
+        if (edge.getProvider() != null && edge.getProvider().getId() != null) {
+            edge.setProvider(providerRepository.findById(edge.getProvider().getId())
+                    .orElseThrow(() -> new EntityNotFoundException(
+                            "Provider not found: " + edge.getProvider().getId())));
+        }
+        if (edge.getOriginLocation() != null && edge.getOriginLocation().getId() != null) {
+            edge.setOriginLocation(locationRepository.findById(edge.getOriginLocation().getId())
+                    .orElseThrow(() -> new EntityNotFoundException(
+                            "Origin location not found: " + edge.getOriginLocation().getId())));
+        }
+        if (edge.getDestinationLocation() != null && edge.getDestinationLocation().getId() != null) {
+            edge.setDestinationLocation(locationRepository.findById(edge.getDestinationLocation().getId())
+                    .orElseThrow(() -> new EntityNotFoundException(
+                            "Destination location not found: " + edge.getDestinationLocation().getId())));
+        }
+        return edgeRepository.save(edge);
+    }
+
+    @Override
+    @Transactional
+    public void deleteEdge(UUID id) {
+        TransportationEdge edge = getEdge(id);
+        edge.setDeleted(true);
+        edgeRepository.save(edge);
+    }
+
+    // ── Trips ─────────────────────────────────────────────────
+
+    @Override
+    public EdgeTrip getTrip(UUID id) {
+        return edgeTripRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Trip not found: " + id));
+    }
+
+    @Override
+    @Transactional
+    public EdgeTrip saveTrip(UUID edgeId, EdgeTrip trip) {
+        TransportationEdge edge = getEdge(edgeId);
+        trip.setEdge(edge);
+        return edgeTripRepository.save(trip);
+    }
+
+    @Override
+    @Transactional
+    public void deleteTrip(UUID tripId) {
+        EdgeTrip trip = getTrip(tripId);
+        trip.setDeleted(true);
+        edgeTripRepository.save(trip);
     }
 
     // ── Fares ─────────────────────────────────────────────────

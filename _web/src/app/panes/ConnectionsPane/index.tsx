@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import * as paneStyles from '../Panes.module.scss';
 import * as s from './ConnectionsPane.module.scss';
 import * as Dialog from '@radix-ui/react-dialog';
@@ -13,6 +13,7 @@ import {
   MdFlight, MdDirectionsBus, MdTrain, MdDirectionsSubway,
   MdLocalTaxi, MdDirectionsBoat, MdDirectionsWalk, MdPedalBike,
 } from 'react-icons/md';
+import { apiGet, apiPost, apiPut, apiDelete } from '../../api/client';
 
 /* ═══════════════════════════════════════════════
    Types — matching DB V013 GTFS model
@@ -209,46 +210,47 @@ const OperatingDays: React.FC<{ mask: number }> = ({ mask }) => (
   </div>
 );
 
-/* ═══════════════════════════════════════════════
-   Mock Data — realistic edges (TR + DE routes)
-   ═══════════════════════════════════════════════ */
-const INITIAL_EDGES: TransportEdge[] = [
-  { id: 'e1', originLocationId: 'loc_ist', originLabel: 'IST — Istanbul Airport', destinationLocationId: 'loc_lhr', destinationLabel: 'LHR — London Heathrow', transportModeCode: 'FLIGHT', providerCode: 'TK', scheduleType: 'FIXED', operatingDaysMask: 127, operatingStartTime: null, operatingEndTime: null, frequencyMinutes: null, status: 'ACTIVE', source: 'MANUAL', estimatedDurationMin: 230, distanceM: 2500000, co2Grams: 285000, trips: [
-    { id: 't1a', serviceCode: 'TK1987', departureTime: '07:35', arrivalTime: '10:25', operatingDaysMask: 127, validFrom: null, validTo: null, estimatedCostCents: 28900 },
-    { id: 't1b', serviceCode: 'TK1971', departureTime: '13:40', arrivalTime: '16:30', operatingDaysMask: 62, validFrom: null, validTo: null, estimatedCostCents: 31500 },
-    { id: 't1c', serviceCode: 'TK1979', departureTime: '19:15', arrivalTime: '22:05', operatingDaysMask: 127, validFrom: null, validTo: null, estimatedCostCents: 26900 },
-  ], version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: 'e2', originLocationId: 'loc_ist', originLabel: 'IST — Istanbul Airport', destinationLocationId: 'loc_fra', destinationLabel: 'FRA — Frankfurt Airport', transportModeCode: 'FLIGHT', providerCode: 'TK', scheduleType: 'FIXED', operatingDaysMask: 127, operatingStartTime: null, operatingEndTime: null, frequencyMinutes: null, status: 'ACTIVE', source: 'MANUAL', estimatedDurationMin: 195, distanceM: 1870000, co2Grams: 210000, trips: [
-    { id: 't2a', serviceCode: 'TK1591', departureTime: '08:20', arrivalTime: '10:50', operatingDaysMask: 127, validFrom: null, validTo: null, estimatedCostCents: 22500 },
-    { id: 't2b', serviceCode: 'TK1593', departureTime: '16:05', arrivalTime: '18:35', operatingDaysMask: 127, validFrom: null, validTo: null, estimatedCostCents: 24000 },
-  ], version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: 'e3', originLocationId: 'loc_saw', originLabel: 'SAW — Sabiha Gökçen', destinationLocationId: 'loc_ber', destinationLabel: 'BER — Berlin Brandenburg', transportModeCode: 'FLIGHT', providerCode: 'PC', scheduleType: 'FIXED', operatingDaysMask: 62, operatingStartTime: null, operatingEndTime: null, frequencyMinutes: null, status: 'ACTIVE', source: 'MANUAL', estimatedDurationMin: 195, distanceM: 1730000, co2Grams: 195000, trips: [
-    { id: 't3a', serviceCode: 'PC1171', departureTime: '14:30', arrivalTime: '16:45', operatingDaysMask: 62, validFrom: null, validTo: null, estimatedCostCents: 14900 },
-  ], version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: 'e4', originLocationId: 'loc_fra', originLabel: 'FRA — Frankfurt Flughafen', destinationLocationId: 'loc_frahbf', destinationLabel: 'Frankfurt Hbf', transportModeCode: 'TRAIN', providerCode: 'DB', scheduleType: 'FREQUENCY', operatingDaysMask: 127, operatingStartTime: '04:30', operatingEndTime: '00:30', frequencyMinutes: 15, status: 'ACTIVE', source: 'GTFS', estimatedDurationMin: 12, distanceM: 12000, co2Grams: 150, trips: [], version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: 'e5', originLocationId: 'loc_frahbf', originLabel: 'Frankfurt Hbf', destinationLocationId: 'loc_berhbf', destinationLabel: 'Berlin Hbf', transportModeCode: 'TRAIN', providerCode: 'DBFV', scheduleType: 'FIXED', operatingDaysMask: 127, operatingStartTime: null, operatingEndTime: null, frequencyMinutes: null, status: 'ACTIVE', source: 'GTFS', estimatedDurationMin: 236, distanceM: 545000, co2Grams: 2200, trips: [
-    { id: 't5a', serviceCode: 'ICE 1537', departureTime: '06:52', arrivalTime: '10:48', operatingDaysMask: 127, validFrom: null, validTo: null, estimatedCostCents: 5990 },
-    { id: 't5b', serviceCode: 'ICE 1539', departureTime: '08:52', arrivalTime: '12:48', operatingDaysMask: 127, validFrom: null, validTo: null, estimatedCostCents: 5990 },
-    { id: 't5c', serviceCode: 'ICE 1545', departureTime: '14:52', arrivalTime: '18:48', operatingDaysMask: 62, validFrom: null, validTo: null, estimatedCostCents: 5990 },
-  ], version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: 'e6', originLocationId: 'loc_ank', originLabel: 'Ankara Gar', destinationLocationId: 'loc_ist_gar', destinationLabel: 'İstanbul Pendik YHT', transportModeCode: 'TRAIN', providerCode: 'TCDD', scheduleType: 'FIXED', operatingDaysMask: 127, operatingStartTime: null, operatingEndTime: null, frequencyMinutes: null, status: 'ACTIVE', source: 'MANUAL', estimatedDurationMin: 265, distanceM: 533000, co2Grams: 4600, trips: [
-    { id: 't6a', serviceCode: 'YHT 8001', departureTime: '06:30', arrivalTime: '10:55', operatingDaysMask: 127, validFrom: null, validTo: null, estimatedCostCents: 32000 },
-    { id: 't6b', serviceCode: 'YHT 8003', departureTime: '09:00', arrivalTime: '13:25', operatingDaysMask: 127, validFrom: null, validTo: null, estimatedCostCents: 32000 },
-    { id: 't6c', serviceCode: 'YHT 8007', departureTime: '15:30', arrivalTime: '19:55', operatingDaysMask: 62, validFrom: null, validTo: null, estimatedCostCents: 32000 },
-    { id: 't6d', serviceCode: 'YHT 8009', departureTime: '18:00', arrivalTime: '22:25', operatingDaysMask: 127, validFrom: null, validTo: null, estimatedCostCents: 32000 },
-  ], version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: 'e7', originLocationId: 'loc_emn', originLabel: 'Eminönü', destinationLocationId: 'loc_kdky', destinationLabel: 'Kadıköy', transportModeCode: 'FERRY', providerCode: 'SHHL', scheduleType: 'FREQUENCY', operatingDaysMask: 127, operatingStartTime: '07:00', operatingEndTime: '22:30', frequencyMinutes: 20, status: 'ACTIVE', source: 'MANUAL', estimatedDurationMin: 25, distanceM: 3500, co2Grams: 800, trips: [], version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: 'e8', originLocationId: 'loc_ist_otag', originLabel: 'İstanbul Otogarı', destinationLocationId: 'loc_ank_asti', destinationLabel: 'Ankara AŞTİ', transportModeCode: 'BUS', providerCode: 'MET', scheduleType: 'FREQUENCY', operatingDaysMask: 127, operatingStartTime: '00:00', operatingEndTime: '23:59', frequencyMinutes: 30, status: 'ACTIVE', source: 'MANUAL', estimatedDurationMin: 360, distanceM: 450000, co2Grams: 22000, trips: [], version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: 'e9', originLocationId: 'loc_tax', originLabel: 'Taksim', destinationLocationId: 'loc_ist', destinationLabel: 'IST — Istanbul Airport', transportModeCode: 'UBER', providerCode: 'UBTR', scheduleType: 'ON_DEMAND', operatingDaysMask: 127, operatingStartTime: null, operatingEndTime: null, frequencyMinutes: null, status: 'ACTIVE', source: 'COMPUTED', estimatedDurationMin: 45, distanceM: 52000, co2Grams: 3800, trips: [], version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: 'e10', originLocationId: 'loc_bvg_alex', originLabel: 'Alexanderplatz', destinationLocationId: 'loc_bvg_zoo', destinationLabel: 'Zoologischer Garten', transportModeCode: 'SUBWAY', providerCode: 'BVG', scheduleType: 'FREQUENCY', operatingDaysMask: 127, operatingStartTime: '04:00', operatingEndTime: '01:00', frequencyMinutes: 5, status: 'ACTIVE', source: 'GTFS', estimatedDurationMin: 14, distanceM: 8200, co2Grams: 100, trips: [], version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: 'e11', originLocationId: 'loc_ist_t1', originLabel: 'IST Terminal 1', destinationLocationId: 'loc_ist_metro', destinationLabel: 'IST Metro İstasyonu', transportModeCode: 'WALKING', providerCode: null, scheduleType: 'ON_DEMAND', operatingDaysMask: 127, operatingStartTime: null, operatingEndTime: null, frequencyMinutes: null, status: 'ACTIVE', source: 'COMPUTED', estimatedDurationMin: 8, distanceM: 650, co2Grams: 0, trips: [], version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: 'e12', originLocationId: 'loc_ido_yen', originLabel: 'Yenikapı İDO', destinationLocationId: 'loc_ido_brs', destinationLabel: 'Bursa Güzelyalı', transportModeCode: 'FERRY', providerCode: 'IDO', scheduleType: 'FIXED', operatingDaysMask: 127, operatingStartTime: null, operatingEndTime: null, frequencyMinutes: null, status: 'ACTIVE', source: 'MANUAL', estimatedDurationMin: 110, distanceM: 75000, co2Grams: 12000, trips: [
-    { id: 't12a', serviceCode: null, departureTime: '07:30', arrivalTime: '09:20', operatingDaysMask: 127, validFrom: null, validTo: null, estimatedCostCents: 28000 },
-    { id: 't12b', serviceCode: null, departureTime: '10:00', arrivalTime: '11:50', operatingDaysMask: 127, validFrom: null, validTo: null, estimatedCostCents: 28000 },
-    { id: 't12c', serviceCode: null, departureTime: '14:30', arrivalTime: '16:20', operatingDaysMask: 62, validFrom: null, validTo: null, estimatedCostCents: 28000 },
-    { id: 't12d', serviceCode: null, departureTime: '18:00', arrivalTime: '19:50', operatingDaysMask: 127, validFrom: null, validTo: null, estimatedCostCents: 28000 },
-  ], version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-];
+/* ═══════════ resolveEnum + mapEdge ═══════════ */
+const resolveEnum = (val: unknown): string => {
+  if (val && typeof val === 'object' && 'value' in (val as Record<string, unknown>))
+    return (val as Record<string, string>).value;
+  return (val as string) || '';
+};
+
+const mapEdge = (e: any): TransportEdge => ({
+  id: e.id,
+  originLocationId: e.originLocation?.id || '',
+  originLabel: `${e.originLocation?.iataCode ? e.originLocation.iataCode + ' — ' : ''}${e.originLocation?.name || ''}`,
+  destinationLocationId: e.destinationLocation?.id || '',
+  destinationLabel: `${e.destinationLocation?.iataCode ? e.destinationLocation.iataCode + ' — ' : ''}${e.destinationLocation?.name || ''}`,
+  transportModeCode: resolveEnum(e.transportMode?.code) || e.transportMode?.code || '',
+  providerCode: e.provider?.code || null,
+  scheduleType: (resolveEnum(e.scheduleType) || e.scheduleType || 'FIXED') as ScheduleType,
+  operatingDaysMask: e.operatingDaysMask ?? 127,
+  operatingStartTime: e.operatingStartTime || null,
+  operatingEndTime: e.operatingEndTime || null,
+  frequencyMinutes: e.frequencyMinutes ?? null,
+  status: (resolveEnum(e.status) || e.status || 'ACTIVE') as EdgeStatus,
+  source: (resolveEnum(e.source) || e.source || 'MANUAL') as EdgeSource,
+  estimatedDurationMin: e.estimatedDurationMin ?? null,
+  distanceM: e.distanceM ?? null,
+  co2Grams: e.co2Grams ?? null,
+  trips: (e.trips || []).filter((t: any) => !t.deleted).map((t: any) => ({
+    id: t.id,
+    serviceCode: t.serviceCode || null,
+    departureTime: t.departureTime || '',
+    arrivalTime: t.arrivalTime || '',
+    operatingDaysMask: t.operatingDaysMask ?? 127,
+    validFrom: t.validFrom || null,
+    validTo: t.validTo || null,
+    estimatedCostCents: t.estimatedCostCents ?? null,
+  })),
+  version: e.version ?? 1,
+  createdDate: e.createdDate || '',
+  lastModifiedDate: e.lastModifiedDate || null,
+  deleted: e.deleted ?? false,
+});
+
 
 const PAGE_SIZES = [10, 20, 50];
 
@@ -280,7 +282,8 @@ const emptyForm = (): FormState => ({
    COMPONENT
    ═══════════════════════════════════════════════ */
 export const ConnectionsPane: React.FC = () => {
-  const [edges, setEdges] = useState<TransportEdge[]>(INITIAL_EDGES);
+  const [edges, setEdges] = useState<TransportEdge[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [modeFilter, setModeFilter] = useState<string>('ALL');
   const [sourceFilter, setSourceFilter] = useState<string>('ALL');
@@ -300,6 +303,19 @@ export const ConnectionsPane: React.FC = () => {
   const showToast = useCallback((msg: string, variant: 'success' | 'error' = 'success') => {
     setToastMsg(msg); setToastVariant(variant); setToastOpen(true);
   }, []);
+
+  /* ═══ Load data from API ═══ */
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const rawEdges = await apiGet<any[]>('/transport/edges');
+      setEdges((rawEdges || []).map(mapEdge));
+    } catch (err) {
+      console.error('Failed to load edges:', err);
+    } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
 
   /* ═══ Filtering + Pagination ═══ */
   const filtered = useMemo(() => {
@@ -341,42 +357,53 @@ export const ConnectionsPane: React.FC = () => {
     setDialogOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.originLabel.trim() || !form.destinationLabel.trim()) {
       showToast('Origin and Destination are required.', 'error'); return;
     }
     const n = (v: string) => v ? parseInt(v) : null;
-    const edgeData: Partial<TransportEdge> = {
-      originLabel: form.originLabel.trim(), destinationLabel: form.destinationLabel.trim(),
-      originLocationId: `loc_${Date.now()}`, destinationLocationId: `loc_${Date.now() + 1}`,
-      transportModeCode: form.transportModeCode, providerCode: form.providerCode || null,
-      scheduleType: form.scheduleType, operatingDaysMask: form.operatingDaysMask,
-      operatingStartTime: form.operatingStartTime || null, operatingEndTime: form.operatingEndTime || null,
-      frequencyMinutes: n(form.frequencyMinutes), status: form.status, source: form.source,
+    const body: Record<string, unknown> = {
+      scheduleType: form.scheduleType,
+      operatingDaysMask: form.operatingDaysMask,
+      operatingStartTime: form.operatingStartTime || null,
+      operatingEndTime: form.operatingEndTime || null,
+      frequencyMinutes: n(form.frequencyMinutes),
+      status: form.status,
+      source: form.source,
       estimatedDurationMin: n(form.estimatedDurationMin),
-      distanceM: n(form.distanceM), co2Grams: n(form.co2Grams),
+      distanceM: n(form.distanceM),
+      co2Grams: n(form.co2Grams),
     };
-    if (editingId) {
-      setEdges(prev => prev.map(e => e.id === editingId ? { ...e, ...edgeData, version: e.version + 1, lastModifiedDate: new Date().toISOString() } as TransportEdge : e));
-      showToast('Route updated.');
-    } else {
-      setEdges(prev => [...prev, { id: `e_${Date.now()}`, ...edgeData, trips: [], version: 1, createdDate: new Date().toISOString(), lastModifiedDate: null, deleted: false } as TransportEdge]);
-      showToast('Route created.');
-    }
-    setDialogOpen(false);
+    try {
+      if (editingId) {
+        await apiPut(`/transport/edges/${editingId}`, body);
+        showToast('Route updated.');
+      } else {
+        showToast('Create edges via DB or use an existing edge.', 'error');
+        return;
+      }
+      setDialogOpen(false);
+      loadData();
+    } catch { /* interceptor handles toast */ }
   };
 
   const confirmDelete = (e: TransportEdge) => { setDeletingEdge(e); setDeleteDialogOpen(true); };
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deletingEdge) return;
-    setEdges(prev => prev.map(e => e.id === deletingEdge.id ? { ...e, deleted: true } : e));
-    showToast('Connection deleted.');
+    try {
+      await apiDelete(`/transport/edges/${deletingEdge.id}`);
+      showToast('Connection deleted.');
+      loadData();
+    } catch { /* interceptor handles toast */ }
     setDeleteDialogOpen(false); setDeletingEdge(null);
   };
-  const toggleStatus = (e: TransportEdge) => {
+  const toggleStatus = async (e: TransportEdge) => {
     const newStatus: EdgeStatus = e.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-    setEdges(prev => prev.map(x => x.id === e.id ? { ...x, status: newStatus, lastModifiedDate: new Date().toISOString() } : x));
-    showToast(`Connection ${newStatus === 'ACTIVE' ? 'activated' : 'deactivated'}.`);
+    try {
+      await apiPut(`/transport/edges/${e.id}`, { status: newStatus });
+      showToast(`Connection ${newStatus === 'ACTIVE' ? 'activated' : 'deactivated'}.`);
+      loadData();
+    } catch { /* interceptor handles toast */ }
   };
 
   const toggleDay = (bit: number) => {

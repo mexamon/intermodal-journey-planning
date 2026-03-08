@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import * as paneStyles from '../Panes.module.scss';
 import * as s from './LocationsPane.module.scss';
 import * as Dialog from '@radix-ui/react-dialog';
@@ -58,30 +58,13 @@ const SOURCE_META: Record<LocationSource, { color: string; label: string }> = {
   API:            { color: '#6b7280', label: 'API' },
 };
 
-/* ═══════════ Mock Data ═══════════ */
-const MOCK_DATA: Location[] = [
-  { id: '1', type: 'AIRPORT', name: 'Istanbul Airport', countryIsoCode: 'TR', regionCode: 'TR-34', city: 'Istanbul', timezone: 'Europe/Istanbul', lat: 41.2611, lon: 28.7419, iataCode: 'IST', icaoCode: 'LTFM', isSearchable: true, searchPriority: 200, searchAliases: ['Arnavutköy'], source: 'OURAIRPORTS', sourcePk: '6727', version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: '2', type: 'AIRPORT', name: 'Sabiha Gökçen International Airport', countryIsoCode: 'TR', regionCode: 'TR-34', city: 'Istanbul', timezone: 'Europe/Istanbul', lat: 40.8986, lon: 29.3092, iataCode: 'SAW', icaoCode: 'LTFJ', isSearchable: true, searchPriority: 190, searchAliases: ['Pendik'], source: 'OURAIRPORTS', sourcePk: '6728', version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: '3', type: 'AIRPORT', name: 'London Heathrow Airport', countryIsoCode: 'GB', regionCode: 'GB-ENG', city: 'London', timezone: 'Europe/London', lat: 51.4700, lon: -0.4543, iataCode: 'LHR', icaoCode: 'EGLL', isSearchable: true, searchPriority: 200, searchAliases: [], source: 'OURAIRPORTS', sourcePk: '2434', version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: '4', type: 'AIRPORT', name: 'Frankfurt am Main Airport', countryIsoCode: 'DE', regionCode: 'DE-HE', city: 'Frankfurt', timezone: 'Europe/Berlin', lat: 50.0333, lon: 8.5706, iataCode: 'FRA', icaoCode: 'EDDF', isSearchable: true, searchPriority: 200, searchAliases: [], source: 'OURAIRPORTS', sourcePk: '340', version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: '5', type: 'AIRPORT', name: 'Charles de Gaulle Airport', countryIsoCode: 'FR', regionCode: 'FR-IDF', city: 'Paris', timezone: 'Europe/Paris', lat: 49.0097, lon: 2.5479, iataCode: 'CDG', icaoCode: 'LFPG', isSearchable: true, searchPriority: 200, searchAliases: ['Roissy'], source: 'OURAIRPORTS', sourcePk: '1382', version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: '6', type: 'AIRPORT', name: 'Munich Airport', countryIsoCode: 'DE', regionCode: 'DE-BY', city: 'Munich', timezone: 'Europe/Berlin', lat: 48.3538, lon: 11.7861, iataCode: 'MUC', icaoCode: 'EDDM', isSearchable: true, searchPriority: 200, searchAliases: ['München'], source: 'OURAIRPORTS', sourcePk: '338', version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: '7', type: 'AIRPORT', name: 'Amsterdam Schiphol Airport', countryIsoCode: 'NL', regionCode: 'NL-NH', city: 'Amsterdam', timezone: 'Europe/Amsterdam', lat: 52.3086, lon: 4.7639, iataCode: 'AMS', icaoCode: 'EHAM', isSearchable: true, searchPriority: 200, searchAliases: [], source: 'OURAIRPORTS', sourcePk: '2513', version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: '8', type: 'AIRPORT', name: 'Antalya Airport', countryIsoCode: 'TR', regionCode: 'TR-07', city: 'Antalya', timezone: 'Europe/Istanbul', lat: 36.8987, lon: 30.8005, iataCode: 'AYT', icaoCode: 'LTAI', isSearchable: true, searchPriority: 180, searchAliases: [], source: 'OURAIRPORTS', sourcePk: '6729', version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: '9', type: 'STATION', name: 'Frankfurt Hauptbahnhof', countryIsoCode: 'DE', regionCode: 'DE-HE', city: 'Frankfurt', timezone: 'Europe/Berlin', lat: 50.1071, lon: 8.6637, iataCode: null, icaoCode: null, isSearchable: true, searchPriority: 160, searchAliases: ['FRA-C', 'Frankfurt Hbf'], source: 'INTERNAL', sourcePk: null, version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: '10', type: 'STATION', name: 'London Liverpool Street', countryIsoCode: 'GB', regionCode: 'GB-ENG', city: 'London', timezone: 'Europe/London', lat: 51.5178, lon: -0.0823, iataCode: null, icaoCode: null, isSearchable: true, searchPriority: 150, searchAliases: ['LST'], source: 'INTERNAL', sourcePk: null, version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: '11', type: 'STATION', name: 'Gare du Nord', countryIsoCode: 'FR', regionCode: 'FR-IDF', city: 'Paris', timezone: 'Europe/Paris', lat: 48.8809, lon: 2.3553, iataCode: null, icaoCode: null, isSearchable: true, searchPriority: 170, searchAliases: ['PAR-N'], source: 'GTFS', sourcePk: 'stop_8727100', version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: '12', type: 'STATION', name: 'München Hauptbahnhof', countryIsoCode: 'DE', regionCode: 'DE-BY', city: 'Munich', timezone: 'Europe/Berlin', lat: 48.1403, lon: 11.5600, iataCode: null, icaoCode: null, isSearchable: true, searchPriority: 170, searchAliases: ['MUC-C', 'München Hbf'], source: 'GTFS', sourcePk: 'stop_8000261', version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: '13', type: 'STATION', name: 'Berlin Hauptbahnhof', countryIsoCode: 'DE', regionCode: 'DE-BE', city: 'Berlin', timezone: 'Europe/Berlin', lat: 52.5251, lon: 13.3694, iataCode: null, icaoCode: null, isSearchable: true, searchPriority: 170, searchAliases: ['BER-C', 'Berlin Hbf'], source: 'GTFS', sourcePk: 'stop_8011160', version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: '14', type: 'CITY', name: 'Taksim', countryIsoCode: 'TR', regionCode: 'TR-34', city: 'Istanbul', timezone: 'Europe/Istanbul', lat: 41.0370, lon: 28.9850, iataCode: null, icaoCode: null, isSearchable: true, searchPriority: 120, searchAliases: ['Taksim Meydanı', 'Taksim Sq'], source: 'INTERNAL', sourcePk: null, version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: '15', type: 'CITY', name: 'Kadıköy', countryIsoCode: 'TR', regionCode: 'TR-34', city: 'Istanbul', timezone: 'Europe/Istanbul', lat: 40.9919, lon: 29.0234, iataCode: null, icaoCode: null, isSearchable: true, searchPriority: 100, searchAliases: ['Kadikoy'], source: 'INTERNAL', sourcePk: null, version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: '16', type: 'POI', name: 'Terminal 2E', countryIsoCode: 'FR', regionCode: 'FR-IDF', city: 'Paris', timezone: 'Europe/Paris', lat: 49.0088, lon: 2.5656, iataCode: null, icaoCode: null, isSearchable: false, searchPriority: 50, searchAliases: ['T2E'], source: 'INTERNAL', sourcePk: null, version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: '17', type: 'AIRPORT', name: 'Berlin Brandenburg Airport', countryIsoCode: 'DE', regionCode: 'DE-BB', city: 'Berlin', timezone: 'Europe/Berlin', lat: 52.3667, lon: 13.5033, iataCode: 'BER', icaoCode: 'EDDB', isSearchable: true, searchPriority: 200, searchAliases: ['Schönefeld'], source: 'OURAIRPORTS', sourcePk: '35', version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: '18', type: 'STATION', name: 'Marmaray Üsküdar', countryIsoCode: 'TR', regionCode: 'TR-34', city: 'Istanbul', timezone: 'Europe/Istanbul', lat: 41.0234, lon: 29.0150, iataCode: null, icaoCode: null, isSearchable: true, searchPriority: 110, searchAliases: ['Üsküdar Metro'], source: 'GTFS', sourcePk: 'stop_uskudar', version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: '19', type: 'STATION', name: 'Kadıköy Metro', countryIsoCode: 'TR', regionCode: 'TR-34', city: 'Istanbul', timezone: 'Europe/Istanbul', lat: 40.9908, lon: 29.0269, iataCode: null, icaoCode: null, isSearchable: true, searchPriority: 110, searchAliases: ['M4 Kadıköy'], source: 'GTFS', sourcePk: 'stop_kadikoy', version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: '20', type: 'AIRPORT', name: 'Vienna International Airport', countryIsoCode: 'AT', regionCode: 'AT-9', city: 'Vienna', timezone: 'Europe/Vienna', lat: 48.1103, lon: 16.5697, iataCode: 'VIE', icaoCode: 'LOWW', isSearchable: true, searchPriority: 200, searchAliases: ['Schwechat'], source: 'OURAIRPORTS', sourcePk: '1613', version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: '21', type: 'AIRPORT', name: 'Zürich Airport', countryIsoCode: 'CH', regionCode: 'CH-ZH', city: 'Zürich', timezone: 'Europe/Zurich', lat: 47.4647, lon: 8.5492, iataCode: 'ZRH', icaoCode: 'LSZH', isSearchable: true, searchPriority: 200, searchAliases: ['Kloten'], source: 'OURAIRPORTS', sourcePk: '1678', version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-];
+const resolveEnum = (val: unknown): string => {
+  if (val && typeof val === 'object' && 'value' in (val as Record<string, unknown>))
+    return (val as Record<string, string>).value;
+  return (val as string) || '';
+};
+
+import { apiGet, apiPost, apiPut, apiDelete } from '../../api/client';
 
 /* ═══════════ Component ═══════════ */
 const emptyForm = (): Omit<Location, 'id' | 'version' | 'createdDate' | 'lastModifiedDate' | 'deleted'> => ({
@@ -93,7 +76,8 @@ const emptyForm = (): Omit<Location, 'id' | 'version' | 'createdDate' | 'lastMod
 
 export const LocationsPane: React.FC = () => {
   /* ── State ── */
-  const [data, setData] = useState<Location[]>(MOCK_DATA);
+  const [data, setData] = useState<Location[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'ALL' | LocationType>('ALL');
   const [sourceFilter, setSourceFilter] = useState<'ALL' | LocationSource>('ALL');
@@ -120,6 +104,19 @@ export const LocationsPane: React.FC = () => {
   const flash = useCallback((msg: string, type: 'success' | 'error' = 'success') => {
     setToastMsg(msg); setToastType(type); setToastOpen(true);
   }, []);
+
+  /* ── Load data from API ── */
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const result = await apiGet<{ content: Location[] }>('/inventory/locations/search', { page: 0, size: 5000 });
+      setData(result?.content || []);
+    } catch (err) {
+      console.error('Failed to load locations:', err);
+    } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
 
   /* ── Filtering ── */
   const filtered = useMemo(() => {
@@ -160,36 +157,40 @@ export const LocationsPane: React.FC = () => {
     setDialogOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name.trim() || !form.countryIsoCode.trim()) { flash('Name and Country are required', 'error'); return; }
     const aliases = aliasText.trim() ? aliasText.split(',').map(a => a.trim()).filter(Boolean) : [];
-    if (editingId) {
-      setData(prev => prev.map(l => l.id === editingId ? {
-        ...l, ...form, searchAliases: aliases, lastModifiedDate: new Date().toISOString(),
-      } : l));
-      flash(`Updated "${form.name}"`);
-    } else {
-      const newLoc: Location = {
-        ...form, searchAliases: aliases, id: `loc_${Date.now()}`, version: 1,
-        createdDate: new Date().toISOString(), lastModifiedDate: null, deleted: false,
-      };
-      setData(prev => [newLoc, ...prev]);
-      flash(`Added "${form.name}"`);
-    }
-    setDialogOpen(false);
+    const body = { ...form, searchAliases: aliases };
+    try {
+      if (editingId) {
+        await apiPut(`/inventory/locations/${editingId}`, body);
+        flash(`Updated "${form.name}"`);
+      } else {
+        await apiPost('/inventory/locations', body);
+        flash(`Added "${form.name}"`);
+      }
+      setDialogOpen(false);
+      loadData();
+    } catch { /* interceptor handles toast */ }
   };
 
   const confirmDelete = (l: Location) => { setDeletingLoc(l); setDeleteDialogOpen(true); };
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deletingLoc) return;
-    setData(prev => prev.filter(l => l.id !== deletingLoc.id));
-    flash(`Deleted "${deletingLoc.name}"`);
+    try {
+      await apiDelete(`/inventory/locations/${deletingLoc.id}`);
+      flash(`Deleted "${deletingLoc.name}"`);
+      loadData();
+    } catch { /* interceptor handles toast */ }
     setDeleteDialogOpen(false); setDeletingLoc(null);
   };
 
-  const toggleSearchable = (loc: Location) => {
-    setData(prev => prev.map(l => l.id === loc.id ? { ...l, isSearchable: !l.isSearchable } : l));
-    flash(`${loc.name} is now ${loc.isSearchable ? 'hidden' : 'searchable'}`);
+  const toggleSearchable = async (loc: Location) => {
+    try {
+      await apiPut(`/inventory/locations/${loc.id}`, { isSearchable: !loc.isSearchable });
+      flash(`${loc.name} is now ${loc.isSearchable ? 'hidden' : 'searchable'}`);
+      loadData();
+    } catch { /* interceptor handles toast */ }
   };
 
   /* ── Stats ── */
@@ -284,8 +285,10 @@ export const LocationsPane: React.FC = () => {
         </div>
       </div>
 
+      {loading && <div style={{ textAlign: 'center', padding: '3rem', opacity: 0.5 }}>Loading...</div>}
+
       {/* ── Table ── */}
-      <div className={paneStyles.tableWrapper} style={{ minHeight: 'calc(100vh - 330px)' }}>
+      {!loading && <div className={paneStyles.tableWrapper} style={{ minHeight: 'calc(100vh - 330px)' }}>
         <table className={paneStyles.dataTable}>
           <thead>
             <tr>
@@ -379,7 +382,7 @@ export const LocationsPane: React.FC = () => {
             ))}
           </tbody>
         </table>
-      </div>
+      </div>}
 
       {/* ── Pagination ── */}
       <div className={s.paginationBar}>

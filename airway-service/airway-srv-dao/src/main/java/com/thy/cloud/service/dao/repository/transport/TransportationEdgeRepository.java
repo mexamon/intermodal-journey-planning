@@ -31,6 +31,10 @@ public interface TransportationEdgeRepository extends GenericRepository<Transpor
 
     boolean existsByProviderId(UUID providerId);
 
+    boolean existsByTransportModeId(UUID transportModeId);
+
+    boolean existsByOriginLocationIdOrDestinationLocationId(UUID originId, UUID destinationId);
+
     @Query("SELECT e FROM TransportationEdge e " +
            "JOIN FETCH e.originLocation " +
            "JOIN FETCH e.destinationLocation " +

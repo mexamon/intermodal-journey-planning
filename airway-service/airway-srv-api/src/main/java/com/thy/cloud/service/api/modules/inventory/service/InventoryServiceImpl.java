@@ -101,6 +101,31 @@ public class InventoryServiceImpl implements InventoryService {
                 .orElseThrow(() -> new EntityNotFoundException("Location not found for IATA: " + iataCode));
     }
 
+    @Override
+    @Transactional
+    public Location saveLocation(Location location) {
+        if (location.getId() == null && location.getIataCode() != null && !location.getIataCode().isBlank()) {
+            locationRepository.findByIataCode(location.getIataCode()).ifPresent(existing -> {
+                throw new IllegalStateException("Location with IATA '" + location.getIataCode() + "' already exists.");
+            });
+        }
+        return locationRepository.save(location);
+    }
+
+    @Override
+    @Transactional
+    public void deleteLocation(UUID id) {
+        Location existing = locationRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Location not found: " + id));
+
+        boolean usedInEdges = edgeRepository.existsByOriginLocationIdOrDestinationLocationId(id, id);
+        if (usedInEdges) {
+            throw new IllegalStateException(
+                    "Cannot delete location '" + existing.getName() + "': in use by transportation edges.");
+        }
+        locationRepository.deleteById(id);
+    }
+
     // ── Airport ───────────────────────────────────────────────
 
     @Override

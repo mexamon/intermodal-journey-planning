@@ -20,6 +20,10 @@ public interface InventoryService {
 
     Location getLocationByIata(String iataCode);
 
+    Location saveLocation(Location location);
+
+    void deleteLocation(UUID id);
+
     // Airport
     AirportProfile getAirportProfile(UUID locationId);
 

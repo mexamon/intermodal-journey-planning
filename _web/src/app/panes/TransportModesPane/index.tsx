@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import * as paneStyles from '../Panes.module.scss';
 import * as s from './TransportModesPane.module.scss';
 import * as Dialog from '@radix-ui/react-dialog';
@@ -12,6 +12,7 @@ import {
   MdFlight, MdDirectionsBus, MdTrain, MdDirectionsSubway,
   MdLocalTaxi, MdDirectionsBoat, MdDirectionsWalk, MdPedalBike,
 } from 'react-icons/md';
+import { apiGet, apiPost, apiPut, apiDelete } from '../../api/client';
 
 /* ═══════════════════════════════════════════════
    Types — matching DB transport_mode exactly (V005)
@@ -74,19 +75,33 @@ const CATEGORY_LABELS: Record<ModeCategory, string> = {
   AIR: 'Air', GROUND_FIXED: 'Ground (Fixed)', GROUND_FLEX: 'Ground (Flex)', PEDESTRIAN: 'Pedestrian',
 };
 
-/* ═══════════════════════════════════════════════
-   Mock Data — aligned with V009 seed exactly
-   ═══════════════════════════════════════════════ */
-const INITIAL_MODES: TransportMode[] = [
-  { id: 'm1', code: 'FLIGHT',  name: 'Flight',  category: 'AIR',          coverageType: 'FIXED_STOP',     edgeResolution: 'STATIC',      requiresStop: true,  maxWalkingAccessM: 0,    defaultSpeedKmh: 800, apiProvider: null,     icon: 'plane',   colorHex: '#1E88E5', isActive: true,  configJson: null, sortOrder: 1, version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: 'm2', code: 'BUS',     name: 'Bus',     category: 'GROUND_FIXED', coverageType: 'FIXED_STOP',     edgeResolution: 'STATIC',      requiresStop: true,  maxWalkingAccessM: 800,  defaultSpeedKmh: 40,  apiProvider: null,     icon: 'bus',     colorHex: '#43A047', isActive: true,  configJson: null, sortOrder: 2, version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: 'm3', code: 'TRAIN',   name: 'Train',   category: 'GROUND_FIXED', coverageType: 'FIXED_STOP',     edgeResolution: 'STATIC',      requiresStop: true,  maxWalkingAccessM: 1200, defaultSpeedKmh: 120, apiProvider: null,     icon: 'train',   colorHex: '#E53935', isActive: true,  configJson: null, sortOrder: 3, version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: 'm4', code: 'SUBWAY',  name: 'Subway',  category: 'GROUND_FIXED', coverageType: 'NETWORK',        edgeResolution: 'STATIC',      requiresStop: true,  maxWalkingAccessM: 600,  defaultSpeedKmh: 35,  apiProvider: null,     icon: 'subway',  colorHex: '#8E24AA', isActive: true,  configJson: null, sortOrder: 4, version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: 'm5', code: 'UBER',    name: 'Uber',    category: 'GROUND_FLEX',  coverageType: 'POINT_TO_POINT', edgeResolution: 'API_DYNAMIC', requiresStop: false, maxWalkingAccessM: 0,    defaultSpeedKmh: 30,  apiProvider: 'GOOGLE', icon: 'car',     colorHex: '#212121', isActive: true,  configJson: null, sortOrder: 5, version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: 'm6', code: 'FERRY',   name: 'Ferry',   category: 'GROUND_FIXED', coverageType: 'FIXED_STOP',     edgeResolution: 'STATIC',      requiresStop: true,  maxWalkingAccessM: 500,  defaultSpeedKmh: 25,  apiProvider: null,     icon: 'ship',    colorHex: '#00ACC1', isActive: true,  configJson: null, sortOrder: 6, version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: 'm7', code: 'WALKING', name: 'Walking', category: 'PEDESTRIAN',   coverageType: 'COMPUTED',       edgeResolution: 'COMPUTED',    requiresStop: false, maxWalkingAccessM: null, defaultSpeedKmh: 5,   apiProvider: null,     icon: 'walking', colorHex: '#78909C', isActive: true,  configJson: null, sortOrder: 7, version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-  { id: 'm8', code: 'BIKE',    name: 'Bike',    category: 'PEDESTRIAN',   coverageType: 'COMPUTED',       edgeResolution: 'COMPUTED',    requiresStop: false, maxWalkingAccessM: null, defaultSpeedKmh: 15,  apiProvider: null,     icon: 'bicycle', colorHex: '#FF8F00', isActive: true,  configJson: null, sortOrder: 8, version: 1, createdDate: '2026-03-01T10:00:00Z', lastModifiedDate: null, deleted: false },
-];
+/* ═══════════ Enum resolver (Java enums may come as objects) ═══════════ */
+const resolveEnum = (val: unknown): string => {
+  if (val && typeof val === 'object' && 'value' in (val as Record<string, unknown>))
+    return (val as Record<string, string>).value;
+  return (val as string) || '';
+};
+const mapMode = (m: any): TransportMode => ({
+  id: m.id,
+  code: m.code || '',
+  name: m.name || '',
+  category: (resolveEnum(m.category) || 'GROUND_FIXED') as ModeCategory,
+  coverageType: (resolveEnum(m.coverageType) || 'FIXED_STOP') as CoverageType,
+  edgeResolution: (resolveEnum(m.edgeResolution) || 'STATIC') as EdgeResolution,
+  requiresStop: m.requiresStop ?? true,
+  maxWalkingAccessM: m.maxWalkingAccessM ?? null,
+  defaultSpeedKmh: m.defaultSpeedKmh ?? 40,
+  apiProvider: m.apiProvider || null,
+  icon: m.icon || 'bus',
+  colorHex: m.colorHex || '#3b82f6',
+  isActive: m.isActive ?? true,
+  configJson: m.configJson ?? null,
+  sortOrder: m.sortOrder ?? 0,
+  version: m.version ?? 1,
+  createdDate: m.createdDate || '',
+  lastModifiedDate: m.lastModifiedDate || null,
+  deleted: m.deleted ?? false,
+});
 
 type FormState = Omit<TransportMode, 'id' | 'version' | 'createdDate' | 'lastModifiedDate' | 'deleted'>;
 
@@ -101,7 +116,8 @@ const emptyForm = (): FormState => ({
    COMPONENT
    ═══════════════════════════════════════════════ */
 export const TransportModesPane: React.FC = () => {
-  const [modes, setModes] = useState<TransportMode[]>(INITIAL_MODES);
+  const [modes, setModes] = useState<TransportMode[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -115,6 +131,17 @@ export const TransportModesPane: React.FC = () => {
   const showToast = useCallback((msg: string, variant: 'success' | 'error' = 'success') => {
     setToastMsg(msg); setToastVariant(variant); setToastOpen(true);
   }, []);
+
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const raw = await apiGet<any[]>('/transport/modes', { all: true });
+      setModes((raw || []).map(mapMode));
+    } catch (err) { console.error('Failed to load modes:', err); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
 
   const filtered = useMemo(() => {
     let result = modes.filter(m => !m.deleted);
@@ -141,38 +168,46 @@ export const TransportModesPane: React.FC = () => {
     setDialogOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.code.trim() || !form.name.trim()) { showToast('Code and Name are required.', 'error'); return; }
-    const dup = modes.find(m => m.code === form.code.trim().toUpperCase() && m.id !== editingId && !m.deleted);
-    if (dup) { showToast(`Mode code "${form.code}" already exists.`, 'error'); return; }
-    if (editingId) {
-      setModes(prev => prev.map(m => m.id === editingId ? {
-        ...m, ...form, code: form.code.trim().toUpperCase(),
-        version: m.version + 1, lastModifiedDate: new Date().toISOString(),
-      } : m));
-      showToast(`Mode "${form.name}" updated.`);
-    } else {
-      setModes(prev => [...prev, {
-        id: `m_${Date.now()}`, ...form, code: form.code.trim().toUpperCase(),
-        version: 1, createdDate: new Date().toISOString(), lastModifiedDate: null, deleted: false,
-      }]);
-      showToast(`Mode "${form.name}" created.`);
-    }
-    setDialogOpen(false);
+    const body = {
+      code: form.code.trim().toUpperCase(), name: form.name.trim(),
+      category: form.category, coverageType: form.coverageType,
+      edgeResolution: form.edgeResolution, requiresStop: form.requiresStop,
+      maxWalkingAccessM: form.maxWalkingAccessM, defaultSpeedKmh: form.defaultSpeedKmh,
+      apiProvider: form.apiProvider, icon: form.icon, colorHex: form.colorHex,
+      isActive: form.isActive, configJson: form.configJson, sortOrder: form.sortOrder,
+    };
+    try {
+      if (editingId) {
+        await apiPut(`/transport/modes/${editingId}`, body);
+        showToast(`Mode "${form.name}" updated.`);
+      } else {
+        await apiPost('/transport/modes', body);
+        showToast(`Mode "${form.name}" created.`);
+      }
+      setDialogOpen(false);
+      loadData();
+    } catch { /* interceptor handles toast */ }
   };
 
   const confirmDelete = (m: TransportMode) => { setDeletingMode(m); setDeleteDialogOpen(true); };
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deletingMode) return;
-    const hasEdges = Math.random() > 0.7;
-    if (hasEdges) { showToast(`Cannot delete "${deletingMode.name}" — has linked edges.`, 'error'); }
-    else { setModes(prev => prev.map(m => m.id === deletingMode.id ? { ...m, deleted: true } : m)); showToast(`Mode "${deletingMode.name}" deleted.`); }
+    try {
+      await apiDelete(`/transport/modes/${deletingMode.id}`);
+      showToast(`Mode "${deletingMode.name}" deleted.`);
+      loadData();
+    } catch { /* interceptor handles toast */ }
     setDeleteDialogOpen(false); setDeletingMode(null);
   };
 
-  const toggleActive = (m: TransportMode) => {
-    setModes(prev => prev.map(mr => mr.id === m.id ? { ...mr, isActive: !mr.isActive, lastModifiedDate: new Date().toISOString() } : mr));
-    showToast(`${m.name} ${m.isActive ? 'deactivated' : 'activated'}.`);
+  const toggleActive = async (m: TransportMode) => {
+    try {
+      await apiPut(`/transport/modes/${m.id}`, { isActive: !m.isActive });
+      showToast(`${m.name} ${m.isActive ? 'deactivated' : 'activated'}.`);
+      loadData();
+    } catch { /* interceptor handles toast */ }
   };
 
   /* ═══════════ RENDER ═══════════ */

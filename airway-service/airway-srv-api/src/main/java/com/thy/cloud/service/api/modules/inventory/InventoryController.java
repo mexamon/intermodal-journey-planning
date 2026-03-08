@@ -43,6 +43,36 @@ public class InventoryController {
         return Result.success(inventoryService.getLocationByIata(iataCode));
     }
 
+    @PostMapping(value = "/locations", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public Result<Location> createLocation(@RequestBody Location location) {
+        return Result.success(inventoryService.saveLocation(location));
+    }
+
+    @PutMapping(value = "/locations/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public Result<Location> updateLocation(@PathVariable UUID id,
+                                            @RequestBody Location location) {
+        Location existing = inventoryService.getLocation(id);
+        if (location.getName() != null) existing.setName(location.getName());
+        if (location.getType() != null) existing.setType(location.getType());
+        if (location.getIataCode() != null) existing.setIataCode(location.getIataCode());
+        if (location.getIcaoCode() != null) existing.setIcaoCode(location.getIcaoCode());
+        if (location.getCountryIsoCode() != null) existing.setCountryIsoCode(location.getCountryIsoCode());
+        if (location.getCity() != null) existing.setCity(location.getCity());
+        if (location.getTimezone() != null) existing.setTimezone(location.getTimezone());
+        if (location.getLat() != null) existing.setLat(location.getLat());
+        if (location.getLon() != null) existing.setLon(location.getLon());
+        if (location.getIsSearchable() != null) existing.setIsSearchable(location.getIsSearchable());
+        if (location.getSearchPriority() != null) existing.setSearchPriority(location.getSearchPriority());
+        if (location.getSource() != null) existing.setSource(location.getSource());
+        return Result.success(inventoryService.saveLocation(existing));
+    }
+
+    @DeleteMapping("/locations/{id}")
+    public Result<Void> deleteLocation(@PathVariable UUID id) {
+        inventoryService.deleteLocation(id);
+        return Result.success();
+    }
+
     // ── Airport ───────────────────────────────────────────────
 
     /**

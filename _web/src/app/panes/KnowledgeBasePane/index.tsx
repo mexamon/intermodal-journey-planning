@@ -371,20 +371,80 @@ Bu örnekte:
     `
   },
   {
-    id: 'data-schema', category: 'data', title: 'Database Schema Layers',
-    tags: ['database', 'schema', 'tables', 'layers'],
+    id: 'data-schema', category: 'data', title: 'Database Schema — Complete Table Reference',
+    tags: ['database', 'schema', 'tables', 'layers', 'location', 'airport_profile', 'edge', 'trip', 'fare', 'provider'],
     diagrams: <SchemaLayerDiagram />,
     markdown: `
-# Database Schema Layers
+# Database Schema — Complete Table Reference
 
-Veritabanı 4 katmanlı bir şema kullanır. Alt katmanlar üst katmanlara FK ile bağlıdır.
+Veritabanı 5 katmanlı bir şema kullanır. Alt katmanlar üst katmanlara FK ile bağlıdır.
 
-## Katman Detayları
+## Layer 1 — Reference Data (Sabit)
 
-- **L1 Reference:** Sabit referans verileri — ülkeler, bölgeler (ISO standartları)
-- **L2 Inventory:** İş nesneleri — lokasyonlar (havalimanı, istasyon), sağlayıcılar (havayolu, demiryolu)
-- **L3 Transport:** Ulaşım ağı — modlar, A→B bağlantıları (edge), seferler (trip), servis alanları
-- **L4 Fare:** Fiyatlandırma — sınıf bazlı fiyatlar, iade politikaları
+OurAirports CSV'lerden import edilir, nadiren değişir.
+
+| Tablo | ~Kayıt | Açıklama |
+|---|---|---|
+| **ref_country** | 250 | Ülkeler (ISO kodu, isim, kıta). Tüm country FK'ları buraya bağlı |
+| **ref_region** | 4.000 | Bölgeler (TR-34, US-CA). Lokasyonları bölgeye bağlar |
+
+## Layer 2 — Inventory (Envanter)
+
+"Nerede?" ve "Kim?" sorularını cevaplayanlar.
+
+| Tablo | ~Kayıt | Açıklama |
+|---|---|---|
+| **location** | 60.000+ | Ana coğrafi referans. type: AIRPORT, STATION, CITY, POI. Havalimanları OurAirports'tan otomatik yüklenir |
+| **airport_profile** | 60.000 | location'ın 1:1 uzantısı (sadece AIRPORT). airport_kind (large/medium/small), elevation, terminal sayısı |
+| **runway_profile** | 40.000 | Pist bilgileri: uzunluk, yüzey, aydınlatma. Henüz aktif kullanılmıyor |
+| **provider** | 15 | Taşıma sağlayıcıları: THY, Pegasus, SNCB, Uber |
+
+## Layer 3 — Transport (Ulaşım Ağı)
+
+"Nasıl gidilir?" sorusunun cevabı. Rota motorunun kalbi.
+
+| Tablo | ~Kayıt | Açıklama |
+|---|---|---|
+| **transport_mode** | 9 | FLIGHT, BUS, TRAIN, SUBWAY, UBER, TAXI, FERRY, WALKING, BIKE. Her birinin edge_resolution stratejisi var |
+| **transport_service_area** | 10 | Bir modun nerede çalıştığı. Örn: "İstanbul Uber Zone" (merkez + 50km radius) |
+| **transport_stop** | az | Sabit hat durakları (otobüs, metro). Henüz aktif kullanılmıyor |
+| **transportation_edge** | 100+ | İki lokasyon arası bağlantı: IST→LHR uçuşu, BRU→Midi treni. origin + destination + mode + provider |
+| **edge_trip** | 200+ | Bir edge'in bireysel seferleri. TK1987 07:35, IC-601 06:00 gibi. departure_time, service_code, cost |
+| **fare** | 50+ | Ücret: edge + trip + class (economy/business) + price_cents + currency |
+| **schedule_exception** | 0 | Sefer iptalleri/istisnaları. Henüz aktif kullanılmıyor |
+
+## Layer 4 — Policy (Kurallar)
+
+Journey search sonuçlarını filtreleyen kurallar.
+
+| Tablo | ~Kayıt | Açıklama |
+|---|---|---|
+| **journey_policy_set** | 5 | Politika seti: IATA kodlarına bağlı (origin/destination). "SAW politikası" |
+| **journey_policy_constraints** | 5 | Kısıtlamalar: max_legs, max_flights, max_transfers, max_duration |
+| **journey_policy_node** | 20 | State machine düğümleri (React Flow'da gösterilen) |
+| **journey_policy_transition** | 30 | Düğümler arası geçiş kuralları |
+
+## Layer 5 — Staging & Auth
+
+| Tablo | Açıklama |
+|---|---|
+| **raw_country** | Countries CSV staging → ref_country'ye upsert |
+| **raw_region** | Regions CSV staging → ref_region'a upsert |
+| **raw_airport** | airports.csv staging → location + airport_profile'a upsert (~60K havalimanı) |
+| **raw_runway** | Runways CSV staging → runway_profile'a upsert |
+| **app_user** | Kullanıcı tablosu (henüz aktif kullanılmıyor) |
+
+## Hangi Ekran Hangi Tabloyu Yönetir?
+
+| Ekran | Tablo(lar) |
+|---|---|
+| Locations | location |
+| Providers | provider |
+| Transport Modes | transport_mode |
+| Service Areas | transport_service_area |
+| Connections | transportation_edge + edge_trip |
+| Fares | fare |
+| Policy Studio | journey_policy_set + constraints + node + transition |
     `
   },
   {

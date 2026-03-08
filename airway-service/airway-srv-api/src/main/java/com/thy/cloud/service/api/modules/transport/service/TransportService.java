@@ -5,6 +5,7 @@ import com.thy.cloud.service.dao.entity.transport.TransportMode;
 import com.thy.cloud.service.dao.entity.transport.TransportServiceArea;
 import com.thy.cloud.service.dao.entity.transport.TransportStop;
 import com.thy.cloud.service.dao.entity.transport.TransportationEdge;
+import com.thy.cloud.service.dao.entity.transport.EdgeTrip;
 import com.thy.cloud.service.dao.entity.transport.Fare;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,6 +21,7 @@ public interface TransportService {
     TransportMode getMode(UUID id);
     TransportMode getModeByCode(String code);
     TransportMode saveMode(TransportMode mode);
+    void deleteMode(UUID id);
 
     // Service Area
     List<TransportServiceArea> listServiceAreas(UUID modeId);
@@ -35,6 +37,14 @@ public interface TransportService {
     Page<TransportationEdge> searchEdges(EdgeSearchRequest request, Pageable pageable);
     List<TransportationEdge> getEdgesFromOrigin(UUID originId);
     List<TransportationEdge> listAllEdges();
+    TransportationEdge getEdge(UUID id);
+    TransportationEdge saveEdge(TransportationEdge edge);
+    void deleteEdge(UUID id);
+
+    // Trips
+    EdgeTrip getTrip(UUID id);
+    EdgeTrip saveTrip(UUID edgeId, EdgeTrip trip);
+    void deleteTrip(UUID tripId);
 
     // Fares
     List<Fare> listAllFares();

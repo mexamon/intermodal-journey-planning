@@ -61,6 +61,17 @@ public class TransportController {
         return Result.success(transportService.saveMode(existing));
     }
 
+    @PostMapping(value = "/modes", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public Result<TransportMode> createMode(@RequestBody TransportMode mode) {
+        return Result.success(transportService.saveMode(mode));
+    }
+
+    @DeleteMapping("/modes/{id}")
+    public Result<Void> deleteMode(@PathVariable UUID id) {
+        transportService.deleteMode(id);
+        return Result.success(null);
+    }
+
     // ── Service Area ──────────────────────────────────────────
 
     @GetMapping("/service-areas")
@@ -125,6 +136,71 @@ public class TransportController {
     @GetMapping("/edges/from/{originId}")
     public Result<List<TransportationEdge>> getEdgesFromOrigin(@PathVariable UUID originId) {
         return Result.success(transportService.getEdgesFromOrigin(originId));
+    }
+
+    @GetMapping("/edges/{id}")
+    public Result<TransportationEdge> getEdge(@PathVariable UUID id) {
+        return Result.success(transportService.getEdge(id));
+    }
+
+    @PostMapping(value = "/edges", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public Result<TransportationEdge> createEdge(@RequestBody TransportationEdge edge) {
+        return Result.success(transportService.saveEdge(edge));
+    }
+
+    @PutMapping(value = "/edges/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public Result<TransportationEdge> updateEdge(@PathVariable UUID id,
+                                                  @RequestBody TransportationEdge edge) {
+        TransportationEdge existing = transportService.getEdge(id);
+        if (edge.getTransportMode() != null) existing.setTransportMode(edge.getTransportMode());
+        if (edge.getProvider() != null) existing.setProvider(edge.getProvider());
+        if (edge.getOriginLocation() != null) existing.setOriginLocation(edge.getOriginLocation());
+        if (edge.getDestinationLocation() != null) existing.setDestinationLocation(edge.getDestinationLocation());
+        if (edge.getScheduleType() != null) existing.setScheduleType(edge.getScheduleType());
+        if (edge.getOperatingDaysMask() != null) existing.setOperatingDaysMask(edge.getOperatingDaysMask());
+        if (edge.getOperatingStartTime() != null) existing.setOperatingStartTime(edge.getOperatingStartTime());
+        if (edge.getOperatingEndTime() != null) existing.setOperatingEndTime(edge.getOperatingEndTime());
+        if (edge.getFrequencyMinutes() != null) existing.setFrequencyMinutes(edge.getFrequencyMinutes());
+        if (edge.getEstimatedDurationMin() != null) existing.setEstimatedDurationMin(edge.getEstimatedDurationMin());
+        if (edge.getDistanceM() != null) existing.setDistanceM(edge.getDistanceM());
+        if (edge.getCo2Grams() != null) existing.setCo2Grams(edge.getCo2Grams());
+        if (edge.getStatus() != null) existing.setStatus(edge.getStatus());
+        if (edge.getSource() != null) existing.setSource(edge.getSource());
+        return Result.success(transportService.saveEdge(existing));
+    }
+
+    @DeleteMapping("/edges/{id}")
+    public Result<Void> deleteEdge(@PathVariable UUID id) {
+        transportService.deleteEdge(id);
+        return Result.success(null);
+    }
+
+    // ── Trips ─────────────────────────────────────────────────
+
+    @PostMapping(value = "/edges/{edgeId}/trips", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public Result<EdgeTrip> createTrip(@PathVariable UUID edgeId,
+                                        @RequestBody EdgeTrip trip) {
+        return Result.success(transportService.saveTrip(edgeId, trip));
+    }
+
+    @PutMapping(value = "/trips/{tripId}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public Result<EdgeTrip> updateTrip(@PathVariable UUID tripId,
+                                        @RequestBody EdgeTrip trip) {
+        EdgeTrip existing = transportService.getTrip(tripId);
+        if (trip.getServiceCode() != null) existing.setServiceCode(trip.getServiceCode());
+        if (trip.getDepartureTime() != null) existing.setDepartureTime(trip.getDepartureTime());
+        if (trip.getArrivalTime() != null) existing.setArrivalTime(trip.getArrivalTime());
+        if (trip.getOperatingDaysMask() != null) existing.setOperatingDaysMask(trip.getOperatingDaysMask());
+        if (trip.getEstimatedCostCents() != null) existing.setEstimatedCostCents(trip.getEstimatedCostCents());
+        if (trip.getValidFrom() != null) existing.setValidFrom(trip.getValidFrom());
+        if (trip.getValidTo() != null) existing.setValidTo(trip.getValidTo());
+        return Result.success(transportService.saveTrip(existing.getEdge().getId(), existing));
+    }
+
+    @DeleteMapping("/trips/{tripId}")
+    public Result<Void> deleteTrip(@PathVariable UUID tripId) {
+        transportService.deleteTrip(tripId);
+        return Result.success(null);
     }
 
     // ── Fares ─────────────────────────────────────────────────
