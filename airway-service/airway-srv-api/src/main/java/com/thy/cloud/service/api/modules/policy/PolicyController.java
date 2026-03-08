@@ -1,7 +1,7 @@
 package com.thy.cloud.service.api.modules.policy;
 
 import com.thy.cloud.base.core.api.Result;
-import com.thy.cloud.service.api.modules.policy.model.PolicySetSearchRequest;
+import com.thy.cloud.service.api.modules.policy.model.*;
 import com.thy.cloud.service.api.modules.policy.service.PolicyService;
 import com.thy.cloud.service.dao.entity.policy.JourneyPolicyConstraints;
 import com.thy.cloud.service.dao.entity.policy.JourneyPolicyNode;
@@ -45,14 +45,14 @@ public class PolicyController {
     // ── Policy Set — Write ────────────────────────────────────
 
     @PostMapping(value = "/sets", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public Result<JourneyPolicySet> createPolicySet(@RequestBody @Valid JourneyPolicySet policySet) {
-        return Result.success(policyService.createPolicySet(policySet));
+    public Result<JourneyPolicySet> createPolicySet(@RequestBody @Valid PolicySetRequest request) {
+        return Result.success(policyService.createPolicySet(request));
     }
 
     @PutMapping(value = "/sets/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public Result<JourneyPolicySet> updatePolicySet(@PathVariable UUID id,
-            @RequestBody @Valid JourneyPolicySet policySet) {
-        return Result.success(policyService.updatePolicySet(id, policySet));
+            @RequestBody @Valid PolicySetRequest request) {
+        return Result.success(policyService.updatePolicySet(id, request));
     }
 
     @DeleteMapping("/sets/{id}")
@@ -70,8 +70,8 @@ public class PolicyController {
 
     @PutMapping(value = "/sets/{policySetId}/constraints", consumes = MediaType.APPLICATION_JSON_VALUE)
     public Result<JourneyPolicyConstraints> saveConstraints(@PathVariable UUID policySetId,
-            @RequestBody @Valid JourneyPolicyConstraints constraints) {
-        return Result.success(policyService.saveConstraints(policySetId, constraints));
+            @RequestBody @Valid ConstraintsRequest request) {
+        return Result.success(policyService.saveConstraints(policySetId, request));
     }
 
     // ── Nodes (State Machine) ─────────────────────────────────
@@ -83,7 +83,7 @@ public class PolicyController {
 
     @PutMapping(value = "/sets/{policySetId}/nodes", consumes = MediaType.APPLICATION_JSON_VALUE)
     public Result<List<JourneyPolicyNode>> saveNodes(@PathVariable UUID policySetId,
-            @RequestBody @Valid List<JourneyPolicyNode> nodes) {
+            @RequestBody @Valid List<NodeRequest> nodes) {
         return Result.success(policyService.saveNodes(policySetId, nodes));
     }
 
@@ -96,7 +96,7 @@ public class PolicyController {
 
     @PutMapping(value = "/sets/{policySetId}/transitions", consumes = MediaType.APPLICATION_JSON_VALUE)
     public Result<List<JourneyPolicyTransition>> saveTransitions(@PathVariable UUID policySetId,
-            @RequestBody @Valid List<JourneyPolicyTransition> transitions) {
+            @RequestBody @Valid List<TransitionRequest> transitions) {
         return Result.success(policyService.saveTransitions(policySetId, transitions));
     }
 }

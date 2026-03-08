@@ -1,11 +1,15 @@
 package com.thy.cloud.service.api.modules.policy.service;
 
-import com.thy.cloud.service.api.modules.policy.model.PolicySetSearchRequest;
+import com.thy.cloud.service.api.modules.policy.model.*;
 import com.thy.cloud.service.api.modules.policy.specs.PolicySetSpecs;
 import com.thy.cloud.service.dao.entity.policy.JourneyPolicyConstraints;
 import com.thy.cloud.service.dao.entity.policy.JourneyPolicyNode;
 import com.thy.cloud.service.dao.entity.policy.JourneyPolicySet;
 import com.thy.cloud.service.dao.entity.policy.JourneyPolicyTransition;
+import com.thy.cloud.service.dao.enums.EnumNodeKey;
+import com.thy.cloud.service.dao.enums.EnumPolicyScopeType;
+import com.thy.cloud.service.dao.enums.EnumPolicySegment;
+import com.thy.cloud.service.dao.enums.EnumPolicyStatus;
 import com.thy.cloud.service.dao.repository.policy.JourneyPolicyConstraintsRepository;
 import com.thy.cloud.service.dao.repository.policy.JourneyPolicyNodeRepository;
 import com.thy.cloud.service.dao.repository.policy.JourneyPolicySetRepository;
@@ -19,7 +23,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -55,41 +61,65 @@ public class PolicyServiceImpl implements PolicyService {
 
     @Override
     @Transactional
-    public JourneyPolicySet createPolicySet(JourneyPolicySet policySet) {
-        if (policySet.getCode() == null || policySet.getCode().isBlank()) {
+    public JourneyPolicySet createPolicySet(PolicySetRequest request) {
+        if (request.getCode() == null || request.getCode().isBlank()) {
             throw new IllegalArgumentException("Policy set code is required");
         }
-        policySetRepository.findByCode(policySet.getCode()).ifPresent(existing -> {
-            throw new IllegalArgumentException("Policy set code already exists: " + policySet.getCode());
+        policySetRepository.findByCode(request.getCode()).ifPresent(existing -> {
+            throw new IllegalArgumentException("Policy set code already exists: " + request.getCode());
         });
-        if (policySet.getScopeType() == null) {
+        if (request.getScopeType() == null || request.getScopeType().isBlank()) {
             throw new IllegalArgumentException("Scope type is required");
         }
-        if (policySet.getScopeKey() == null || policySet.getScopeKey().isBlank()) {
+        if (request.getScopeKey() == null || request.getScopeKey().isBlank()) {
             throw new IllegalArgumentException("Scope key is required");
         }
-        log.info("Creating policy set: code={}, scope={}/{}", policySet.getCode(),
-                policySet.getScopeType(), policySet.getScopeKey());
-        return policySetRepository.save(policySet);
+
+        JourneyPolicySet entity = new JourneyPolicySet();
+        entity.setCode(request.getCode().trim().toUpperCase());
+        entity.setScopeType(EnumPolicyScopeType.valueOf(request.getScopeType()));
+        entity.setScopeKey(request.getScopeKey());
+        entity.setSegment(EnumPolicySegment.valueOf(
+                request.getSegment() != null ? request.getSegment() : "DEFAULT"));
+        entity.setStatus(EnumPolicyStatus.valueOf(
+                request.getStatus() != null ? request.getStatus() : "DRAFT"));
+        entity.setDescription(request.getDescription());
+        entity.setEffectiveFrom(request.getEffectiveFrom());
+        entity.setEffectiveTo(request.getEffectiveTo());
+
+        log.info("Creating policy set: code={}, scope={}/{}", entity.getCode(),
+                entity.getScopeType(), entity.getScopeKey());
+        return policySetRepository.save(entity);
     }
 
     @Override
     @Transactional
-    public JourneyPolicySet updatePolicySet(UUID id, JourneyPolicySet update) {
+    public JourneyPolicySet updatePolicySet(UUID id, PolicySetRequest request) {
         JourneyPolicySet existing = getPolicySet(id);
-        if (!existing.getCode().equals(update.getCode())) {
-            policySetRepository.findByCode(update.getCode()).ifPresent(dup -> {
-                throw new IllegalArgumentException("Policy set code already exists: " + update.getCode());
+        if (request.getCode() != null && !existing.getCode().equals(request.getCode())) {
+            policySetRepository.findByCode(request.getCode()).ifPresent(dup -> {
+                throw new IllegalArgumentException("Policy set code already exists: " + request.getCode());
             });
+            existing.setCode(request.getCode().trim().toUpperCase());
         }
-        existing.setCode(update.getCode());
-        existing.setScopeType(update.getScopeType());
-        existing.setScopeKey(update.getScopeKey());
-        existing.setSegment(update.getSegment());
-        existing.setStatus(update.getStatus());
-        existing.setDescription(update.getDescription());
-        existing.setEffectiveFrom(update.getEffectiveFrom());
-        existing.setEffectiveTo(update.getEffectiveTo());
+        if (request.getScopeType() != null) {
+            existing.setScopeType(EnumPolicyScopeType.valueOf(request.getScopeType()));
+        }
+        if (request.getScopeKey() != null) {
+            existing.setScopeKey(request.getScopeKey());
+        }
+        if (request.getSegment() != null) {
+            existing.setSegment(EnumPolicySegment.valueOf(request.getSegment()));
+        }
+        if (request.getStatus() != null) {
+            existing.setStatus(EnumPolicyStatus.valueOf(request.getStatus()));
+        }
+        if (request.getDescription() != null) {
+            existing.setDescription(request.getDescription());
+        }
+        existing.setEffectiveFrom(request.getEffectiveFrom());
+        existing.setEffectiveTo(request.getEffectiveTo());
+
         log.info("Updated policy set: id={}, code={}", id, existing.getCode());
         return policySetRepository.save(existing);
     }
@@ -115,21 +145,36 @@ public class PolicyServiceImpl implements PolicyService {
 
     @Override
     @Transactional
-    public JourneyPolicyConstraints saveConstraints(UUID policySetId, JourneyPolicyConstraints constraints) {
-        if (constraints.getMaxLegs() != null && constraints.getMaxLegs() < 1) {
+    public JourneyPolicyConstraints saveConstraints(UUID policySetId, ConstraintsRequest request) {
+        if (request.getMaxLegs() != null && request.getMaxLegs() < 1) {
             throw new IllegalArgumentException("Max legs must be >= 1");
         }
-        if (constraints.getMaxTransfers() != null && constraints.getMaxTransfers() < 0) {
+        if (request.getMaxTransfers() != null && request.getMaxTransfers() < 0) {
             throw new IllegalArgumentException("Max transfers must be >= 0");
         }
-        if (constraints.getMinFlights() != null && constraints.getMaxFlights() != null
-                && constraints.getMinFlights() > constraints.getMaxFlights()) {
+        if (request.getMinFlights() != null && request.getMaxFlights() != null
+                && request.getMinFlights() > request.getMaxFlights()) {
             throw new IllegalArgumentException("Min flights cannot exceed max flights");
         }
         getPolicySet(policySetId);
-        constraints.setId(policySetId);
+
+        JourneyPolicyConstraints entity = constraintsRepository.findById(policySetId)
+                .orElse(new JourneyPolicyConstraints());
+        entity.setId(policySetId);
+        entity.setMaxLegs(request.getMaxLegs() != null ? request.getMaxLegs() : 5);
+        entity.setMinFlights(request.getMinFlights() != null ? request.getMinFlights() : 1);
+        entity.setMaxFlights(request.getMaxFlights() != null ? request.getMaxFlights() : 2);
+        entity.setMinTransfers(request.getMinTransfers() != null ? request.getMinTransfers() : 0);
+        entity.setMaxTransfers(request.getMaxTransfers() != null ? request.getMaxTransfers() : 2);
+        entity.setMaxTotalDurationMin(request.getMaxTotalDurationMin());
+        entity.setMaxWalkingTotalM(request.getMaxWalkingTotalM());
+        entity.setMinConnectionMinutes(request.getMinConnectionMinutes());
+        entity.setMaxTotalCo2Grams(request.getMaxTotalCo2Grams());
+        entity.setPreferredModesJson(request.getPreferredModesJson());
+        entity.setConstraintsJson(request.getConstraintsJson());
+
         log.info("Saving constraints for policy set: {}", policySetId);
-        return constraintsRepository.save(constraints);
+        return constraintsRepository.save(entity);
     }
 
     // ── Nodes ─────────────────────────────────────────────────
@@ -141,16 +186,26 @@ public class PolicyServiceImpl implements PolicyService {
 
     @Override
     @Transactional
-    public List<JourneyPolicyNode> saveNodes(UUID policySetId, List<JourneyPolicyNode> nodes) {
+    public List<JourneyPolicyNode> saveNodes(UUID policySetId, List<NodeRequest> requests) {
         JourneyPolicySet policySet = getPolicySet(policySetId);
         nodeRepository.deleteAll(nodeRepository.findByPolicySetId(policySetId));
         nodeRepository.flush();
-        for (JourneyPolicyNode node : nodes) {
+
+        List<JourneyPolicyNode> entities = requests.stream().map(req -> {
+            JourneyPolicyNode node = new JourneyPolicyNode();
+            node.setId(UUID.randomUUID());
             node.setPolicySet(policySet);
-            if (node.getId() == null) node.setId(UUID.randomUUID());
-        }
-        log.info("Saving {} nodes for policy set: {}", nodes.size(), policySetId);
-        return nodeRepository.saveAll(nodes);
+            node.setNodeKey(EnumNodeKey.valueOf(req.getNodeKey()));
+            node.setMinVisits(req.getMinVisits() != null ? req.getMinVisits() : 0);
+            node.setMaxVisits(req.getMaxVisits() != null ? req.getMaxVisits() : 1);
+            node.setPropsJson(req.getPropsJson());
+            node.setUiX(req.getUiX());
+            node.setUiY(req.getUiY());
+            return node;
+        }).collect(Collectors.toList());
+
+        log.info("Saving {} nodes for policy set: {}", entities.size(), policySetId);
+        return nodeRepository.saveAll(entities);
     }
 
     // ── Transitions ───────────────────────────────────────────
@@ -162,15 +217,35 @@ public class PolicyServiceImpl implements PolicyService {
 
     @Override
     @Transactional
-    public List<JourneyPolicyTransition> saveTransitions(UUID policySetId, List<JourneyPolicyTransition> transitions) {
+    public List<JourneyPolicyTransition> saveTransitions(UUID policySetId, List<TransitionRequest> requests) {
         JourneyPolicySet policySet = getPolicySet(policySetId);
         transitionRepository.deleteAll(transitionRepository.findByPolicySetId(policySetId));
         transitionRepository.flush();
-        for (JourneyPolicyTransition t : transitions) {
+
+        // Build a node map for lookups
+        Map<UUID, JourneyPolicyNode> nodeMap = nodeRepository.findByPolicySetId(policySetId)
+                .stream().collect(Collectors.toMap(JourneyPolicyNode::getId, n -> n));
+
+        List<JourneyPolicyTransition> entities = requests.stream().map(req -> {
+            JourneyPolicyTransition t = new JourneyPolicyTransition();
+            t.setId(UUID.randomUUID());
             t.setPolicySet(policySet);
-            if (t.getId() == null) t.setId(UUID.randomUUID());
-        }
-        log.info("Saving {} transitions for policy set: {}", transitions.size(), policySetId);
-        return transitionRepository.saveAll(transitions);
+            JourneyPolicyNode fromNode = nodeMap.get(req.getFromNodeId());
+            JourneyPolicyNode toNode = nodeMap.get(req.getToNodeId());
+            if (fromNode == null || toNode == null) {
+                throw new IllegalArgumentException(
+                        "Invalid node reference in transition: from=" + req.getFromNodeId()
+                                + ", to=" + req.getToNodeId());
+            }
+            t.setFromNode(fromNode);
+            t.setToNode(toNode);
+            t.setPriority(req.getPriority() != null ? req.getPriority() : 1);
+            t.setGuardJson(req.getGuardJson());
+            t.setUiJson(req.getUiJson());
+            return t;
+        }).collect(Collectors.toList());
+
+        log.info("Saving {} transitions for policy set: {}", entities.size(), policySetId);
+        return transitionRepository.saveAll(entities);
     }
 }

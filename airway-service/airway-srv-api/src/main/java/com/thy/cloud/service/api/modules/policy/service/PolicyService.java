@@ -1,6 +1,6 @@
 package com.thy.cloud.service.api.modules.policy.service;
 
-import com.thy.cloud.service.api.modules.policy.model.PolicySetSearchRequest;
+import com.thy.cloud.service.api.modules.policy.model.*;
 import com.thy.cloud.service.dao.entity.policy.JourneyPolicyConstraints;
 import com.thy.cloud.service.dao.entity.policy.JourneyPolicyNode;
 import com.thy.cloud.service.dao.entity.policy.JourneyPolicySet;
@@ -21,24 +21,24 @@ public interface PolicyService {
     JourneyPolicySet getPolicySetByCode(String code);
 
     // Policy Set — Write
-    JourneyPolicySet createPolicySet(JourneyPolicySet policySet);
+    JourneyPolicySet createPolicySet(PolicySetRequest request);
 
-    JourneyPolicySet updatePolicySet(UUID id, JourneyPolicySet policySet);
+    JourneyPolicySet updatePolicySet(UUID id, PolicySetRequest request);
 
     void deletePolicySet(UUID id);
 
     // Constraints
     JourneyPolicyConstraints getConstraints(UUID policySetId);
 
-    JourneyPolicyConstraints saveConstraints(UUID policySetId, JourneyPolicyConstraints constraints);
+    JourneyPolicyConstraints saveConstraints(UUID policySetId, ConstraintsRequest request);
 
     // Nodes
     List<JourneyPolicyNode> listNodes(UUID policySetId);
 
-    List<JourneyPolicyNode> saveNodes(UUID policySetId, List<JourneyPolicyNode> nodes);
+    List<JourneyPolicyNode> saveNodes(UUID policySetId, List<NodeRequest> nodes);
 
     // Transitions
     List<JourneyPolicyTransition> listTransitions(UUID policySetId);
 
-    List<JourneyPolicyTransition> saveTransitions(UUID policySetId, List<JourneyPolicyTransition> transitions);
+    List<JourneyPolicyTransition> saveTransitions(UUID policySetId, List<TransitionRequest> transitions);
 }

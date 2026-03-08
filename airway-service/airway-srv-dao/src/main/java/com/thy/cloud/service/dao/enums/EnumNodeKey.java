@@ -16,8 +16,12 @@ public enum EnumNodeKey implements IEnum<String> {
 
     START("START", "Journey start"),
     BEFORE("BEFORE", "Pre-flight transfer"),
+    FIRST_MILE("FIRST_MILE", "First mile transfer"),
     FLIGHT("FLIGHT", "Flight segment"),
+    MAIN_HAUL("MAIN_HAUL", "Main haul flight"),
+    INTERCHANGE("INTERCHANGE", "Inter-airport transfer"),
     AFTER("AFTER", "Post-flight transfer"),
+    LAST_MILE("LAST_MILE", "Last mile transfer"),
     END("END", "Journey end"),
     WALK_ACCESS("WALK_ACCESS", "Walking access");
 

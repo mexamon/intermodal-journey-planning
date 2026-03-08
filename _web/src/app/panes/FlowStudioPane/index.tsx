@@ -34,7 +34,7 @@ import { MdFlight } from 'react-icons/md';
 import {
   searchPolicySets, createPolicySet, updatePolicySet, deletePolicySet,
   saveConstraints, saveNodes, saveTransitions, getConstraints, listNodes, listTransitions,
-  type PolicySetDto,
+  type PolicySetDto, type PolicySetCreateRequest, type NodeRequest, type TransitionRequest,
 } from './policyApi';
 import { emitToast } from '../../api/client';
 
@@ -247,25 +247,27 @@ export const FlowStudioPane: React.FC = () => {
       let policyId = activePolicyId;
       // Create or update the policy set
       if (!policyId) {
-        const created = await createPolicySet({
+        const reqBody: PolicySetCreateRequest = {
           code: policySet.code,
-          scopeType: { value: policySet.scope, desc: '' },
+          scopeType: policySet.scope,
           scopeKey: policySet.scopeKey,
-          segment: { value: policySet.segment, desc: '' },
-          status: { value: policySet.status, desc: '' },
+          segment: policySet.segment,
+          status: policySet.status,
           description: policySet.description,
-        } as any);
+        };
+        const created = await createPolicySet(reqBody);
         policyId = created.id;
         setActivePolicyId(policyId);
       } else {
-        await updatePolicySet(policyId, {
+        const reqBody: PolicySetCreateRequest = {
           code: policySet.code,
-          scopeType: { value: policySet.scope, desc: '' },
+          scopeType: policySet.scope,
           scopeKey: policySet.scopeKey,
-          segment: { value: policySet.segment, desc: '' },
-          status: { value: policySet.status, desc: '' },
+          segment: policySet.segment,
+          status: policySet.status,
           description: policySet.description,
-        } as any);
+        };
+        await updatePolicySet(policyId, reqBody);
       }
       // Save constraints
       await saveConstraints(policyId, {
@@ -280,24 +282,24 @@ export const FlowStudioPane: React.FC = () => {
         maxTotalCo2Grams: policySet.constraints.maxTotalCo2Grams,
       });
       // Save nodes
-      const nodePayload = nodes.map(n => ({
-        nodeKey: { value: (n.data.phase || 'START').toUpperCase().replace(/_/g, '_'), desc: n.data.label },
+      const nodePayload: NodeRequest[] = nodes.map(n => ({
+        nodeKey: (n.data.phase || 'START').toUpperCase(),
         minVisits: n.data.minVisits,
         maxVisits: n.data.maxVisits,
         propsJson: JSON.stringify({ modeConfigs: n.data.modeConfigs, maxLegsInPhase: n.data.maxLegsInPhase, notes: n.data.notes }),
         uiX: Math.round(n.position.x),
         uiY: Math.round(n.position.y),
       }));
-      const savedNodes = await saveNodes(policyId, nodePayload as any);
+      const savedNodes = await saveNodes(policyId, nodePayload);
       // Build node ID map for transitions
       const nodeIdMap: Record<string, string> = {};
       nodes.forEach((n, i) => { if (savedNodes[i]?.id) nodeIdMap[n.id] = savedNodes[i].id!; });
       // Save transitions
-      const transPayload = edges.map(e => ({
-        fromNode: { id: nodeIdMap[e.source] || e.source },
-        toNode: { id: nodeIdMap[e.target] || e.target },
+      const transPayload: TransitionRequest[] = edges.map(e => ({
+        fromNodeId: nodeIdMap[e.source] || e.source,
+        toNodeId: nodeIdMap[e.target] || e.target,
         priority: (e.data as RouteEdgeData)?.priority ?? 1,
-        guardJson: (e.data as RouteEdgeData)?.guardJson || null,
+        guardJson: (e.data as RouteEdgeData)?.guardJson || undefined,
         uiJson: JSON.stringify({
           sameAirport: (e.data as RouteEdgeData)?.sameAirport,
           requireSameTerminal: (e.data as RouteEdgeData)?.requireSameTerminal,
@@ -306,7 +308,7 @@ export const FlowStudioPane: React.FC = () => {
           minConnectionMin: (e.data as RouteEdgeData)?.minConnectionMin,
         }),
       }));
-      await saveTransitions(policyId, transPayload as any);
+      await saveTransitions(policyId, transPayload);
       setPolicySet(prev => ({ ...prev, lastSaved: new Date().toLocaleTimeString() }));
       emitToast('success', `Policy "${policySet.code}" saved`);
       fetchPolicyList();
@@ -326,12 +328,12 @@ export const FlowStudioPane: React.FC = () => {
     try {
       const created = await createPolicySet({
         code: newPolicyForm.code.trim().toUpperCase(),
-        scopeType: { value: 'GLOBAL', desc: '' },
+        scopeType: 'GLOBAL',
         scopeKey: newPolicyForm.scopeKey || '*',
-        segment: { value: 'DEFAULT', desc: '' },
-        status: { value: 'DRAFT', desc: '' },
+        segment: 'DEFAULT',
+        status: 'DRAFT',
         description: newPolicyForm.description,
-      } as any);
+      });
       setShowNewDialog(false);
       setNewPolicyForm({ code: '', scopeKey: '*', description: '' });
       await fetchPolicyList();

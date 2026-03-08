@@ -1,9 +1,10 @@
 import { apiGet, apiPost, apiPut, apiDelete } from '../../api/client';
 
 /* ═══════════════════════════════════════════════
-   Policy API Types — matching backend entities
+   Policy API Types — matching backend DTOs & entities
    ═══════════════════════════════════════════════ */
 
+/** Response type — entities from backend (enums serialized as {value, desc}) */
 export interface PolicySetDto {
   id: string;
   code: string;
@@ -18,7 +19,17 @@ export interface PolicySetDto {
   lastModifiedDate?: string;
 }
 
-export interface PolicyConstraintsDto {
+/** Request type — plain string values for enums (matches PolicySetRequest DTO) */
+export interface PolicySetCreateRequest {
+  code: string;
+  scopeType: string;   // "GLOBAL" | "COUNTRY" | "REGION" | "AIRPORT" | "AIRPORT_PAIR"
+  scopeKey: string;
+  segment: string;     // "DEFAULT" | "CORPORATE" | "ELITE" | "IRROPS"
+  status: string;      // "DRAFT" | "ACTIVE" | "DEPRECATED"
+  description?: string;
+}
+
+export interface ConstraintsDto {
   id: string;
   maxLegs: number;
   minFlights: number;
@@ -29,12 +40,22 @@ export interface PolicyConstraintsDto {
   maxWalkingTotalM?: number;
   minConnectionMinutes?: number;
   maxTotalCo2Grams?: number;
-  preferredModesJson?: string;
-  constraintsJson?: string;
+}
+
+export interface ConstraintsRequest {
+  maxLegs: number;
+  minFlights: number;
+  maxFlights: number;
+  minTransfers: number;
+  maxTransfers: number;
+  maxTotalDurationMin?: number;
+  maxWalkingTotalM?: number;
+  minConnectionMinutes?: number;
+  maxTotalCo2Grams?: number;
 }
 
 export interface PolicyNodeDto {
-  id?: string;
+  id: string;
   nodeKey: { value: string; desc: string };
   minVisits: number;
   maxVisits: number;
@@ -43,10 +64,27 @@ export interface PolicyNodeDto {
   uiY?: number;
 }
 
+export interface NodeRequest {
+  nodeKey: string;     // "START" | "BEFORE" | "FLIGHT" | "AFTER" | "END" | "WALK_ACCESS"
+  minVisits: number;
+  maxVisits: number;
+  propsJson?: string;
+  uiX?: number;
+  uiY?: number;
+}
+
 export interface PolicyTransitionDto {
-  id?: string;
+  id: string;
   fromNode: { id: string };
   toNode: { id: string };
+  priority: number;
+  guardJson?: string;
+  uiJson?: string;
+}
+
+export interface TransitionRequest {
+  fromNodeId: string;
+  toNodeId: string;
   priority: number;
   guardJson?: string;
   uiJson?: string;
@@ -67,7 +105,6 @@ export interface PageResponse<T> {
    Policy Set CRUD
    ═══════════════════════════════════════════════ */
 
-/** Search policy sets with filters */
 export async function searchPolicySets(
   filters: {
     code?: string;
@@ -85,22 +122,18 @@ export async function searchPolicySets(
   );
 }
 
-/** Get a single policy set by ID */
 export async function getPolicySet(id: string): Promise<PolicySetDto> {
   return apiGet<PolicySetDto>(`/policy/sets/${id}`);
 }
 
-/** Create a new policy set */
-export async function createPolicySet(data: Partial<PolicySetDto>): Promise<PolicySetDto> {
+export async function createPolicySet(data: PolicySetCreateRequest): Promise<PolicySetDto> {
   return apiPost<PolicySetDto>('/policy/sets', data);
 }
 
-/** Update an existing policy set */
-export async function updatePolicySet(id: string, data: Partial<PolicySetDto>): Promise<PolicySetDto> {
+export async function updatePolicySet(id: string, data: PolicySetCreateRequest): Promise<PolicySetDto> {
   return apiPut<PolicySetDto>(`/policy/sets/${id}`, data);
 }
 
-/** Delete a policy set */
 export async function deletePolicySet(id: string): Promise<void> {
   return apiDelete<void>(`/policy/sets/${id}`);
 }
@@ -109,12 +142,12 @@ export async function deletePolicySet(id: string): Promise<void> {
    Constraints
    ═══════════════════════════════════════════════ */
 
-export async function getConstraints(policySetId: string): Promise<PolicyConstraintsDto> {
-  return apiGet<PolicyConstraintsDto>(`/policy/sets/${policySetId}/constraints`);
+export async function getConstraints(policySetId: string): Promise<ConstraintsDto> {
+  return apiGet<ConstraintsDto>(`/policy/sets/${policySetId}/constraints`);
 }
 
-export async function saveConstraints(policySetId: string, data: Partial<PolicyConstraintsDto>): Promise<PolicyConstraintsDto> {
-  return apiPut<PolicyConstraintsDto>(`/policy/sets/${policySetId}/constraints`, data);
+export async function saveConstraints(policySetId: string, data: ConstraintsRequest): Promise<ConstraintsDto> {
+  return apiPut<ConstraintsDto>(`/policy/sets/${policySetId}/constraints`, data);
 }
 
 /* ═══════════════════════════════════════════════
@@ -125,7 +158,7 @@ export async function listNodes(policySetId: string): Promise<PolicyNodeDto[]> {
   return apiGet<PolicyNodeDto[]>(`/policy/sets/${policySetId}/nodes`);
 }
 
-export async function saveNodes(policySetId: string, nodes: PolicyNodeDto[]): Promise<PolicyNodeDto[]> {
+export async function saveNodes(policySetId: string, nodes: NodeRequest[]): Promise<PolicyNodeDto[]> {
   return apiPut<PolicyNodeDto[]>(`/policy/sets/${policySetId}/nodes`, nodes);
 }
 
@@ -137,6 +170,6 @@ export async function listTransitions(policySetId: string): Promise<PolicyTransi
   return apiGet<PolicyTransitionDto[]>(`/policy/sets/${policySetId}/transitions`);
 }
 
-export async function saveTransitions(policySetId: string, transitions: PolicyTransitionDto[]): Promise<PolicyTransitionDto[]> {
+export async function saveTransitions(policySetId: string, transitions: TransitionRequest[]): Promise<PolicyTransitionDto[]> {
   return apiPut<PolicyTransitionDto[]>(`/policy/sets/${policySetId}/transitions`, transitions);
 }
