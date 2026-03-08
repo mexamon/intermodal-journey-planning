@@ -63,7 +63,7 @@ const api: AxiosInstance = axios.create({
 // Request interceptor: attach token
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem('auth_token');
+    const token = localStorage.getItem('intermodal_auth_token');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -106,7 +106,7 @@ api.interceptors.response.use(
       throw new ApiError(result.code, msg);
     }
     if (error.response?.status === 401) {
-      localStorage.removeItem('auth_token');
+      localStorage.removeItem('intermodal_auth_token');
       emitToast('error', 'Oturum süresi doldu. Lütfen tekrar giriş yapın.');
       window.location.href = '/login';
       throw new ApiError('401', 'Oturum süresi doldu.');

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import * as styles from './HubPage.module.scss';
 import { mockWorkspaces } from './data/mockData';
 import { useThemeContext } from './contexts/ThemeContext';
@@ -28,11 +28,24 @@ const PlaceholderPane: React.FC<{ title: string; description: string }> = ({ tit
 
 export const HubPage = () => {
     useThemeContext();
-    const { logout } = useAuth();
+    const { logout, user } = useAuth();
     const [isDrawerCollapsed, setDrawerCollapsed] = useState(false);
     const [currentView, setCurrentView] = useState<'workspace' | 'account'>('workspace');
     const [activeTab, setActiveTab] = useState('planner');
     const [selectedWorkspace, setSelectedWorkspace] = useState(mockWorkspaces[0]);
+
+    // Filter navigation by user role
+    const filteredNavSections = useMemo(() => {
+        const role = user?.role;
+        return navSections
+            .map(section => ({
+                ...section,
+                items: section.items.filter(item =>
+                    !item.requiredRole || item.requiredRole === role
+                ),
+            }))
+            .filter(section => section.items.length > 0);
+    }, [user?.role]);
 
     const handleWorkspaceNavigation = (tabId: string) => {
         setActiveTab(tabId);
@@ -79,7 +92,7 @@ export const HubPage = () => {
                 onWorkspaceTabSelect={handleWorkspaceNavigation}
                 onNavigateToAccount={() => setCurrentView('account')}
                 onLogout={logout}
-                navSections={navSections}
+                navSections={filteredNavSections}
                 workspaces={mockWorkspaces}
                 selectedWorkspace={selectedWorkspace}
                 onWorkspaceSelect={setSelectedWorkspace}

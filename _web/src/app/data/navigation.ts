@@ -13,11 +13,15 @@ import {
   FiDollarSign,
 } from 'react-icons/fi';
 
+import type { UserRole } from '../contexts/AuthContext';
+
 export interface NavItem {
   id: string;
   label: string;
   description: string;
   icon: IconType;
+  /** If set, only users with this role (or higher) can see this item */
+  requiredRole?: UserRole;
 }
 
 export interface NavSection {
@@ -36,12 +40,14 @@ export const navSections: NavSection[] = [
         label: 'Journey Planner',
         description: 'Search multi-modal routes across flights, trains, and buses.',
         icon: FiNavigation,
+        // No requiredRole — both ADMIN and AGENCY can access
       },
       {
         id: 'routes',
         label: 'Saved Routes',
         description: 'Browse and manage your saved journey routes.',
         icon: FiMapPin,
+        // No requiredRole — both ADMIN and AGENCY can access
       },
     ],
   },
@@ -54,37 +60,42 @@ export const navSections: NavSection[] = [
         label: 'Locations',
         description: 'Manage airports, cities, stations, and points of interest.',
         icon: FiGlobe,
+        requiredRole: 'ADMIN',
       },
       {
         id: 'connections',
         label: 'Connections',
         description: 'View and manage transportation edges between locations.',
         icon: FiLink,
+        requiredRole: 'ADMIN',
       },
       {
         id: 'fares',
         label: 'Fares',
         description: 'Manage pricing, fare classes, and refund policies.',
         icon: FiDollarSign,
+        requiredRole: 'ADMIN',
       },
-      // ── Reference data (bottom) ─────────────────
       {
         id: 'service-areas',
         label: 'Service Areas',
         description: 'Configure geographic zones for transport modes (taxi zones, uber coverage).',
         icon: FiTarget,
+        requiredRole: 'ADMIN',
       },
       {
         id: 'providers',
         label: 'Providers',
         description: 'Manage airlines, railway operators, and ride-share providers.',
         icon: FiBox,
+        requiredRole: 'ADMIN',
       },
       {
         id: 'modes',
         label: 'Transport Modes',
         description: 'Configure transport mode registry and sourcing strategies.',
         icon: FiTruck,
+        requiredRole: 'ADMIN',
       },
     ],
   },
@@ -97,18 +108,21 @@ export const navSections: NavSection[] = [
         label: 'Policy Studio',
         description: 'Design journey policy state machines with visual flow editor.',
         icon: FiGitBranch,
+        requiredRole: 'ADMIN',
       },
       {
         id: 'users',
         label: 'Users & Roles',
         description: 'Manage members, roles, and workspace access.',
         icon: FiUsers,
+        requiredRole: 'ADMIN',
       },
       {
         id: 'analytics',
         label: 'Analytics',
         description: 'Monitor search activity, route usage, and system health.',
         icon: FiBarChart2,
+        requiredRole: 'ADMIN',
       },
     ],
   },

@@ -820,7 +820,7 @@ export const ConnectionsPane: React.FC = () => {
       </div>}
 
       {/* ── Pagination Bar ── */}
-      <div className={s.paginationBar}>
+      {!loading && <div className={s.paginationBar}>
         <div className={s.paginationLeft}>
           <span style={{ fontSize: '0.75rem' }}>{page * pageSize + 1}–{Math.min((page + 1) * pageSize, totalElements)} of {totalElements}</span>
         </div>
@@ -847,7 +847,7 @@ export const ConnectionsPane: React.FC = () => {
             </DropdownMenu.Portal>
           </DropdownMenu.Root>
         </div>
-      </div>
+      </div>}
 
       {/* ══════════ Add / Edit Drawer ══════════ */}
       <VaulDrawer open={drawerOpen} onOpenChange={setDrawerOpen}

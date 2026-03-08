@@ -6,6 +6,7 @@ import com.thy.cloud.service.api.modules.journey.model.JourneySearchRequest;
 import com.thy.cloud.service.api.modules.journey.service.JourneySearchService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
@@ -14,6 +15,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/journey")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('ADMIN','AGENCY')")
 public class JourneyController {
 
     private final JourneySearchService journeySearchService;

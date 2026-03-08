@@ -333,7 +333,7 @@ export const LocationsPane: React.FC = () => {
       </div>}
 
       {/* ── Pagination ── */}
-      <div className={s.paginationBar}>
+      {!loading && <div className={s.paginationBar}>
         <div className={s.paginationLeft}>
           <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
@@ -360,7 +360,7 @@ export const LocationsPane: React.FC = () => {
         <div className={s.paginationRight}>
           <span style={{ fontSize: '0.72rem', opacity: 0.5 }}>{totalElements} total</span>
         </div>
-      </div>
+      </div>}
 
       {/* ═══ Add/Edit Drawer ═══ */}
       <VaulDrawer open={drawerOpen} onOpenChange={setDrawerOpen}

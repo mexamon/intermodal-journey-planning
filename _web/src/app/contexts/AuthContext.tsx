@@ -1,9 +1,12 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
-interface AuthUser {
+export type UserRole = 'ADMIN' | 'AGENCY';
+
+export interface AuthUser {
   id: string;
   name: string;
   email: string;
+  role: UserRole;
   avatar?: string;
 }
 
@@ -20,11 +23,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 const TOKEN_KEY = 'intermodal_auth_token';
 const USER_KEY = 'intermodal_auth_user';
 
-/* ── Mock users for frontend-only auth ── */
-const MOCK_USERS: { email: string; password: string; user: AuthUser }[] = [
-  { email: 'admin@intermodal.io', password: 'admin', user: { id: 'u1', name: 'Engin Mahmut', email: 'admin@intermodal.io', avatar: 'https://github.com/mexamon.png' } },
-  { email: 'demo@intermodal.io', password: 'demo', user: { id: 'u2', name: 'Demo User', email: 'demo@intermodal.io' } },
-];
+const API_BASE = 'http://localhost:8600';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
@@ -36,16 +35,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isAuthenticated = !!token && !!user;
 
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
-    // Simulate network delay
-    await new Promise(r => setTimeout(r, 600));
-    const match = MOCK_USERS.find(m => m.email === email && m.password === password);
-    if (!match) return false;
-    const fakeToken = `tok_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    localStorage.setItem(TOKEN_KEY, fakeToken);
-    localStorage.setItem(USER_KEY, JSON.stringify(match.user));
-    setToken(fakeToken);
-    setUser(match.user);
-    return true;
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!res.ok) return false;
+
+      const data = await res.json();
+      const jwt = data.token;
+      const userInfo: AuthUser = {
+        id: data.user.id,
+        name: data.user.displayName || data.user.email,
+        email: data.user.email,
+        role: data.user.role as UserRole,
+      };
+
+      localStorage.setItem(TOKEN_KEY, jwt);
+      localStorage.setItem(USER_KEY, JSON.stringify(userInfo));
+      setToken(jwt);
+      setUser(userInfo);
+      return true;
+    } catch (err) {
+      console.error('Login failed:', err);
+      return false;
+    }
   }, []);
 
   const logout = useCallback(() => {

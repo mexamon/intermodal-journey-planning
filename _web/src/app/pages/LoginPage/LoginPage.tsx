@@ -57,7 +57,7 @@ export const LoginPage: React.FC = () => {
               <FiMail size={15} className={styles.inputIcon} />
               <input
                 type="email"
-                placeholder="admin@intermodal.io"
+                placeholder="admin@thy.com"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 autoFocus
@@ -92,7 +92,11 @@ export const LoginPage: React.FC = () => {
         {/* Demo Hint */}
         <div className={styles.demoHint}>
           <MdFlight size={14} style={{ opacity: 0.5 }} />
-          <span>Demo: <strong>admin@intermodal.io</strong> / <strong>admin</strong></span>
+          <span>Admin: <strong>admin@thy.com</strong> / <strong>admin</strong></span>
+        </div>
+        <div className={styles.demoHint}>
+          <MdFlight size={14} style={{ opacity: 0.5 }} />
+          <span>Agency: <strong>agency@thy.com</strong> / <strong>agency</strong></span>
         </div>
       </div>
     </div>
