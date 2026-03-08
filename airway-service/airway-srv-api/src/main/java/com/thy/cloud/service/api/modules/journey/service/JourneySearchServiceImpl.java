@@ -107,15 +107,43 @@ public class JourneySearchServiceImpl implements JourneySearchService {
 
         LocalDate date = request.getDepartureDate() != null ? request.getDepartureDate() : LocalDate.now();
         LocalTime earliest = request.getEarliestDeparture() != null ? request.getEarliestDeparture() : LocalTime.of(0, 0);
-        // ── Policy Resolution ─────────────────────────────────
+
+        Set<String> allowedModes = request.getPreferredModes() != null
+                ? new HashSet<>(request.getPreferredModes()) : Set.of();
+
+        EdgeSearchContext context = new EdgeSearchContext(date, earliest, 50, allowedModes);
+
+        // 2. Discover hubs (nearby airports/stations)
+        List<ResolvedLocation> originHubs = discoverHubs(origin);
+        List<ResolvedLocation> destHubs = discoverHubs(destination);
+
+        log.info("Origin hubs: {}, Dest hubs: {}",
+                originHubs.stream().map(ResolvedLocation::name).toList(),
+                destHubs.stream().map(ResolvedLocation::name).toList());
+
+        // ── Policy Resolution (after hub discovery so we can use hub IATA codes) ──
         String originIata = origin.iataCode();
         String destIata = destination.iataCode();
-        // For non-airport origins, find first origin hub IATA
+        // For non-airport origins/destinations, use nearest hub IATA for policy lookup
         if (originIata == null) {
             originIata = request.getOriginIataCode();
         }
+        if (originIata == null && !originHubs.isEmpty()) {
+            originIata = originHubs.stream()
+                    .filter(h -> h.iataCode() != null)
+                    .map(ResolvedLocation::iataCode)
+                    .findFirst().orElse(null);
+            log.info("Using origin hub IATA for policy: {}", originIata);
+        }
         if (destIata == null) {
             destIata = request.getDestinationIataCode();
+        }
+        if (destIata == null && !destHubs.isEmpty()) {
+            destIata = destHubs.stream()
+                    .filter(h -> h.iataCode() != null)
+                    .map(ResolvedLocation::iataCode)
+                    .findFirst().orElse(null);
+            log.info("Using dest hub IATA for policy: {}", destIata);
         }
 
         JourneyPolicyConstraints policyConstraints = policyResolver.resolveForRoute(originIata, destIata);
@@ -135,19 +163,6 @@ public class JourneySearchServiceImpl implements JourneySearchService {
             log.info("No policy found, using defaults: maxTransfers={}, maxDuration={}min",
                     maxTransfers, maxDuration);
         }
-
-        Set<String> allowedModes = request.getPreferredModes() != null
-                ? new HashSet<>(request.getPreferredModes()) : Set.of();
-
-        EdgeSearchContext context = new EdgeSearchContext(date, earliest, 50, allowedModes);
-
-        // 2. Discover hubs (nearby airports/stations)
-        List<ResolvedLocation> originHubs = discoverHubs(origin);
-        List<ResolvedLocation> destHubs = discoverHubs(destination);
-
-        log.info("Origin hubs: {}, Dest hubs: {}",
-                originHubs.stream().map(ResolvedLocation::name).toList(),
-                destHubs.stream().map(ResolvedLocation::name).toList());
 
         // 3. Build adjacency map with 3-phase approach:
         //    Phase A: First-mile (origin → origin hubs via computed/GTFS)
@@ -283,7 +298,8 @@ public class JourneySearchServiceImpl implements JourneySearchService {
         }
 
         // ── Phase C: Last-mile edges (each dest hub → destination) ──
-        // Also consider STATIC edges (TRAIN, BUS) from airport hubs to nearby stations
+        // Also consider STATIC edges (TRAIN, BUS, SUBWAY) from airport hubs to nearby stations
+        log.info("Phase C: {} destination hubs to process", destHubs.size());
         for (ResolvedLocation hub : destHubs) {
             if (locKey(hub).equals(locKey(destination))) continue;
             for (EdgeResolver resolver : edgeResolvers) {
@@ -294,8 +310,17 @@ public class JourneySearchServiceImpl implements JourneySearchService {
                         // COMPUTED/GTFS: pass actual destination for point-to-point edges
                         ResolvedLocation resolverDest = "STATIC".equals(res) ? null : destination;
                         List<ResolvedEdge> edges = resolver.resolve(hub, resolverDest, context);
+
+                        // For STATIC: keep only ground transport (TRAIN, SUBWAY, BUS, FERRY),
+                        // exclude FLIGHT (already handled in Phase B trunk)
+                        if ("STATIC".equals(res)) {
+                            edges = edges.stream()
+                                    .filter(e -> !"FLIGHT".equals(e.transportModeCode()))
+                                    .toList();
+                        }
+
+                        log.info("  Phase C [{}] from {}: {} edges", res, hub.name(), edges.size());
                         addEdges(adjacency, locKey(hub), edges, locationIndex);
-                        // Index newly discovered destinations (e.g. Berlin Hbf from STATIC train edge)
                         for (ResolvedEdge edge : edges) {
                             indexLocation(locationIndex, edge.destination());
                         }
@@ -306,27 +331,31 @@ public class JourneySearchServiceImpl implements JourneySearchService {
             }
         }
 
-        // ── Phase C.2: Extend last-mile from intermediate stations to destination ──
-        // If STATIC edges lead to intermediate hubs (e.g. BER→Berlin Hbf via TRAIN),
-        // add COMPUTED edges from those intermediate locations to the final destination
+        // ── Phase C.2: Extend last-mile from intermediate STATIONS to destination ──
+        // If STATIC edges lead to stations (e.g. BER→Berlin Hbf via TRAIN),
+        // add COMPUTED edges from those stations to the final destination
         Set<String> intermediateKeys = new HashSet<>();
         for (ResolvedLocation hub : destHubs) {
             List<ResolvedEdge> hubEdges = adjacency.getOrDefault(locKey(hub), List.of());
             for (ResolvedEdge edge : hubEdges) {
                 String destEdgeKey = locKey(edge.destination());
-                if (!destEdgeKey.equals(locKey(destination)) && !intermediateKeys.contains(destEdgeKey)) {
-                    intermediateKeys.add(destEdgeKey);
-                    ResolvedLocation intermediate = locationIndex.get(destEdgeKey);
-                    if (intermediate != null) {
-                        for (EdgeResolver resolver : edgeResolvers) {
-                            if ("COMPUTED".equals(resolver.getResolution())) {
-                                try {
-                                    List<ResolvedEdge> computedEdges = resolver.resolve(intermediate, destination, context);
-                                    addEdges(adjacency, destEdgeKey, computedEdges, locationIndex);
-                                } catch (Exception e) {
-                                    log.warn("Last-mile extension from {} failed: {}", intermediate.name(), e.getMessage());
-                                }
-                            }
+                // Only extend from STATION-type intermediates (not airports — those are trunk nodes)
+                ResolvedLocation intermediate = locationIndex.get(destEdgeKey);
+                if (intermediate == null) continue;
+                if ("AIRPORT".equals(intermediate.type())) continue;
+                if (destEdgeKey.equals(locKey(destination))) continue;
+                if (intermediateKeys.contains(destEdgeKey)) continue;
+
+                intermediateKeys.add(destEdgeKey);
+                log.info("  Phase C.2: extending from {} to destination", intermediate.name());
+                for (EdgeResolver resolver : edgeResolvers) {
+                    if ("COMPUTED".equals(resolver.getResolution())) {
+                        try {
+                            List<ResolvedEdge> computedEdges = resolver.resolve(intermediate, destination, context);
+                            log.info("    → {} COMPUTED edges from {}", computedEdges.size(), intermediate.name());
+                            addEdges(adjacency, destEdgeKey, computedEdges, locationIndex);
+                        } catch (Exception e) {
+                            log.warn("Last-mile extension from {} failed: {}", intermediate.name(), e.getMessage());
                         }
                     }
                 }
@@ -488,8 +517,9 @@ public class JourneySearchServiceImpl implements JourneySearchService {
         record BfsState(String locationKey, List<ResolvedEdge> path,
                         LocalTime earliestDep, int totalMinutes) {}
 
-        final int MAX_BFS_ITERATIONS = 5000;
-        final int MAX_QUEUE_SIZE = 2000;
+        final int MAX_BFS_ITERATIONS = 3000;
+        final int MAX_QUEUE_SIZE = 1000;
+        final int ENOUGH_PATHS = 50;
 
         Queue<BfsState> queue = new LinkedList<>();
         queue.add(new BfsState(originKey, new ArrayList<>(), earliestDeparture, 0));
@@ -499,9 +529,14 @@ public class JourneySearchServiceImpl implements JourneySearchService {
         bestDepth.put(originKey, 0);
 
         int iterations = 0;
-        while (!queue.isEmpty() && completePaths.size() < MAX_RESULTS * 3) {
+        while (!queue.isEmpty()) {
             if (++iterations > MAX_BFS_ITERATIONS) {
                 log.warn("BFS iteration limit reached ({}) — returning {} paths", MAX_BFS_ITERATIONS, completePaths.size());
+                break;
+            }
+            // Soft cap: once we have enough paths, stop expanding
+            if (completePaths.size() >= ENOUGH_PATHS) {
+                log.info("BFS soft cap: {} paths found, stopping", completePaths.size());
                 break;
             }
 
@@ -518,10 +553,12 @@ public class JourneySearchServiceImpl implements JourneySearchService {
                 // Avoid cycles
                 if (isLocationInPath(state.path, destKey)) continue;
 
-                // Visited-depth pruning: skip if we've reached this node at fewer hops
+                // Visited-depth pruning: allow +1 depth tolerance for reaching same node
+                // This ensures 4-segment station paths (BER→Hbf→dest) aren't pruned by
+                // 3-segment direct paths (BER→dest) that reach dest at lower depth
                 int newDepth = state.path.size() + 1;
                 Integer prev = bestDepth.get(destKey);
-                if (prev != null && prev < newDepth && !destinationKeys.contains(destKey)) continue;
+                if (prev != null && prev + 1 < newDepth && !destinationKeys.contains(destKey)) continue;
                 if (prev == null || newDepth < prev) bestDepth.put(destKey, newDepth);
 
                 // Time compatibility
@@ -792,7 +829,40 @@ public class JourneySearchServiceImpl implements JourneySearchService {
             if (seen.add(key)) unique.add(r);
         }
 
-        List<JourneyResult> top = unique.stream().limit(MAX_RESULTS).collect(Collectors.toList());
+        log.info("Ranking: {} total unique paths", unique.size());
+
+        // Ensure modal diversity: reserve slots for routes with different last-mile modes
+        // (TRAIN, SUBWAY, BUS) so they're not pushed out by numerous TAXI/UBER-only routes
+        List<JourneyResult> top = new ArrayList<>();
+        List<JourneyResult> diverseRoutes = new ArrayList<>();
+        Set<String> diverseModes = Set.of("TRAIN", "SUBWAY", "BUS", "FERRY", "TRAM");
+
+        for (JourneyResult r : unique) {
+            boolean hasDiverseMode = r.getSegments().stream()
+                    .anyMatch(s -> diverseModes.contains(s.getMode()));
+            if (hasDiverseMode) {
+                diverseRoutes.add(r);
+            } else {
+                if (top.size() < MAX_RESULTS) top.add(r);
+            }
+        }
+
+        // Insert diverse routes (up to 3) into top results, replacing last entries if needed
+        int diverseSlots = Math.min(diverseRoutes.size(), 3);
+        for (int i = 0; i < diverseSlots; i++) {
+            JourneyResult dr = diverseRoutes.get(i);
+            if (top.size() < MAX_RESULTS) {
+                top.add(dr);
+            } else {
+                // Replace last non-diverse entry
+                top.set(MAX_RESULTS - 1 - i, dr);
+            }
+        }
+
+        // Re-sort after diversity injection
+        top.sort(comparator);
+        log.info("Final top: {} results ({} with diverse modes)", top.size(), diverseSlots);
+
         if (!top.isEmpty()) assignLabels(top);
         return top;
     }

@@ -19,8 +19,9 @@ import '@xyflow/react/dist/style.css';
 import { useThemeContext } from '../../contexts/ThemeContext';
 import {
   defaultEdgeData, defaultPolicySet, initialEdges, initialNodes,
-  mockAirports, mockProviders, phaseColors, phaseLibrary, transportModesMeta,
+  mockProviders, phaseColors, phaseLibrary, transportModesMeta,
 } from './flowData';
+import { searchLocations, type LocationResult } from '../../api/locationApi';
 import type {
   JourneyPhase, ModeConfig, PhaseLibraryItem, PolicySet,
   RouteEdgeData, RouteNodeData, TransportMode,
@@ -137,6 +138,9 @@ export const FlowStudioPane: React.FC = () => {
   const [showNodeLibrary, setShowNodeLibrary] = useState(false);
   const [inspectorWidth] = useState(400);
 
+  // ── Airport List from DB ──
+  const [airportList, setAirportList] = useState<{ iata: string; name: string; city: string; country: string }[]>([]);
+
   // ── Policy List State ──
   const [showPolicyList, setShowPolicyList] = useState(false);
   const [policyList, setPolicyList] = useState<PolicySetDto[]>([]);
@@ -161,6 +165,21 @@ export const FlowStudioPane: React.FC = () => {
   }, []);
 
   useEffect(() => { fetchPolicyList(); }, [fetchPolicyList]);
+
+  // ── Fetch airports from DB on mount ──
+  useEffect(() => {
+    (async () => {
+      try {
+        const locs = await searchLocations({ type: 'AIRPORT' }, 0, 200);
+        setAirportList(locs.map(l => ({
+          iata: l.iataCode || l.name.substring(0, 3).toUpperCase(),
+          name: l.name,
+          city: l.city || '',
+          country: l.countryIsoCode || '',
+        })));
+      } catch (e) { console.error('Failed to fetch airports:', e); }
+    })();
+  }, []);
 
   // ── Load a policy from backend ──
   const loadPolicy = useCallback(async (policy: PolicySetDto) => {
@@ -252,7 +271,7 @@ export const FlowStudioPane: React.FC = () => {
           scopeType: policySet.scope,
           scopeKey: policySet.scopeKey,
           segment: policySet.segment,
-          status: policySet.status,
+          status: 'ACTIVE',
           description: policySet.description,
         };
         const created = await createPolicySet(reqBody);
@@ -264,7 +283,7 @@ export const FlowStudioPane: React.FC = () => {
           scopeType: policySet.scope,
           scopeKey: policySet.scopeKey,
           segment: policySet.segment,
-          status: policySet.status,
+          status: 'ACTIVE',
           description: policySet.description,
         };
         await updatePolicySet(policyId, reqBody);
@@ -309,8 +328,8 @@ export const FlowStudioPane: React.FC = () => {
         }),
       }));
       await saveTransitions(policyId, transPayload);
-      setPolicySet(prev => ({ ...prev, lastSaved: new Date().toLocaleTimeString() }));
-      emitToast('success', `Policy "${policySet.code}" saved`);
+      setPolicySet(prev => ({ ...prev, status: 'ACTIVE', lastSaved: new Date().toLocaleTimeString() }));
+      emitToast('success', `Policy "${policySet.code}" saved successfully`);
       fetchPolicyList();
     } catch (e: any) {
       emitToast('error', e.message || 'Failed to save policy');
@@ -366,11 +385,11 @@ export const FlowStudioPane: React.FC = () => {
 
   const filteredAirports = useMemo(() => {
     const q = airportSearch.toLowerCase();
-    if (!q) return mockAirports;
-    return mockAirports.filter(a =>
+    if (!q) return airportList;
+    return airportList.filter(a =>
       a.iata.toLowerCase().includes(q) || a.name.toLowerCase().includes(q) || a.city.toLowerCase().includes(q)
     );
-  }, [airportSearch]);
+  }, [airportSearch, airportList]);
 
   const edgeColor = theme.variant === 'dark' ? 'rgba(200, 16, 46, 0.55)' : 'rgba(200, 16, 46, 0.4)';
   const bgGridColor = theme.variant === 'dark' ? 'rgba(148, 163, 184, 0.12)' : 'rgba(200, 16, 46, 0.12)';
@@ -468,7 +487,7 @@ export const FlowStudioPane: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  const hubAirport = mockAirports.find(a => a.iata === policySet.scopeKey);
+  const hubAirport = airportList.find(a => a.iata === policySet.scopeKey);
 
   /* ━━━━━━━━━━━ RENDER ━━━━━━━━━━━ */
   return (
