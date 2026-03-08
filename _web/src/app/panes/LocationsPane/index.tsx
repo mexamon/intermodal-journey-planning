@@ -6,17 +6,14 @@ import * as Toast from '@radix-ui/react-toast';
 import {
   FiSearch, FiPlus, FiEdit2, FiTrash2, FiMoreVertical, FiX,
   FiCheck, FiAlertCircle, FiChevronDown, FiChevronLeft, FiChevronRight,
-  FiChevronsLeft, FiChevronsRight, FiGlobe, FiMapPin, FiEye, FiEyeOff,
+  FiChevronsLeft, FiChevronsRight, FiEye, FiEyeOff,
 } from 'react-icons/fi';
-import {
-  MdFlight, MdTrain, MdDirectionsSubway, MdLocationCity,
-} from 'react-icons/md';
+import { MdFlight, MdTrain } from 'react-icons/md';
 
 /* ═══════════════════════════════════════════════
    Types — matching DB location (V004)
    ═══════════════════════════════════════════════ */
-type LocationType = 'AIRPORT' | 'CITY' | 'STATION' | 'POI';
-type LocationSource = 'INTERNAL' | 'OURAIRPORTS' | 'GOOGLE_PLACES' | 'GTFS' | 'API';
+type LocationType = 'AIRPORT' | 'STATION';
 
 interface Location {
   id: string;
@@ -33,8 +30,6 @@ interface Location {
   isSearchable: boolean;
   searchPriority: number;
   searchAliases: string[];
-  source: LocationSource;
-  sourcePk: string | null;
   version: number;
   createdDate: string;
   lastModifiedDate: string | null;
@@ -45,21 +40,9 @@ interface Location {
 const TYPE_META: Record<LocationType, { icon: React.ReactNode; color: string; label: string }> = {
   AIRPORT: { icon: <MdFlight size={14} />,          color: '#1E88E5', label: 'Airport' },
   STATION: { icon: <MdTrain size={14} />,           color: '#43A047', label: 'Station' },
-  CITY:    { icon: <MdLocationCity size={14} />,     color: '#8E24AA', label: 'City' },
-  POI:     { icon: <FiMapPin size={14} />,           color: '#f97316', label: 'POI' },
 };
-
-const SOURCE_META: Record<string, { color: string; label: string }> = {
-  INTERNAL:       { color: '#3b82f6', label: 'Internal' },
-  OURAIRPORTS:    { color: '#22c55e', label: 'OurAirports' },
-  GOOGLE_PLACES:  { color: '#a855f7', label: 'Google Places' },
-  GTFS:           { color: '#f97316', label: 'GTFS' },
-  API:            { color: '#6b7280', label: 'API' },
-};
-const DEFAULT_TYPE = { icon: <FiMapPin size={14} />, color: '#6b7280', label: 'Unknown' };
-const DEFAULT_SOURCE = { color: '#6b7280', label: 'Unknown' };
+const DEFAULT_TYPE = { icon: <MdFlight size={14} />, color: '#6b7280', label: 'Unknown' };
 const getTypeMeta = (t: string) => TYPE_META[t as LocationType] || { ...DEFAULT_TYPE, label: t };
-const getSourceMeta = (s: string) => SOURCE_META[s] || { ...DEFAULT_SOURCE, label: s };
 
 const resolveEnum = (val: unknown): string => {
   if (val && typeof val === 'object' && 'value' in (val as Record<string, unknown>))
@@ -75,7 +58,6 @@ const emptyForm = (): Omit<Location, 'id' | 'version' | 'createdDate' | 'lastMod
   type: 'AIRPORT', name: '', countryIsoCode: '', regionCode: null, city: null, timezone: null,
   lat: null, lon: null, iataCode: null, icaoCode: null,
   isSearchable: true, searchPriority: 100, searchAliases: [],
-  source: 'INTERNAL', sourcePk: null,
 });
 
 export const LocationsPane: React.FC = () => {
@@ -84,7 +66,6 @@ export const LocationsPane: React.FC = () => {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'ALL' | LocationType>('ALL');
-  const [sourceFilter, setSourceFilter] = useState<'ALL' | LocationSource>('ALL');
 
   /* Server-side pagination */
   const [page, setPage] = useState(0);
@@ -122,7 +103,6 @@ export const LocationsPane: React.FC = () => {
       const items = (result?.content || []).map((raw: any) => ({
         ...raw,
         type: resolveEnum(raw.type),
-        source: resolveEnum(raw.source),
         isSearchable: raw.isSearchable ?? raw.searchable ?? true,
         searchAliases: raw.searchAliases || [],
       }));
@@ -142,11 +122,6 @@ export const LocationsPane: React.FC = () => {
     return () => clearTimeout(t);
   }, [search]);
 
-  /* ── Client-side source filter (backend doesn't support it) ── */
-  const filtered = useMemo(() => {
-    if (sourceFilter === 'ALL') return data;
-    return data.filter(l => l.source === sourceFilter);
-  }, [data, sourceFilter]);
 
   /* ── Stats (from current page data) ── */
 
@@ -160,7 +135,7 @@ export const LocationsPane: React.FC = () => {
       regionCode: loc.regionCode, city: loc.city, timezone: loc.timezone,
       lat: loc.lat, lon: loc.lon, iataCode: loc.iataCode, icaoCode: loc.icaoCode,
       isSearchable: loc.isSearchable, searchPriority: loc.searchPriority,
-      searchAliases: loc.searchAliases, source: loc.source, sourcePk: loc.sourcePk,
+      searchAliases: loc.searchAliases,
     });
     setAliasText(loc.searchAliases.join(', '));
     setDrawerOpen(true);
@@ -232,7 +207,7 @@ export const LocationsPane: React.FC = () => {
                   <DropdownMenu.Item key={t} className={s.dropdownItem} onSelect={() => { setTypeFilter(t); setPage(0); }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                       <span style={{ color: getTypeMeta(t).color, display: 'flex' }}>{getTypeMeta(t).icon}</span>
-                      {getTypeMeta(t).label} <span style={{ fontSize: '0.7rem', opacity: 0.4 }}>({stats[t] || 0})</span>
+                      {getTypeMeta(t).label}
                     </span>
                     {typeFilter === t && <FiCheck size={14} />}
                   </DropdownMenu.Item>
@@ -241,27 +216,6 @@ export const LocationsPane: React.FC = () => {
             </DropdownMenu.Portal>
           </DropdownMenu.Root>
 
-          <DropdownMenu.Root>
-            <DropdownMenu.Trigger asChild>
-              <button className={s.filterBtn}>
-                {sourceFilter === 'ALL' ? 'All Sources' : getSourceMeta(sourceFilter).label}
-                <FiChevronDown size={12} />
-              </button>
-            </DropdownMenu.Trigger>
-            <DropdownMenu.Portal>
-              <DropdownMenu.Content sideOffset={4} className={s.dropdownContent}>
-                <DropdownMenu.Item className={s.dropdownItem} onSelect={() => { setSourceFilter('ALL'); setPage(0); }}>
-                  All Sources {sourceFilter === 'ALL' && <FiCheck size={14} />}
-                </DropdownMenu.Item>
-                {(Object.keys(SOURCE_META) as LocationSource[]).map(src => (
-                  <DropdownMenu.Item key={src} className={s.dropdownItem} onSelect={() => { setSourceFilter(src); setPage(0); }}>
-                    <span style={{ color: getSourceMeta(src).color }}>{getSourceMeta(src).label}</span>
-                    {sourceFilter === src && <FiCheck size={14} />}
-                  </DropdownMenu.Item>
-                ))}
-              </DropdownMenu.Content>
-            </DropdownMenu.Portal>
-          </DropdownMenu.Root>
 
           <button className={s.addButton} onClick={openAdd}><FiPlus size={14} /> Add Location</button>
         </div>
@@ -300,7 +254,6 @@ export const LocationsPane: React.FC = () => {
               <th>Name</th>
               <th>City</th>
               <th>Country</th>
-              <th>Source</th>
               <th>Coordinates</th>
               <th>Priority</th>
               <th>Searchable</th>
@@ -308,7 +261,7 @@ export const LocationsPane: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {filtered.map(loc => (
+            {data.map(loc => (
               <tr key={loc.id}>
                 <td>
                   <span style={{
@@ -336,14 +289,6 @@ export const LocationsPane: React.FC = () => {
                 <td><span style={{ fontWeight: 500, fontSize: '0.85rem' }}>{loc.name}</span></td>
                 <td style={{ fontSize: '0.85rem' }}>{loc.city ?? '—'}</td>
                 <td><span style={{ fontFamily: 'monospace', fontWeight: 600, fontSize: '0.82rem' }}>{loc.countryIsoCode}</span></td>
-                <td>
-                  <span style={{
-                    fontSize: '0.7rem', fontWeight: 600, padding: '0.12rem 0.4rem', borderRadius: 999,
-                    backgroundColor: `${getSourceMeta(loc.source).color}12`, color: getSourceMeta(loc.source).color,
-                  }}>
-                    {getSourceMeta(loc.source).label}
-                  </span>
-                </td>
                 <td style={{ fontSize: '0.78rem', fontFamily: 'monospace', opacity: 0.6 }}>
                   {loc.lat != null && loc.lon != null ? `${loc.lat.toFixed(4)}, ${loc.lon.toFixed(4)}` : '—'}
                 </td>
@@ -442,8 +387,8 @@ export const LocationsPane: React.FC = () => {
                 </div>
               </div>
 
-              {/* Type & Source */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+              {/* Type */}
+              <div>
                 <div>
                   <label className={s.fieldLabel}>Type *</label>
                   <DropdownMenu.Root>
@@ -464,25 +409,6 @@ export const LocationsPane: React.FC = () => {
                               {getTypeMeta(t).label}
                             </span>
                             {form.type === t && <FiCheck size={14} />}
-                          </DropdownMenu.Item>
-                        ))}
-                      </DropdownMenu.Content>
-                  </DropdownMenu.Root>
-                </div>
-                <div>
-                  <label className={s.fieldLabel}>Source</label>
-                  <DropdownMenu.Root>
-                    <DropdownMenu.Trigger asChild>
-                      <button className={paneStyles.formInput} style={{ maxWidth: '100%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.82rem', padding: '0.5rem 0.6rem' }}>
-                        <span style={{ color: getSourceMeta(form.source).color }}>{getSourceMeta(form.source).label}</span>
-                        <FiChevronDown size={12} style={{ opacity: 0.4 }} />
-                      </button>
-                    </DropdownMenu.Trigger>
-                      <DropdownMenu.Content sideOffset={4} className={s.dropdownContent}>
-                        {(Object.keys(SOURCE_META) as LocationSource[]).map(src => (
-                          <DropdownMenu.Item key={src} className={s.dropdownItem} onSelect={() => setForm(f => ({ ...f, source: src }))}>
-                            <span style={{ color: getSourceMeta(src).color }}>{getSourceMeta(src).label}</span>
-                            {form.source === src && <FiCheck size={14} />}
                           </DropdownMenu.Item>
                         ))}
                       </DropdownMenu.Content>
