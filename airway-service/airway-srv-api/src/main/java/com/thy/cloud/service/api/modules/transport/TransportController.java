@@ -2,11 +2,16 @@ package com.thy.cloud.service.api.modules.transport;
 
 import com.thy.cloud.base.core.api.Result;
 import com.thy.cloud.service.api.modules.transport.model.EdgeSearchRequest;
+import com.thy.cloud.service.api.modules.transport.model.FareRequest;
 import com.thy.cloud.service.api.modules.transport.service.TransportService;
+import com.thy.cloud.service.dao.entity.transport.Fare;
+import com.thy.cloud.service.dao.entity.transport.EdgeTrip;
 import com.thy.cloud.service.dao.entity.transport.TransportMode;
 import com.thy.cloud.service.dao.entity.transport.TransportServiceArea;
 import com.thy.cloud.service.dao.entity.transport.TransportStop;
 import com.thy.cloud.service.dao.entity.transport.TransportationEdge;
+import com.thy.cloud.service.dao.enums.EnumFareClass;
+import com.thy.cloud.service.dao.enums.EnumPricingType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -106,6 +111,11 @@ public class TransportController {
 
     // ── Edges ─────────────────────────────────────────────────
 
+    @GetMapping("/edges")
+    public Result<List<TransportationEdge>> listEdges() {
+        return Result.success(transportService.listAllEdges());
+    }
+
     @PostMapping(value = "/edges/search", consumes = MediaType.APPLICATION_JSON_VALUE)
     public Result<Page<TransportationEdge>> searchEdges(@RequestBody @Valid EdgeSearchRequest request,
             Pageable pageable) {
@@ -115,6 +125,66 @@ public class TransportController {
     @GetMapping("/edges/from/{originId}")
     public Result<List<TransportationEdge>> getEdgesFromOrigin(@PathVariable UUID originId) {
         return Result.success(transportService.getEdgesFromOrigin(originId));
+    }
+
+    // ── Fares ─────────────────────────────────────────────────
+
+    @GetMapping("/fares")
+    public Result<List<Fare>> listFares(@RequestParam(required = false) UUID edgeId) {
+        if (edgeId != null) {
+            return Result.success(transportService.listFaresByEdge(edgeId));
+        }
+        return Result.success(transportService.listAllFares());
+    }
+
+    @GetMapping("/fares/{id}")
+    public Result<Fare> getFare(@PathVariable UUID id) {
+        return Result.success(transportService.getFare(id));
+    }
+
+    @PostMapping(value = "/fares", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public Result<Fare> createFare(@RequestBody @Valid FareRequest request) {
+        Fare fare = mapToFareEntity(request, new Fare());
+        return Result.success(transportService.saveFare(fare));
+    }
+
+    @PutMapping(value = "/fares/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public Result<Fare> updateFare(@PathVariable UUID id,
+                                   @RequestBody @Valid FareRequest request) {
+        request.setId(id); // for UniqueFareValidator self-check
+        Fare existing = transportService.getFare(id);
+        mapToFareEntity(request, existing);
+        return Result.success(transportService.saveFare(existing));
+    }
+
+    @DeleteMapping("/fares/{id}")
+    public Result<Void> deleteFare(@PathVariable UUID id) {
+        transportService.deleteFare(id);
+        return Result.success(null);
+    }
+
+    private Fare mapToFareEntity(FareRequest request, Fare fare) {
+        TransportationEdge edge = new TransportationEdge();
+        edge.setId(request.getEdgeId());
+        fare.setEdge(edge);
+
+        if (request.getTripId() != null) {
+            EdgeTrip trip = new EdgeTrip();
+            trip.setId(request.getTripId());
+            fare.setTrip(trip);
+        } else {
+            fare.setTrip(null);
+        }
+
+        fare.setFareClass(EnumFareClass.valueOf(request.getFareClass()));
+        fare.setPricingType(EnumPricingType.valueOf(request.getPricingType()));
+        fare.setPriceCents(request.getPriceCents());
+        fare.setCurrency(request.getCurrency());
+        fare.setRefundable(request.getRefundable() != null ? request.getRefundable() : false);
+        fare.setChangeable(request.getChangeable() != null ? request.getChangeable() : false);
+        fare.setLuggageKg(request.getLuggageKg());
+        fare.setCabinLuggageKg(request.getCabinLuggageKg());
+        return fare;
     }
 }
 

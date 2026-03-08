@@ -1,6 +1,7 @@
 package com.thy.cloud.service.dao.entity.transport;
 
 import com.thy.cloud.data.jpa.entity.AbstractAuditionGuidKeyEntity;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.*;
 
 import jakarta.persistence.*;
@@ -19,6 +20,7 @@ public class EdgeTrip extends AbstractAuditionGuidKeyEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "edge_id", nullable = false)
     @ToString.Exclude
+    @JsonIgnore
     private TransportationEdge edge;
 
     @Column(name = "service_code")

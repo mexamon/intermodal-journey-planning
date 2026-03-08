@@ -2,11 +2,13 @@ package com.thy.cloud.service.api.modules.transport.service;
 
 import com.thy.cloud.service.api.modules.transport.model.EdgeSearchRequest;
 import com.thy.cloud.service.api.modules.transport.specs.EdgeSpecs;
+import com.thy.cloud.service.dao.entity.transport.Fare;
 import com.thy.cloud.service.dao.entity.transport.TransportMode;
 import com.thy.cloud.service.dao.entity.transport.TransportServiceArea;
 import com.thy.cloud.service.dao.entity.transport.TransportStop;
 import com.thy.cloud.service.dao.entity.transport.TransportationEdge;
 import com.thy.cloud.service.dao.repository.inventory.ProviderRepository;
+import com.thy.cloud.service.dao.repository.transport.FareRepository;
 import com.thy.cloud.service.dao.repository.transport.TransportModeRepository;
 import com.thy.cloud.service.dao.repository.transport.TransportServiceAreaRepository;
 import com.thy.cloud.service.dao.repository.transport.TransportStopRepository;
@@ -31,6 +33,7 @@ public class TransportServiceImpl implements TransportService {
     private final TransportStopRepository transportStopRepository;
     private final TransportationEdgeRepository edgeRepository;
     private final ProviderRepository providerRepository;
+    private final FareRepository fareRepository;
 
     // ── Mode ──────────────────────────────────────────────────
 
@@ -86,7 +89,6 @@ public class TransportServiceImpl implements TransportService {
     @Override
     @Transactional
     public TransportServiceArea saveServiceArea(TransportServiceArea area) {
-        // Resolve managed FK references to prevent TransientPropertyValueException
         if (area.getTransportMode() != null && area.getTransportMode().getId() != null) {
             area.setTransportMode(transportModeRepository.findById(area.getTransportMode().getId())
                     .orElseThrow(() -> new EntityNotFoundException(
@@ -125,6 +127,49 @@ public class TransportServiceImpl implements TransportService {
     @Override
     public List<TransportationEdge> getEdgesFromOrigin(UUID originId) {
         return edgeRepository.findByOriginLocationId(originId);
+    }
+
+    @Override
+    public List<TransportationEdge> listAllEdges() {
+        return edgeRepository.findAllWithRelations();
+    }
+
+    // ── Fares ─────────────────────────────────────────────────
+
+    @Override
+    public List<Fare> listAllFares() {
+        return fareRepository.findAllActive();
+    }
+
+    @Override
+    public List<Fare> listFaresByEdge(UUID edgeId) {
+        return fareRepository.findByEdgeId(edgeId);
+    }
+
+    @Override
+    public Fare getFare(UUID id) {
+        return fareRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Fare not found: " + id));
+    }
+
+    @Override
+    @Transactional
+    public Fare saveFare(Fare fare) {
+        // Resolve managed FK references
+        if (fare.getEdge() != null && fare.getEdge().getId() != null) {
+            fare.setEdge(edgeRepository.findById(fare.getEdge().getId())
+                    .orElseThrow(() -> new EntityNotFoundException(
+                            "Edge not found: " + fare.getEdge().getId())));
+        }
+        return fareRepository.save(fare);
+    }
+
+    @Override
+    @Transactional
+    public void deleteFare(UUID id) {
+        Fare fare = getFare(id);
+        fare.setDeleted(true);
+        fareRepository.save(fare);
     }
 }
 

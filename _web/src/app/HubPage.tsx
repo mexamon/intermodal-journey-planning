@@ -10,7 +10,7 @@ import * as paneStyles from './panes/Panes.module.scss';
 import {
     UsersPane, AccountSettingsPane, PlannerPane, LocationsPane, RoutesPane,
     AnalyticsPane, FlowStudioPane, ConnectionsPane, TransportModesPane, ProvidersPane,
-    ServiceAreasPane,
+    ServiceAreasPane, FaresPane,
 } from './panes';
 import { navItemsFlat, navSections } from './data/navigation';
 
@@ -48,6 +48,7 @@ export const HubPage = () => {
             case 'modes': return <TransportModesPane />;
             case 'providers': return <ProvidersPane />;
             case 'service-areas': return <ServiceAreasPane />;
+            case 'fares': return <FaresPane />;
             case 'flows': return <FlowStudioPane />;
             case 'users': return <UsersPane />;
             case 'analytics': return <AnalyticsPane />;

@@ -30,4 +30,13 @@ public interface TransportationEdgeRepository extends GenericRepository<Transpor
     List<TransportationEdge> findAllByStatusAndDeletedFalse(EnumEdgeStatus status);
 
     boolean existsByProviderId(UUID providerId);
+
+    @Query("SELECT e FROM TransportationEdge e " +
+           "JOIN FETCH e.originLocation " +
+           "JOIN FETCH e.destinationLocation " +
+           "JOIN FETCH e.transportMode " +
+           "LEFT JOIN FETCH e.provider " +
+           "LEFT JOIN FETCH e.trips " +
+           "WHERE e.deleted = false ORDER BY e.createdDate DESC")
+    List<TransportationEdge> findAllWithRelations();
 }

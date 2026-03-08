@@ -14,7 +14,14 @@ export const ToastContainer: React.FC = () => {
 
   useEffect(() => {
     const unsub = onToast((toast) => {
-      setToasts(prev => [...prev, toast]);
+      setToasts(prev => {
+        // Deduplicate: if same type+message exists, replace it (resets timer)
+        const existing = prev.find(t => t.type === toast.type && t.message === toast.message);
+        if (existing) {
+          return prev.map(t => t.id === existing.id ? { ...toast, id: existing.id } : t);
+        }
+        return [...prev, toast];
+      });
     });
     return unsub;
   }, []);

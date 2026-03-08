@@ -12,6 +12,7 @@ export * from './ConnectionsPane';
 export * from './TransportModesPane';
 export * from './ProvidersPane';
 export * from './ServiceAreasPane';
+export * from './FaresPane';
 
 // ── Admin ──
 export * from './FlowStudioPane';
