@@ -28,4 +28,6 @@ public interface TransportationEdgeRepository extends GenericRepository<Transpor
     List<TransportationEdge> findByOriginLocationIdAndDestinationLocationId(UUID originId, UUID destinationId);
 
     List<TransportationEdge> findAllByStatusAndDeletedFalse(EnumEdgeStatus status);
+
+    boolean existsByProviderId(UUID providerId);
 }

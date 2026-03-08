@@ -12,6 +12,8 @@ import com.thy.cloud.service.dao.enums.EnumLocationSource;
 import com.thy.cloud.service.dao.repository.inventory.AirportProfileRepository;
 import com.thy.cloud.service.dao.repository.inventory.LocationRepository;
 import com.thy.cloud.service.dao.repository.inventory.ProviderRepository;
+import com.thy.cloud.service.dao.repository.transport.TransportServiceAreaRepository;
+import com.thy.cloud.service.dao.repository.transport.TransportationEdgeRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,26 +35,24 @@ public class InventoryServiceImpl implements InventoryService {
     private final LocationRepository locationRepository;
     private final AirportProfileRepository airportProfileRepository;
     private final ProviderRepository providerRepository;
+    private final TransportServiceAreaRepository serviceAreaRepository;
+    private final TransportationEdgeRepository edgeRepository;
     private final List<LocationResolver> locationResolvers;
 
     // ── Location ──────────────────────────────────────────────
 
     @Override
     public Page<Location> searchLocations(LocationSearchRequest request, Pageable pageable) {
-        // 1. Always search DB
         Page<Location> dbResults = locationRepository.findAll(LocationSpecs.filter(request), pageable);
         List<Location> merged = new ArrayList<>(dbResults.getContent());
 
-        // 2. Always also search Google Places (if query text exists)
         String query = request.getName();
         if (query != null && !query.isBlank()) {
             for (LocationResolver resolver : locationResolvers) {
                 if ("DB".equals(resolver.getSource())) continue;
-
                 try {
                     List<ResolvedLocation> external = resolver.resolve(query, 5);
                     for (ResolvedLocation rl : external) {
-                        // De-duplicate: skip if same name or same coordinates already in results
                         boolean isDup = merged.stream().anyMatch(l ->
                                 l.getName().equalsIgnoreCase(rl.name())
                                 || (l.getLat() != null && rl.lat() != 0
@@ -68,7 +68,7 @@ public class InventoryServiceImpl implements InventoryService {
                         loc.setType(mapLocationType(rl.type()));
                         loc.setSource(EnumLocationSource.GOOGLE_PLACES);
                         loc.setIsSearchable(true);
-                        loc.setSearchPriority(10); // lower than DB results
+                        loc.setSearchPriority(10);
                         merged.add(loc);
                     }
                 } catch (Exception e) {
@@ -76,8 +76,6 @@ public class InventoryServiceImpl implements InventoryService {
                 }
             }
         }
-
-        // DB results first (higher priority), then Google
         return new PageImpl<>(merged, pageable, merged.size());
     }
 
@@ -133,5 +131,39 @@ public class InventoryServiceImpl implements InventoryService {
     public Provider getProviderByCode(String code) {
         return providerRepository.findByCode(code)
                 .orElseThrow(() -> new EntityNotFoundException("Provider not found for code: " + code));
+    }
+
+    @Override
+    @Transactional
+    public Provider saveProvider(Provider provider) {
+        // Check duplicate code on create
+        if (provider.getId() == null) {
+            providerRepository.findByCode(provider.getCode()).ifPresent(existing -> {
+                throw new IllegalStateException("Provider with code '" + provider.getCode() + "' already exists.");
+            });
+        }
+        return providerRepository.save(provider);
+    }
+
+    @Override
+    @Transactional
+    public void deleteProvider(UUID id) {
+        Provider existing = providerRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Provider not found: " + id));
+
+        // Protection: check if provider is referenced in service areas or edges
+        boolean usedInServiceAreas = serviceAreaRepository.existsByProviderId(id);
+        boolean usedInEdges = edgeRepository.existsByProviderId(id);
+
+        if (usedInServiceAreas || usedInEdges) {
+            List<String> usages = new ArrayList<>();
+            if (usedInServiceAreas) usages.add("service areas");
+            if (usedInEdges) usages.add("transportation edges");
+            throw new IllegalStateException(
+                    "Cannot delete provider '" + existing.getName() + "': in use by " + String.join(" and ", usages) + "."
+            );
+        }
+
+        providerRepository.deleteById(id);
     }
 }

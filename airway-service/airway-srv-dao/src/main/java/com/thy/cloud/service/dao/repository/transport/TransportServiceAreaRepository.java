@@ -17,4 +17,6 @@ public interface TransportServiceAreaRepository extends GenericRepository<Transp
     List<TransportServiceArea> findByIsActiveTrueAndCountryIsoCode(String countryIsoCode);
 
     List<TransportServiceArea> findByIsActiveTrue();
+
+    boolean existsByProviderId(UUID providerId);
 }

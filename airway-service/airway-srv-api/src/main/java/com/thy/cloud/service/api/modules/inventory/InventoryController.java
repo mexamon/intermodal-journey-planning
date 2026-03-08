@@ -2,10 +2,12 @@ package com.thy.cloud.service.api.modules.inventory;
 
 import com.thy.cloud.base.core.api.Result;
 import com.thy.cloud.service.api.modules.inventory.model.LocationSearchRequest;
+import com.thy.cloud.service.api.modules.inventory.model.ProviderRequest;
 import com.thy.cloud.service.api.modules.inventory.service.InventoryService;
 import com.thy.cloud.service.dao.entity.inventory.Location;
 import com.thy.cloud.service.dao.entity.inventory.AirportProfile;
 import com.thy.cloud.service.dao.entity.inventory.Provider;
+import com.thy.cloud.service.dao.enums.EnumProviderType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -68,5 +70,36 @@ public class InventoryController {
     @GetMapping("/providers/code/{code}")
     public Result<Provider> getProviderByCode(@PathVariable String code) {
         return Result.success(inventoryService.getProviderByCode(code));
+    }
+
+    @PostMapping("/providers")
+    public Result<Provider> createProvider(@RequestBody @Valid ProviderRequest request) {
+        Provider provider = mapToEntity(request, new Provider());
+        return Result.success(inventoryService.saveProvider(provider));
+    }
+
+    @PutMapping("/providers/{id}")
+    public Result<Provider> updateProvider(@PathVariable UUID id,
+                                           @RequestBody @Valid ProviderRequest request) {
+        Provider existing = inventoryService.getProvider(id);
+        mapToEntity(request, existing);
+        return Result.success(inventoryService.saveProvider(existing));
+    }
+
+    @DeleteMapping("/providers/{id}")
+    public Result<Void> deleteProvider(@PathVariable UUID id) {
+        inventoryService.deleteProvider(id);
+        return Result.success();
+    }
+
+    // ── Helper ────────────────────────────────────────────────
+
+    private Provider mapToEntity(ProviderRequest request, Provider entity) {
+        entity.setCode(request.getCode().toUpperCase().trim());
+        entity.setName(request.getName().trim());
+        entity.setType(EnumProviderType.valueOf(request.getType()));
+        entity.setCountryIsoCode(request.getCountryIsoCode());
+        entity.setIsActive(request.getIsActive() != null ? request.getIsActive() : true);
+        return entity;
     }
 }

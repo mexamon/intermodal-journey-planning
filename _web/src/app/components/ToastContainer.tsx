@@ -34,8 +34,8 @@ export const ToastContainer: React.FC = () => {
 
   return (
     <div style={{
-      position: 'fixed', bottom: 16, right: 16, zIndex: 99999,
-      display: 'flex', flexDirection: 'column', gap: 8,
+      position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 99999,
+      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
       maxWidth: 420, pointerEvents: 'none',
     }}>
       {toasts.map(toast => {

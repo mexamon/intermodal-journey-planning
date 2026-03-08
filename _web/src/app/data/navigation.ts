@@ -7,10 +7,10 @@ import {
   FiTruck,
   FiUsers,
   FiBarChart2,
-  FiMap,
   FiLink,
   FiBox,
   FiTarget,
+  FiDollarSign,
 } from 'react-icons/fi';
 
 export interface NavItem {
@@ -62,10 +62,17 @@ export const navSections: NavSection[] = [
         icon: FiLink,
       },
       {
-        id: 'modes',
-        label: 'Transport Modes',
-        description: 'Configure transport mode registry and sourcing strategies.',
-        icon: FiTruck,
+        id: 'fares',
+        label: 'Fares',
+        description: 'Manage pricing, fare classes, and refund policies.',
+        icon: FiDollarSign,
+      },
+      // ── Reference data (bottom) ─────────────────
+      {
+        id: 'service-areas',
+        label: 'Service Areas',
+        description: 'Configure geographic zones for transport modes (taxi zones, uber coverage).',
+        icon: FiTarget,
       },
       {
         id: 'providers',
@@ -74,10 +81,10 @@ export const navSections: NavSection[] = [
         icon: FiBox,
       },
       {
-        id: 'service-areas',
-        label: 'Service Areas',
-        description: 'Configure geographic zones for transport modes (taxi zones, uber coverage).',
-        icon: FiTarget,
+        id: 'modes',
+        label: 'Transport Modes',
+        description: 'Configure transport mode registry and sourcing strategies.',
+        icon: FiTruck,
       },
     ],
   },

@@ -12,6 +12,7 @@ import java.util.UUID;
 
 public interface InventoryService {
 
+
     // Location
     Page<Location> searchLocations(LocationSearchRequest request, Pageable pageable);
 
@@ -30,4 +31,8 @@ public interface InventoryService {
     Provider getProvider(UUID id);
 
     Provider getProviderByCode(String code);
+
+    Provider saveProvider(Provider provider);
+
+    void deleteProvider(UUID id);
 }
