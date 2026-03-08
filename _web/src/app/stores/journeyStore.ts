@@ -40,7 +40,7 @@ export const useJourneyStore = create<JourneyState>((set, get) => ({
     } catch (err) {
       const message = err instanceof ApiError
         ? err.message
-        : 'Yolculuk araması sırasında bir hata oluştu.';
+        : 'An error occurred while searching for journeys.';
       set({ loading: false, error: message, results: [] });
     }
   },

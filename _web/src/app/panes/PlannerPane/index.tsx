@@ -66,12 +66,12 @@ interface JourneyResult {
    Mode Metadata
    ═══════════════════════════════════════════════ */
 const MODE_META: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
-  flight: { icon: <MdFlight size={14} />,          color: '#3b82f6', label: 'Uçuş' },
-  train:  { icon: <MdTrain size={14} />,           color: '#f97316', label: 'Tren' },
-  bus:    { icon: <MdDirectionsBus size={14} />,    color: '#22c55e', label: 'Otobüs' },
+  flight: { icon: <MdFlight size={14} />,          color: '#3b82f6', label: 'Flight' },
+  train:  { icon: <MdTrain size={14} />,           color: '#f97316', label: 'Train' },
+  bus:    { icon: <MdDirectionsBus size={14} />,    color: '#22c55e', label: 'Bus' },
   metro:  { icon: <MdDirectionsSubway size={14} />, color: '#8b5cf6', label: 'Metro' },
-  walk:   { icon: <MdDirectionsWalk size={14} />,   color: '#94a3b8', label: 'Yürüme' },
-  taxi:   { icon: <MdLocalTaxi size={14} />,        color: '#a855f7', label: 'Taksi' },
+  walk:   { icon: <MdDirectionsWalk size={14} />,   color: '#94a3b8', label: 'Walk' },
+  taxi:   { icon: <MdLocalTaxi size={14} />,        color: '#a855f7', label: 'Taxi' },
 };
 const FALLBACK_MODE = { icon: <MdFlight size={14} />, color: '#6b7280', label: '?' };
 const modeMeta = (m: string) => MODE_META[m] || MODE_META[m?.toLowerCase()] || FALLBACK_MODE;
@@ -359,8 +359,8 @@ export const PlannerPane: React.FC = () => {
   const [infants, setInfants] = useState(0);
   const [cabinClass, setCabinClass] = useState<'economy' | 'business' | 'first'>('economy');
   const totalPax = adults + children + infants;
-  const cabinLabels = { economy: 'Ekonomi', business: 'Business', first: 'First' };
-  const paxSummary = `${totalPax} Yolcu · ${cabinLabels[cabinClass]}`;
+  const cabinLabels = { economy: 'Economy', business: 'Business', first: 'First' };
+  const paxSummary = `${totalPax} Pax · ${cabinLabels[cabinClass]}`;
   const { results: storeResults, loading, error, search: storeSearch, selectedJourney, clearError } = useJourneyStore();
   const currency = useSettingsStore(s => s.currency);
   const [searched, setSearched] = useState(false);
@@ -463,7 +463,7 @@ export const PlannerPane: React.FC = () => {
           {/* Origin */}
           <div className={s.inputGroup} ref={originRef} style={origin.open ? { zIndex: 100 } : undefined}>
             <FiNavigation className={s.inputIcon} />
-            <input className={s.searchInput} placeholder="Kalkış noktası (ör. İstanbul, ESB, Frankfurt)"
+            <input className={s.searchInput} placeholder="Origin (e.g. Istanbul, ESB, Frankfurt)"
               value={origin.query} onChange={e => origin.setQuery(e.target.value)}
               onFocus={() => origin.suggestions.length > 0 && origin.setOpen(true)} />
             {origin.selected && (
@@ -483,7 +483,7 @@ export const PlannerPane: React.FC = () => {
                     <span className={s.placeType}>{p.type}</span>
                   </button>
                 ))}
-                <div className={s.poweredBy}>Lokasyon veritabanı</div>
+                <div className={s.poweredBy}>Location database</div>
               </div>
             )}
           </div>
@@ -496,7 +496,7 @@ export const PlannerPane: React.FC = () => {
           {/* Destination */}
           <div className={s.inputGroup} ref={destRef} style={dest.open ? { zIndex: 100 } : undefined}>
             <FiMapPin className={s.inputIcon} />
-            <input className={s.searchInput} placeholder="Varış noktası (ör. Berlin, LHR, Ankara)"
+            <input className={s.searchInput} placeholder="Destination (e.g. Berlin, LHR, Ankara)"
               value={dest.query} onChange={e => dest.setQuery(e.target.value)}
               onFocus={() => dest.suggestions.length > 0 && dest.setOpen(true)} />
             {dest.selected && (
@@ -516,7 +516,7 @@ export const PlannerPane: React.FC = () => {
                     <span className={s.placeType}>{p.type}</span>
                   </button>
                 ))}
-                <div className={s.poweredBy}>Lokasyon veritabanı</div>
+                <div className={s.poweredBy}>Location database</div>
               </div>
             )}
           </div>
@@ -543,8 +543,8 @@ export const PlannerPane: React.FC = () => {
             const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
             const firstDay = new Date(viewYear, viewMonth, 1).getDay();
             const startOffset = firstDay === 0 ? 6 : firstDay - 1; // Monday start
-            const MONTHS = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
-            const DAYS = ['Pt','Sa','Ça','Pe','Cu','Ct','Pz'];
+            const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+            const DAYS = ['Mo','Tu','We','Th','Fr','Sa','Su'];
             const today = new Date(); today.setHours(0,0,0,0);
 
             const prevMonth = () => { if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); } else setViewMonth(m => m - 1); };
@@ -652,7 +652,7 @@ export const PlannerPane: React.FC = () => {
             );
           })()}
           <button className={s.searchButton} onClick={handleSearch}>
-            <FiSearch size={15} /> Ara
+            <FiSearch size={15} /> Search
           </button>
         </div>
       </div>
@@ -662,13 +662,13 @@ export const PlannerPane: React.FC = () => {
         <div className={s.filterBox}>
           <div className={s.filterHeader}>
             <FiFilter size={13} />
-            <span>Filtreler</span>
-            <span className={s.resultCount}>{filteredResults.length} rota bulundu</span>
+            <span>Filters</span>
+            <span className={s.resultCount}>{filteredResults.length} routes found</span>
           </div>
           <div className={s.filterContent}>
             <div className={s.filterChips}>
               <button className={`${s.filterChip} ${activeFilters.has('all') ? s.active : ''}`}
-                onClick={() => toggleFilter('all')}>Tümü</button>
+                onClick={() => toggleFilter('all')}>All</button>
               {(Object.keys(MODE_META) as SegmentMode[]).map(mode => (
                 <button key={mode}
                   className={`${s.filterChip} ${activeFilters.has(mode) ? s.active : ''}`}
@@ -698,7 +698,7 @@ export const PlannerPane: React.FC = () => {
 
       {/* ── Loading ── */}
       {searched && loading && (
-        <LoadingSpinner size={36} message="Rotalar aranıyor..." />
+        <LoadingSpinner size={36} message="Searching routes..." />
       )}
 
       {/* ── Results ── */}
@@ -724,8 +724,8 @@ export const PlannerPane: React.FC = () => {
                   <h3>{journey.segments[0].originName} → {journey.segments[journey.segments.length - 1].destinationName}</h3>
                   <div className={s.cardMeta}>
                     <span><FiClock size={12} /> {formatDuration(journey.totalDurationMin)}</span>
-                    <span>{journey.transfers === 0 ? 'Direkt' : `${journey.transfers} aktarma`}</span>
-                    <span>{journey.segments[0].departureTime} – {journey.segments[journey.segments.length - 1].arrivalTime}</span>
+                    <span>{journey.transfers === 0 ? 'Direct' : `${journey.transfers} transfers`}</span>
+                    <span>{(journey.departureTime || journey.segments[0]?.departureTime || '–')} – {(journey.arrivalTime || journey.segments[journey.segments.length - 1]?.arrivalTime || '–')}</span>
                   </div>
                 </div>
                 <div className={s.cardPricing}>
@@ -764,7 +764,7 @@ export const PlannerPane: React.FC = () => {
                 <div className={s.expandedDetails}>
                   {/* Inline Route Graph */}
                   <JourneyGraphView journey={journey} />
-                  <div className={s.expandedTitle}>Detaylı Güzergah</div>
+                  <div className={s.expandedTitle}>Route Details</div>
                   {journey.segments.map((seg, i) => (
                     <div key={i} className={s.expandedRow}>
                       <div className={s.expandedIcon} style={{ backgroundColor: `${modeMeta(seg.mode).color}15`, color: modeMeta(seg.mode).color }}>
@@ -800,8 +800,8 @@ export const PlannerPane: React.FC = () => {
           fontSize: '0.9rem',
         }}>
           <FiAlertCircle size={28} style={{ marginBottom: 8, opacity: 0.4 }} />
-          <p style={{ fontWeight: 600 }}>Sonuç bulunamadı</p>
-          <p style={{ fontSize: '0.8rem', marginTop: 4 }}>Seçtiğiniz tarih ve güzergah için uygun rota bulunamadı. Farklı tarih veya şehir deneyin.</p>
+          <p style={{ fontWeight: 600 }}>No results found</p>
+          <p style={{ fontSize: '0.8rem', marginTop: 4 }}>No routes found for the selected date and destination. Try a different date or city.</p>
         </div>
       )}
 

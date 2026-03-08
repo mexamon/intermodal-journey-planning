@@ -663,32 +663,47 @@ public class JourneySearchServiceImpl implements JourneySearchService {
             if (edge.co2Grams() != null) totalCO2 += edge.co2Grams();
         }
 
-        // Total duration = first departure to last arrival, OR sum of edge durations + transfers
-        ResolvedEdge first = path.get(0);
-        ResolvedEdge last = path.get(path.size() - 1);
-        int totalDuration = 0;
-        if (first.departureTime() != null && last.arrivalTime() != null) {
-            totalDuration = (int) first.departureTime().until(last.arrivalTime(), ChronoUnit.MINUTES);
-            if (totalDuration <= 0) totalDuration += 24 * 60;
-        } else {
-            // Fallback: sum edge durations + transfer times between segments
-            for (int i = 0; i < path.size(); i++) {
-                totalDuration += path.get(i).durationMin();
-                if (i > 0) {
-                    totalDuration += getTransferTimes().getOrDefault(path.get(i).transportModeCode(), 10);
+        // Flight-only duration + extract first/last flight times
+        int flightDuration = 0;
+        String firstFlightDep = null;
+        String lastFlightArr = null;
+        String depTimezone = null;
+        String arrTimezone = null;
+
+        for (ResolvedEdge edge : path) {
+            if ("FLIGHT".equals(edge.transportModeCode())) {
+                flightDuration += edge.durationMin();
+                if (firstFlightDep == null && edge.departureTime() != null) {
+                    firstFlightDep = edge.departureTime().toString().substring(0, 5);
+                    depTimezone = edge.origin().timezone();
                 }
+                if (edge.arrivalTime() != null) {
+                    lastFlightArr = edge.arrivalTime().toString().substring(0, 5);
+                    arrTimezone = edge.destination().timezone();
+                }
+            }
+        }
+
+        // If no flights found (shouldn't happen after policy filter), sum all
+        if (flightDuration == 0) {
+            for (ResolvedEdge edge : path) {
+                flightDuration += edge.durationMin();
             }
         }
 
         return JourneyResult.builder()
                 .id(UUID.randomUUID().toString())
                 .segments(segments)
-                .totalDurationMin(totalDuration)
+                .totalDurationMin(flightDuration)
                 .totalCostCents(totalCost)
                 .currency(targetCurrency)
                 .co2Grams(totalCO2)
                 .transfers(segments.size() - 1)
                 .tags(new ArrayList<>())
+                .departureTime(firstFlightDep)
+                .arrivalTime(lastFlightArr)
+                .departureTimezone(depTimezone)
+                .arrivalTimezone(arrTimezone)
                 .build();
     }
 

@@ -54,6 +54,10 @@ export interface JourneyResult {
   co2Grams: number;
   transfers: number;
   tags: string[];
+  departureTime: string | null;      // first FLIGHT departure: "06:30"
+  arrivalTime: string | null;        // last FLIGHT arrival: "09:20"
+  departureTimezone: string | null;  // IANA: Europe/Istanbul
+  arrivalTimezone: string | null;    // IANA: Europe/London
 }
 
 /* ═══════════════════════════════════════════════
