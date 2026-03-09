@@ -28,6 +28,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
+
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -189,6 +191,30 @@ public class JourneySearchServiceImpl implements JourneySearchService {
                 if ("COMPUTED".equals(res) || "GTFS_LIVE".equals(res)) {
                     try {
                         List<ResolvedEdge> edges = resolver.resolve(origin, hub, context);
+                        // Remap GTFS edges whose destination is near the hub (< 2km)
+                        // so BFS can naturally connect GTFS stops to airport hubs
+                        if ("GTFS_LIVE".equals(res)) {
+                            List<ResolvedEdge> remapped = new ArrayList<>();
+                            for (ResolvedEdge edge : edges) {
+                                double dist = haversineM(
+                                        edge.destination().lat(), edge.destination().lon(),
+                                        hub.lat(), hub.lon());
+                                if (dist < 2000) {
+                                    // Replace destination with the actual hub
+                                    remapped.add(new ResolvedEdge(
+                                            edge.id(), edge.origin(), hub,
+                                            edge.transportModeCode(), edge.providerCode(),
+                                            edge.serviceCode(), edge.departureTime(),
+                                            edge.arrivalTime(), edge.durationMin(),
+                                            edge.distanceM(), edge.costCents(),
+                                            edge.currency(), edge.co2Grams(),
+                                            edge.source(), edge.persisted(), edge.attrs()));
+                                } else {
+                                    remapped.add(edge);
+                                }
+                            }
+                            edges = remapped;
+                        }
                         log.info("  → {} first-mile edges from {} via {}", edges.size(), hub.name(), res);
                         addEdges(adjacency, locKey(origin), edges, locationIndex);
                     } catch (Exception e) {
@@ -388,6 +414,10 @@ public class JourneySearchServiceImpl implements JourneySearchService {
             // Prepend first-mile edges
             List<ResolvedEdge> firstMile = adjacency.getOrDefault(locKey(origin), List.of())
                     .stream().filter(e -> locKey(e.destination()).equals(locKey(hub))).toList();
+            Map<String, Long> fmByMode = firstMile.stream()
+                    .collect(Collectors.groupingBy(ResolvedEdge::transportModeCode, Collectors.counting()));
+            log.info("  First-mile to {}: {} edges ({}), trunk paths: {}",
+                    hub.name(), firstMile.size(), fmByMode, hubPaths.size());
             for (List<ResolvedEdge> trunkPath : hubPaths) {
                 for (ResolvedEdge fm : firstMile) {
                     List<ResolvedEdge> fullPath = new ArrayList<>();
@@ -630,6 +660,10 @@ public class JourneySearchServiceImpl implements JourneySearchService {
                                                        JourneyPolicyConstraints routeConstraints) {
         List<List<ResolvedEdge>> filtered = new ArrayList<>();
 
+        // Cache per-hub policy lookups to avoid repeated DB queries (N+1 fix)
+        Map<String, Integer> firstMileCache = new HashMap<>();
+        Map<String, Integer> lastMileCache = new HashMap<>();
+
         for (List<ResolvedEdge> path : paths) {
             if (path.isEmpty()) continue;
 
@@ -686,7 +720,8 @@ public class JourneySearchServiceImpl implements JourneySearchService {
             String originHubIata = firstFlight.origin().iataCode();
 
             if (originHubIata != null && firstMileEdges > 0) {
-                int maxFirstMile = policyResolver.getMaxFirstMileEdges(originHubIata);
+                int maxFirstMile = firstMileCache.computeIfAbsent(originHubIata,
+                        iata -> policyResolver.getMaxFirstMileEdges(iata));
                 if (firstMileEdges > maxFirstMile) {
                     log.debug("Policy filter: path rejected — {} first-mile edges > {} hub {} max",
                             firstMileEdges, maxFirstMile, originHubIata);
@@ -700,7 +735,8 @@ public class JourneySearchServiceImpl implements JourneySearchService {
             String destHubIata = lastFlight.destination().iataCode();
 
             if (destHubIata != null && lastMileEdges > 0) {
-                int maxLastMile = policyResolver.getMaxLastMileEdges(destHubIata);
+                int maxLastMile = lastMileCache.computeIfAbsent(destHubIata,
+                        iata -> policyResolver.getMaxLastMileEdges(iata));
                 if (lastMileEdges > maxLastMile) {
                     log.debug("Policy filter: path rejected — {} last-mile edges > {} hub {} max",
                             lastMileEdges, maxLastMile, destHubIata);
@@ -831,37 +867,42 @@ public class JourneySearchServiceImpl implements JourneySearchService {
 
         log.info("Ranking: {} total unique paths", unique.size());
 
-        // Ensure modal diversity: reserve slots for routes with different last-mile modes
-        // (TRAIN, SUBWAY, BUS) so they're not pushed out by numerous TAXI/UBER-only routes
+        // Ensure modal diversity: reserve slots for routes with unique mode combinations
+        // so transit routes (TRAIN, SUBWAY, BUS) aren't pushed out by TAXI/UBER-only routes
         List<JourneyResult> top = new ArrayList<>();
-        List<JourneyResult> diverseRoutes = new ArrayList<>();
         Set<String> diverseModes = Set.of("TRAIN", "SUBWAY", "BUS", "FERRY", "TRAM");
+        Map<String, JourneyResult> bestByModeSet = new LinkedHashMap<>();
 
         for (JourneyResult r : unique) {
+            // Build a mode-set key like "TRAIN+FLIGHT+TAXI" to identify unique mode combos
+            String modeSetKey = r.getSegments().stream()
+                    .map(JourneySegment::getMode)
+                    .collect(Collectors.joining("+"));
             boolean hasDiverseMode = r.getSegments().stream()
                     .anyMatch(s -> diverseModes.contains(s.getMode()));
             if (hasDiverseMode) {
-                diverseRoutes.add(r);
+                bestByModeSet.putIfAbsent(modeSetKey, r); // keep best (already sorted)
             } else {
                 if (top.size() < MAX_RESULTS) top.add(r);
             }
         }
 
-        // Insert diverse routes (up to 3) into top results, replacing last entries if needed
-        int diverseSlots = Math.min(diverseRoutes.size(), 3);
-        for (int i = 0; i < diverseSlots; i++) {
-            JourneyResult dr = diverseRoutes.get(i);
+        // Insert best route for each unique diverse mode-set (up to 5 slots)
+        int diverseSlots = 0;
+        for (JourneyResult dr : bestByModeSet.values()) {
+            if (diverseSlots >= 5) break;
             if (top.size() < MAX_RESULTS) {
                 top.add(dr);
             } else {
-                // Replace last non-diverse entry
-                top.set(MAX_RESULTS - 1 - i, dr);
+                top.set(MAX_RESULTS - 1 - diverseSlots, dr);
             }
+            diverseSlots++;
         }
 
         // Re-sort after diversity injection
         top.sort(comparator);
-        log.info("Final top: {} results ({} with diverse modes)", top.size(), diverseSlots);
+        log.info("Final top: {} results ({} diverse mode-sets from {} unique combos)",
+                top.size(), diverseSlots, bestByModeSet.size());
 
         if (!top.isEmpty()) assignLabels(top);
         return top;
@@ -918,6 +959,7 @@ public class JourneySearchServiceImpl implements JourneySearchService {
         }
         return false;
     }
+
 
     private ResolvedLocation toResolvedLocation(Location loc) {
         return ResolvedLocation.fromDb(

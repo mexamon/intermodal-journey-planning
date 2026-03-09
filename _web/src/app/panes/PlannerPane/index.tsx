@@ -689,7 +689,7 @@ export const PlannerPane: React.FC = () => {
                     <Counter label="Bebek" desc="0–2 yaş" value={infants} setValue={setInfants} />
                     <div className={s.paxSep} />
                     <div className={s.cabinSection}>
-                      <span className={s.cabinLabel}>Kabin Sınıfı</span>
+                      <span className={s.cabinLabel}>Class</span>
                       <div className={s.cabinOptions}>
                         {(['economy', 'business', 'first'] as const).map(cls => (
                           <button key={cls}

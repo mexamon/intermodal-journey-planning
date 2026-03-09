@@ -15,7 +15,7 @@ public record GtfsRoute(
      */
     public String toTransportModeCode() {
         return switch (routeType) {
-            case 0 -> "SUBWAY";    // Tram → we map to SUBWAY
+            case 0 -> "SUBWAY";    // Tram / Light rail → mapped to SUBWAY
             case 1 -> "SUBWAY";    // Subway/Metro
             case 2 -> "TRAIN";     // Rail
             case 3 -> "BUS";       // Bus

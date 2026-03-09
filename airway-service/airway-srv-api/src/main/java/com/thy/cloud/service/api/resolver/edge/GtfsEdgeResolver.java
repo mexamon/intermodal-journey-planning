@@ -246,13 +246,29 @@ public class GtfsEdgeResolver implements EdgeResolver {
         for (GtfsStop stop : stopIndex.values()) {
             double dist = haversineM(loc.lat(), loc.lon(), stop.stopLat(), stop.stopLon());
             if (dist <= radiusM) {
-                log.info("GTFS findNearby: {} at ({},{}) dist={}m ≤ {}m — MATCH",
+                log.debug("GTFS findNearby: {} at ({},{}) dist={}m ≤ {}m — MATCH",
                         stop.stopId(), stop.stopLat(), stop.stopLon(), (int) dist, (int) radiusM);
                 ids.add(stop.stopId());
-            } else if (dist <= radiusM * 1.5) {
-                log.info("GTFS findNearby: {} at ({},{}) dist={}m > {}m — NEAR MISS",
-                        stop.stopId(), stop.stopLat(), stop.stopLon(), (int) dist, (int) radiusM);
             }
+        }
+
+        // Fallback: name-based matching if proximity returned nothing
+        // This handles inaccurate frontend coordinates (e.g. Google Places returning wrong lat/lon)
+        if (ids.isEmpty() && loc.name() != null && !loc.name().isBlank()) {
+            String locNameLower = loc.name().toLowerCase(java.util.Locale.ROOT);
+            for (GtfsStop stop : stopIndex.values()) {
+                String stopNameLower = stop.stopName().toLowerCase(java.util.Locale.ROOT);
+                if (stopNameLower.contains(locNameLower) || locNameLower.contains(stopNameLower)) {
+                    log.info("GTFS findNearby: name-match '{}' ≈ '{}' (stop={})",
+                            loc.name(), stop.stopName(), stop.stopId());
+                    ids.add(stop.stopId());
+                }
+            }
+        }
+
+        if (ids.isEmpty()) {
+            log.info("GTFS findNearby: no stops matched for '{}' at ({},{}) within {}m",
+                    loc.name(), loc.lat(), loc.lon(), (int) radiusM);
         }
         return ids;
     }
