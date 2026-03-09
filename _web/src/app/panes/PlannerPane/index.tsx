@@ -79,11 +79,11 @@ const MODE_META: Record<string, { icon: React.ReactNode; color: string; label: s
   bike:    { icon: <MdPedalBike size={14} />,        color: '#FF8F00', label: 'Bike' },
 };
 const FALLBACK_MODE = { icon: <FiMapPin size={14} />, color: '#6b7280', label: '?' };
-const modeMeta = (m: string) => MODE_META[m] || MODE_META[m?.toLowerCase()] || FALLBACK_MODE;
+const MODE_ALIAS: Record<string, string> = { walking: 'walk', subway: 'metro' };
+const modeMeta = (m: string) => { const low = m?.toLowerCase(); const key = MODE_ALIAS[low] || low; return MODE_META[key] || MODE_META[low] || FALLBACK_MODE; };
 // Filter chip display list — default, overridden by API on mount
 const DEFAULT_FILTER_MODES: SegmentMode[] = ['flight', 'train', 'bus', 'metro', 'walk', 'taxi', 'uber', 'ferry', 'bike'];
 // Normalize backend mode names to filter keys (backend sends WALKING, SUBWAY etc.)
-const MODE_ALIAS: Record<string, string> = { walking: 'walk', subway: 'metro' };
 const normalizeMode = (m: string) => { const low = m?.toLowerCase(); return MODE_ALIAS[low] || low; };
 
 /* ═══════════════════════════════════════════════
