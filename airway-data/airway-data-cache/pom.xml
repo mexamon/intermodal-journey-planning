@@ -15,4 +15,52 @@
     <name>${project.artifactId}</name>
     <description>Cache layer (Redis, etc.)</description>
 
+    <dependencies>
+        <!-- Spring Data Redis (Spring Boot 4 / Spring Data Redis 4 with Lettuce) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
+        <!-- Spring Boot autoconfigure support -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
+
+        <!-- Spring AOP (for @DistributedLock aspect) -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-aop</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjweaver</artifactId>
+        </dependency>
+
+        <!-- Airway base utilities (StrPool, etc.) -->
+        <dependency>
+            <groupId>com.thy.cloud</groupId>
+            <artifactId>airway-base-util</artifactId>
+        </dependency>
+
+        <!-- Airway base core (AirwayJacksonModule, serialization) -->
+        <dependency>
+            <groupId>com.thy.cloud</groupId>
+            <artifactId>airway-base-core</artifactId>
+        </dependency>
+
+        <!-- Hutool core (Convert utility) -->
+        <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-core</artifactId>
+        </dependency>
+
+        <!-- Commons Lang3 (ArrayUtils) -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+        </dependency>
+    </dependencies>
+
 </project>
