@@ -1,9 +1,6 @@
 package com.thy.cloud.service.dao.enums;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.thy.cloud.base.core.enums.IEnum;
-import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -13,7 +10,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Getter
 @Schema(description = "Journey policy scope type")
-@JsonFormat(shape = JsonFormat.Shape.OBJECT)
 public enum EnumPolicyScopeType implements IEnum<String> {
 
     GLOBAL("GLOBAL", "Global scope"),
@@ -33,13 +29,5 @@ public enum EnumPolicyScopeType implements IEnum<String> {
     @Override
     public String getDesc() {
         return this.desc;
-    }
-
-    @JsonCreator
-    public static EnumPolicyScopeType fromJson(@JsonProperty("value") String value) {
-        for (EnumPolicyScopeType t : values()) {
-            if (t.value.equals(value)) return t;
-        }
-        return null;
     }
 }
