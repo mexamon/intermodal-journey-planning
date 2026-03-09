@@ -40,4 +40,18 @@ public record ResolvedEdge(
                 source, false, Map.of()
         );
     }
+
+    /** Copy with a different destination. */
+    public ResolvedEdge withDestination(ResolvedLocation newDest) {
+        return new ResolvedEdge(id, origin, newDest, transportModeCode, providerCode,
+                serviceCode, departureTime, arrivalTime, durationMin, distanceM,
+                costCents, currency, co2Grams, source, persisted, attrs);
+    }
+
+    /** Copy with explicit departure/arrival times and duration. */
+    public ResolvedEdge withTimes(LocalTime dep, LocalTime arr, int dur) {
+        return new ResolvedEdge(id, origin, destination, transportModeCode, providerCode,
+                serviceCode, dep, arr, dur, distanceM,
+                costCents, currency, co2Grams, source, persisted, attrs);
+    }
 }

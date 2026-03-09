@@ -18,6 +18,12 @@ import com.thy.cloud.service.dao.repository.transport.TransportationEdgeReposito
 import com.thy.cloud.service.dao.repository.transport.EdgeTripRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -26,10 +32,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class TransportServiceImpl implements TransportService {
+
+    private static final ObjectMapper JSON = new ObjectMapper();
 
     private final TransportModeRepository transportModeRepository;
     private final TransportServiceAreaRepository serviceAreaRepository;
@@ -43,6 +52,7 @@ public class TransportServiceImpl implements TransportService {
     // ── Mode ──────────────────────────────────────────────────
 
     @Override
+    @Cacheable(value = "active_modes")
     public List<TransportMode> listActiveModes() {
         return transportModeRepository.findByIsActiveTrueOrderBySortOrderAsc();
     }
@@ -66,12 +76,21 @@ public class TransportServiceImpl implements TransportService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "active_modes", allEntries = true),
+            @CacheEvict(value = "diverse_modes", allEntries = true)
+    })
     public TransportMode saveMode(TransportMode mode) {
+        validateConfigJson(mode);
         return transportModeRepository.save(mode);
     }
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "active_modes", allEntries = true),
+            @CacheEvict(value = "diverse_modes", allEntries = true)
+    })
     public void deleteMode(UUID id) {
         TransportMode mode = getMode(id);
         if (edgeRepository.existsByTransportModeId(id)) {
@@ -252,6 +271,49 @@ public class TransportServiceImpl implements TransportService {
         Fare fare = getFare(id);
         fare.setDeleted(true);
         fareRepository.save(fare);
+    }
+
+    // ── Validation ───────────────────────────────────────────
+
+    /**
+     * Ensures config_json contains required fields for the journey algorithm.
+     * <ul>
+     *   <li>transfer_time_min — required, must be a non-negative integer</li>
+     *   <li>category — required on the mode entity</li>
+     * </ul>
+     */
+    private void validateConfigJson(TransportMode mode) {
+        if (mode.getCategory() == null) {
+            throw new IllegalArgumentException(
+                    "Transport mode '" + mode.getCode() + "' must have a category.");
+        }
+
+        String configJson = mode.getConfigJson();
+        if (configJson == null || configJson.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Transport mode '" + mode.getCode() + "' must have config_json with 'transfer_time_min'.");
+        }
+
+        try {
+            JsonNode root = JSON.readTree(configJson);
+            JsonNode ttNode = root.get("transfer_time_min");
+            if (ttNode == null || !ttNode.isNumber()) {
+                throw new IllegalArgumentException(
+                        "Transport mode '" + mode.getCode()
+                                + "': config_json must contain 'transfer_time_min' as a number.");
+            }
+            if (ttNode.intValue() < 0) {
+                throw new IllegalArgumentException(
+                        "Transport mode '" + mode.getCode()
+                                + "': 'transfer_time_min' cannot be negative.");
+            }
+        } catch (IllegalArgumentException e) {
+            throw e; // re-throw our own validation errors
+        } catch (Exception e) {
+            throw new IllegalArgumentException(
+                    "Transport mode '" + mode.getCode()
+                            + "': invalid config_json — " + e.getMessage());
+        }
     }
 }
 
