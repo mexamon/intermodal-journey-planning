@@ -242,20 +242,52 @@ public class GtfsEdgeResolver implements EdgeResolver {
             return ids;
         }
 
-        // Proximity search
+        // KNN proximity search: find all within radius
+        // If user's query matches a stop name, use ONLY those stops (intent-based)
+        // Otherwise fall back to top-N nearest (proximity-based)
+        final int MAX_NEARBY_STOPS = 3;
+        record StopDist(String stopId, double dist, boolean nameMatch) {}
+        List<StopDist> candidates = new ArrayList<>();
+
+        String locNameLower = (loc.name() != null) ? loc.name().toLowerCase(java.util.Locale.ROOT) : "";
+
         for (GtfsStop stop : stopIndex.values()) {
             double dist = haversineM(loc.lat(), loc.lon(), stop.stopLat(), stop.stopLon());
             if (dist <= radiusM) {
-                log.debug("GTFS findNearby: {} at ({},{}) dist={}m ≤ {}m — MATCH",
-                        stop.stopId(), stop.stopLat(), stop.stopLon(), (int) dist, (int) radiusM);
-                ids.add(stop.stopId());
+                boolean nameMatch = false;
+                if (!locNameLower.isEmpty()) {
+                    String stopNameLower = stop.stopName().toLowerCase(java.util.Locale.ROOT);
+                    nameMatch = stopNameLower.contains(locNameLower) || locNameLower.contains(stopNameLower);
+                }
+                candidates.add(new StopDist(stop.stopId(), dist, nameMatch));
             }
+        }
+
+        // If any name-matched stops found, use ONLY those (user intent takes priority)
+        List<StopDist> nameMatched = candidates.stream().filter(StopDist::nameMatch).toList();
+        List<StopDist> selected;
+        if (!nameMatched.isEmpty()) {
+            selected = nameMatched;
+            log.info("GTFS findNearby: {} name-matched stops found for '{}', ignoring {} others",
+                    nameMatched.size(), loc.name(), candidates.size() - nameMatched.size());
+        } else {
+            // No name match — fall back to top-N nearest by distance
+            candidates.sort(java.util.Comparator.comparingDouble(StopDist::dist));
+            selected = candidates.subList(0, Math.min(candidates.size(), MAX_NEARBY_STOPS));
+        }
+
+        for (int i = 0; i < selected.size(); i++) {
+            StopDist sd = selected.get(i);
+            GtfsStop stop = stopIndex.get(sd.stopId);
+            log.info("GTFS findNearby: #{} {} '{}' dist={}m {} — MATCH",
+                    i + 1, sd.stopId, stop.stopName(), (int) sd.dist,
+                    sd.nameMatch ? "(NAME)" : "(KNN)");
+            ids.add(sd.stopId);
         }
 
         // Fallback: name-based matching if proximity returned nothing
         // This handles inaccurate frontend coordinates (e.g. Google Places returning wrong lat/lon)
         if (ids.isEmpty() && loc.name() != null && !loc.name().isBlank()) {
-            String locNameLower = loc.name().toLowerCase(java.util.Locale.ROOT);
             for (GtfsStop stop : stopIndex.values()) {
                 String stopNameLower = stop.stopName().toLowerCase(java.util.Locale.ROOT);
                 if (stopNameLower.contains(locNameLower) || locNameLower.contains(stopNameLower)) {
