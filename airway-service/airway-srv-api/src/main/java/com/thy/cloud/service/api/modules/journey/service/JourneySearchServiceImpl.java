@@ -186,7 +186,7 @@ public class JourneySearchServiceImpl implements JourneySearchService {
             }
             for (EdgeResolver resolver : edgeResolvers) {
                 String res = resolver.getResolution();
-                if ("COMPUTED".equals(res) || "GTFS".equals(res)) {
+                if ("COMPUTED".equals(res) || "GTFS_LIVE".equals(res)) {
                     try {
                         List<ResolvedEdge> edges = resolver.resolve(origin, hub, context);
                         log.info("  → {} first-mile edges from {} via {}", edges.size(), hub.name(), res);
@@ -304,7 +304,7 @@ public class JourneySearchServiceImpl implements JourneySearchService {
             if (locKey(hub).equals(locKey(destination))) continue;
             for (EdgeResolver resolver : edgeResolvers) {
                 String res = resolver.getResolution();
-                if ("COMPUTED".equals(res) || "GTFS".equals(res) || "STATIC".equals(res)) {
+                if ("COMPUTED".equals(res) || "GTFS_LIVE".equals(res) || "STATIC".equals(res)) {
                     try {
                         // STATIC: pass null destination to get ALL outbound edges (to intermediate stations)
                         // COMPUTED/GTFS: pass actual destination for point-to-point edges

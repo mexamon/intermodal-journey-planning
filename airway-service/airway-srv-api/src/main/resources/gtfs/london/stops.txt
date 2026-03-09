@@ -1,0 +1,25 @@
+stop_id,stop_name,stop_lat,stop_lon,location_type
+EL_PDG,Paddington,51.515700,-0.175400,1
+EL_BDS,Bond Street,51.514000,-0.149500,1
+EL_TCR,Tottenham Court Road,51.516300,-0.130100,1
+EL_FAR,Farringdon,51.520100,-0.104700,1
+EL_LPL,Liverpool Street,51.517700,-0.082400,1
+EL_WHC,Whitechapel,51.519500,-0.059700,1
+EL_CWF,Canary Wharf,51.505400,-0.018100,1
+EL_CUS,Custom House,51.509500,0.026200,1
+EL_T5,Heathrow Terminal 5,51.470600,-0.490600,1
+EL_T123,Heathrow Terminals 1-2-3,51.471200,-0.452200,1
+EL_HAY,Hayes & Harlington,51.503100,-0.420800,1
+EL_EAL,Ealing Broadway,51.515000,-0.301600,1
+PL_KX,King's Cross St Pancras,51.530300,-0.124100,1
+PL_HLB,Holborn,51.517300,-0.120100,1
+PL_LEI,Leicester Square,51.511400,-0.128200,1
+PL_GRN,Green Park,51.506900,-0.142700,1
+PL_HYD,Hyde Park Corner,51.502900,-0.152800,1
+PL_KNI,Knightsbridge,51.501700,-0.160300,1
+PL_SKN,South Kensington,51.494300,-0.174100,1
+PL_HMR,Hammersmith,51.492300,-0.223100,1
+PL_HAT,Hatton Cross,51.466600,-0.423600,1
+PL_T123,Heathrow Terminals 1-2-3 Picc,51.471200,-0.452200,1
+PL_T4,Heathrow Terminal 4,51.458400,-0.445200,1
+PL_T5P,Heathrow Terminal 5 Picc,51.470600,-0.490600,1

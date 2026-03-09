@@ -1,0 +1,3 @@
+route_id,agency_id,route_short_name,route_long_name,route_type
+IZBAN,IZBN,İzban,Alsancak - Adnan Menderes,2
+T2,IZBN,T2,Konak - ADB,0

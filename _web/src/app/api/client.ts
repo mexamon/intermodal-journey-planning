@@ -82,7 +82,7 @@ function extractErrorMessage(result: ApiResult<unknown>): string {
   if (d && Array.isArray(d.errors) && d.errors.length > 0) {
     return d.errors.map((e: any) => e.message).join('; ');
   }
-  return result.message || 'İşlem başarısız.';
+  return result.message || 'Operation failed.';
 }
 
 // Response interceptor: unwrap Result<T> + error handling
@@ -107,26 +107,26 @@ api.interceptors.response.use(
     }
     if (error.response?.status === 401) {
       localStorage.removeItem('intermodal_auth_token');
-      emitToast('error', 'Oturum süresi doldu. Lütfen tekrar giriş yapın.');
+      emitToast('error', 'Session expired. Please sign in again.');
       window.location.href = '/login';
-      throw new ApiError('401', 'Oturum süresi doldu.');
+      throw new ApiError('401', 'Session expired.');
     }
     if (error.response?.status === 403) {
-      emitToast('error', 'Bu işlem için yetkiniz yok.');
-      throw new ApiError('403', 'Bu işlem için yetkiniz yok.');
+      emitToast('error', 'You do not have permission for this action.');
+      throw new ApiError('403', 'You do not have permission for this action.');
     }
     if (error.code === 'ECONNABORTED') {
-      emitToast('warning', 'İstek zaman aşımına uğradı.');
-      throw new ApiError('408', 'İstek zaman aşımına uğradı.');
+      emitToast('warning', 'Request timed out.');
+      throw new ApiError('408', 'Request timed out.');
     }
     if (!error.response) {
-      emitToast('error', 'Sunucuya bağlanılamıyor. İnternet bağlantınızı kontrol edin.');
-      throw new ApiError('0', 'Sunucuya bağlanılamıyor.');
+      emitToast('error', 'Cannot connect to server. Check your internet connection.');
+      throw new ApiError('0', 'Cannot connect to server.');
     }
-    emitToast('error', 'Beklenmeyen bir hata oluştu.');
+    emitToast('error', 'An unexpected error occurred.');
     throw new ApiError(
       String(error.response?.status || 500),
-      'Beklenmeyen bir hata oluştu.'
+      'An unexpected error occurred.'
     );
   }
 );

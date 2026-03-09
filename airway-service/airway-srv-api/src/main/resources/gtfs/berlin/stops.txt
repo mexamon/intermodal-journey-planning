@@ -1,0 +1,18 @@
+stop_id,stop_name,stop_lat,stop_lon,location_type
+S9_HBF,Berlin Hauptbahnhof,52.525000,13.369400,1
+S9_FRS,Friedrichstraße,52.520400,13.387200,1
+S9_ALX,Alexanderplatz,52.521500,13.411900,1
+S9_OST,Ostkreuz,52.503000,13.469200,1
+S9_SCH,Schöneweide,52.454800,13.510200,1
+S9_ADP,Adlershof,52.435200,13.540300,1
+S9_BER,Flughafen BER Terminal 1-2,52.366400,13.503600,1
+U7_HBF,Hermannplatz,52.486400,13.424900,1
+U7_NEU,Neukölln,52.481100,13.435300,1
+U7_GRZ,Grenzallee,52.472000,13.440200,1
+U7_BLA,Blaschkoallee,52.460200,13.446300,1
+U7_RUD,Rudow,52.424200,13.488700,1
+U2_POT,Potsdamer Platz,52.509700,13.376600,1
+U2_MEN,Mendelssohn-Bartholdy-Park,52.505900,13.373000,1
+U2_GLE,Gleisdreieck,52.499100,13.373800,1
+U2_ZOO,Zoologischer Garten,52.506900,13.332700,1
+U2_ERN,Ernst-Reuter-Platz,52.512300,13.322300,1

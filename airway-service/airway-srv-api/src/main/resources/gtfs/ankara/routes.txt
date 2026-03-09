@@ -1,0 +1,4 @@
+route_id,agency_id,route_short_name,route_long_name,route_type
+ANK_M1,ESBM,M1,Kızılay - Batıkent,1
+ANK,ESBM,Ankaray,AŞTİ - Dikimevi,1
+ESB,ESBM,ESB-Shuttle,Kızılay - Esenboğa Airport,3

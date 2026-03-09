@@ -1,0 +1,5 @@
+route_id,agency_id,route_short_name,route_long_name,route_type
+BER_S9,DB,S9,Spandau - Flughafen BER,2
+BER_S45,DB,S45,Südkreuz - Flughafen BER,2
+U7,BVG,U7,Rathaus Spandau - Rudow,1
+U2,BVG,U2,Pankow - Ruhleben,1

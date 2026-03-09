@@ -38,5 +38,6 @@ public class Provider extends AbstractAuditionGuidKeyEntity {
     private Boolean isActive;
 
     @Column(name = "config_json", columnDefinition = "JSONB")
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
     private String configJson;
 }

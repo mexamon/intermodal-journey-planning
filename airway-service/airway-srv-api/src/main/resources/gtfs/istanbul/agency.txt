@@ -1,0 +1,3 @@
+agency_id,agency_name,agency_url,agency_timezone,agency_lang
+IBBM,İstanbul Metro,https://www.metro.istanbul,Europe/Istanbul,tr
+TCDD,TCDD Taşımacılık,https://www.tcddtasimacilik.gov.tr,Europe/Istanbul,tr

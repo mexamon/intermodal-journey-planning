@@ -1,0 +1,4 @@
+route_id,agency_id,route_short_name,route_long_name,route_type
+M1,IBBM,M1,Yenikapı - Atatürk Havalimanı,1
+M2,IBBM,M2,Yenikapı - Hacıosman,1
+MR,TCDD,Marmaray,Halkalı - Gebze,2

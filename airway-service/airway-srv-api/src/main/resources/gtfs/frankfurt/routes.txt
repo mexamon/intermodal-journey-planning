@@ -1,0 +1,4 @@
+route_id,agency_id,route_short_name,route_long_name,route_type
+S8,DB,S8,Wiesbaden - Offenbach Ost,2
+S9,DB,S9,Wiesbaden - Hanau,2
+U4,DB,U4,Bockenheimer Warte - Seckbach,1

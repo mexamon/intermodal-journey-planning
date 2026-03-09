@@ -57,6 +57,7 @@ public class TransportMode extends AbstractAuditionGuidKeyEntity {
     private Boolean isActive;
 
     @Column(name = "config_json", columnDefinition = "JSONB")
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
     private String configJson;
 
     @Column(name = "sort_order", nullable = false)

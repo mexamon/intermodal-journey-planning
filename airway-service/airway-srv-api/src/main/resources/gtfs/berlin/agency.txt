@@ -1,0 +1,3 @@
+agency_id,agency_name,agency_url,agency_timezone,agency_lang
+DB,Deutsche Bahn S-Bahn Berlin,https://sbahn.berlin,Europe/Berlin,de
+BVG,BVG Berlin,https://www.bvg.de,Europe/Berlin,de

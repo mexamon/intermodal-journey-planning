@@ -1,0 +1,13 @@
+stop_id,stop_name,stop_lat,stop_lon,location_type
+SB_FRA,Frankfurt Flughafen Regionalbahnhof,50.053100,8.570600,1
+SB_STD,Frankfurt Stadion,50.068600,8.631200,1
+SB_SUD,Frankfurt Süd,50.099000,8.686000,1
+SB_HBF,Frankfurt Hauptbahnhof,50.107100,8.663200,1
+SB_KON,Konstablerwache,50.114000,8.692800,1
+SB_OFB,Offenbach Ost,50.101500,8.784600,1
+U4_HBF,Frankfurt Hbf U4,50.107100,8.663200,1
+U4_DOM,Dom/Römer,50.110400,8.684700,1
+U4_KON,Konstablerwache U4,50.114000,8.692800,1
+U4_ZOO,Zoo,50.116300,8.700400,1
+U4_BOR,Bornheim Mitte,50.121100,8.712700,1
+U4_SCH,Seckbacher Landstraße,50.127200,8.725400,1
