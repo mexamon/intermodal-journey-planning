@@ -45,17 +45,33 @@ public class CacheAutoConfiguration {
     private final DataRedisProperties redisProperties;
 
     /**
-     * Lettuce Connection Factory
+     * Lettuce Connection Factory — supports both Sentinel and Standalone modes.
+     * When sentinel nodes are configured, uses Sentinel; otherwise falls back to standalone.
      */
     @Bean
     protected LettuceConnectionFactory redisConnectionFactory() {
 
-        RedisSentinelConfiguration sentinelConfig = new RedisSentinelConfiguration()
-                .master(cacheProperties.getSentinelMaster());
-        cacheProperties.getSentinelNodes().forEach(s -> sentinelConfig.sentinel(s, redisProperties.getPort()));
-        sentinelConfig.setPassword(RedisPassword.of(redisProperties.getPassword()));
+        List<String> sentinelNodes = cacheProperties.getSentinelNodes();
+        if (sentinelNodes != null && !sentinelNodes.isEmpty()
+                && cacheProperties.getSentinelMaster() != null) {
+            // ── Sentinel mode ──
+            RedisSentinelConfiguration sentinelConfig = new RedisSentinelConfiguration()
+                    .master(cacheProperties.getSentinelMaster());
+            sentinelNodes.forEach(s -> sentinelConfig.sentinel(s, redisProperties.getPort()));
+            sentinelConfig.setPassword(RedisPassword.of(redisProperties.getPassword()));
+            return new LettuceConnectionFactory(sentinelConfig, LettuceClientConfiguration.defaultConfiguration());
+        }
 
-        return new LettuceConnectionFactory(sentinelConfig, LettuceClientConfiguration.defaultConfiguration());
+        // ── Standalone mode — uses spring.data.redis.host / port ──
+        org.springframework.data.redis.connection.RedisStandaloneConfiguration standaloneConfig =
+                new org.springframework.data.redis.connection.RedisStandaloneConfiguration();
+        standaloneConfig.setHostName(redisProperties.getHost());
+        standaloneConfig.setPort(redisProperties.getPort());
+        if (redisProperties.getPassword() != null) {
+            standaloneConfig.setPassword(RedisPassword.of(redisProperties.getPassword()));
+        }
+        standaloneConfig.setDatabase(cacheProperties.getDatabase());
+        return new LettuceConnectionFactory(standaloneConfig, LettuceClientConfiguration.defaultConfiguration());
     }
 
     /**
@@ -93,8 +109,8 @@ public class CacheAutoConfiguration {
      */
     @Bean(name = "cacheManager")
     @Primary
-    public CacheManager cacheManager(LettuceConnectionFactory lettuceConnectionFactory) {
-        RedisCacheConfiguration cacheConfiguration = cacheConfiguration();
+    public CacheManager cacheManager(LettuceConnectionFactory lettuceConnectionFactory, RedisSerializer<Object> redisSerializer) {
+        RedisCacheConfiguration cacheConfiguration = cacheConfiguration(redisSerializer);
         cacheConfiguration.entryTtl(cacheProperties.getGlobalConfig().getTimeToLive());
 
         Map<String, CacheProperties.Cache> configs = cacheProperties.getConfigs();
@@ -157,11 +173,11 @@ public class CacheAutoConfiguration {
     /**
      * Cache Configuration
      */
-    private RedisCacheConfiguration cacheConfiguration() {
+    private RedisCacheConfiguration cacheConfiguration(RedisSerializer<Object> redisSerializer) {
         RedisCacheConfiguration cacheConfiguration = RedisCacheConfiguration.defaultCacheConfig()
                 .disableCachingNullValues()
                 .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
-                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(new RedisObjectSerializer(JsonMapper.builder().build())));
+                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(redisSerializer));
         return setRedisCacheConfiguration(cacheProperties.getGlobalConfig(), cacheConfiguration);
     }
 

@@ -42,6 +42,7 @@ public class JourneyPolicySet extends AbstractAuditionGuidKeyEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_policy_set_id")
     @ToString.Exclude
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private JourneyPolicySet parentPolicySet;
 
     @Temporal(TemporalType.TIMESTAMP)

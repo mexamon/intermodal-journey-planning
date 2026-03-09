@@ -7,10 +7,10 @@ import org.springframework.data.redis.serializer.SerializationException;
 
 /**
  * {@link RedisSerializer} implementation using Jackson 3 {@link GenericJacksonJsonRedisSerializer}
- * with custom {@link ObjectMapper} configuration.
+ * with default typing enabled for proper polymorphic deserialization.
  * <p>
- * Spring Data Redis 4 provides {@code GenericJacksonJsonRedisSerializer} as the
- * Jackson 3 replacement for the deprecated {@code GenericJackson2JsonRedisSerializer}.
+ * Uses Spring Data Redis 4's builder pattern to enable {@code @class} type metadata
+ * in serialized JSON, ensuring cached entities reconstruct to their correct Java types.
  *
  * @author Engin Mahmut
  */
@@ -19,7 +19,9 @@ public class RedisObjectSerializer implements RedisSerializer<Object> {
     private final GenericJacksonJsonRedisSerializer delegate;
 
     public RedisObjectSerializer(ObjectMapper objectMapper) {
-        this.delegate = new GenericJacksonJsonRedisSerializer(objectMapper);
+        this.delegate = GenericJacksonJsonRedisSerializer.builder()
+                .enableUnsafeDefaultTyping()
+                .build();
     }
 
     @Override

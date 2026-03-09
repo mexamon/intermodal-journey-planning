@@ -6,7 +6,6 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 @SpringBootApplication
@@ -15,7 +14,6 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
         "com.thy.cloud.service.dao.entity",
         "com.thy.cloud.data.jpa.entity"
 })
-@EnableJpaAuditing
 @EnableJpaRepositories(basePackages = {
         PersistenceConstants.BASE_REPOSITORY_PACKAGE,
         "com.thy.cloud.service.dao.repository"

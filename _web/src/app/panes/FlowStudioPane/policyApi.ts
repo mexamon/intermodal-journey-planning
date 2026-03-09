@@ -142,8 +142,8 @@ export async function deletePolicySet(id: string): Promise<void> {
    Constraints
    ═══════════════════════════════════════════════ */
 
-export async function getConstraints(policySetId: string): Promise<ConstraintsDto> {
-  return apiGet<ConstraintsDto>(`/policy/sets/${policySetId}/constraints`);
+export async function getConstraints(policySetId: string): Promise<ConstraintsDto | null> {
+  return apiGet<ConstraintsDto | null>(`/policy/sets/${policySetId}/constraints`);
 }
 
 export async function saveConstraints(policySetId: string, data: ConstraintsRequest): Promise<ConstraintsDto> {

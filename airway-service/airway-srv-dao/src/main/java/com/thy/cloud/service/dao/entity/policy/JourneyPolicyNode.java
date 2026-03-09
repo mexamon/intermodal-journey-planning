@@ -5,6 +5,8 @@ import com.thy.cloud.service.dao.enums.EnumNodeKey;
 import lombok.*;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @AllArgsConstructor
@@ -30,7 +32,8 @@ public class JourneyPolicyNode extends AbstractAuditionGuidKeyEntity {
     @Column(name = "max_visits", nullable = false)
     private Integer maxVisits;
 
-    @Column(name = "props_json", columnDefinition = "JSONB")
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "props_json", columnDefinition = "jsonb")
     private String propsJson;
 
     @Column(name = "ui_x")

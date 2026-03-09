@@ -4,6 +4,8 @@ import com.thy.cloud.data.jpa.entity.AbstractAuditionGuidKeyEntity;
 import lombok.*;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @AllArgsConstructor
@@ -32,9 +34,11 @@ public class JourneyPolicyTransition extends AbstractAuditionGuidKeyEntity {
     @Column(name = "priority", nullable = false)
     private Integer priority;
 
-    @Column(name = "guard_json", columnDefinition = "JSONB")
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "guard_json", columnDefinition = "jsonb")
     private String guardJson;
 
-    @Column(name = "ui_json", columnDefinition = "JSONB")
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "ui_json", columnDefinition = "jsonb")
     private String uiJson;
 }

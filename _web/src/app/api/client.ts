@@ -54,6 +54,13 @@ export function emitToast(type: ToastType, message: string, duration = 5000) {
    ═══════════════════════════════════════════════ */
 const BASE_URL = process.env.API_BASE_URL || '/api/v1';
 
+/** Extend Axios config to support suppressToast flag */
+declare module 'axios' {
+  interface InternalAxiosRequestConfig {
+    suppressToast?: boolean;
+  }
+}
+
 const api: AxiosInstance = axios.create({
   baseURL: BASE_URL,
   timeout: 30000,
@@ -89,20 +96,22 @@ function extractErrorMessage(result: ApiResult<unknown>): string {
 api.interceptors.response.use(
   (response: AxiosResponse<ApiResult<unknown>>) => {
     const result = response.data;
+    const silent = !!(response.config as InternalAxiosRequestConfig)?.suppressToast;
     // Backend returns code='000000' for success
     if (result && result.code && result.code !== SUCCESS_CODE) {
       const msg = extractErrorMessage(result);
-      emitToast('error', msg);
+      if (!silent) emitToast('error', msg);
       throw new ApiError(result.code, msg);
     }
     return response;
   },
   (error: AxiosError<ApiResult<unknown>>) => {
+    const silent = !!(error.config as InternalAxiosRequestConfig)?.suppressToast;
     // Backend returned a structured error (400, 404, etc.)
     if (error.response?.data?.code) {
       const result = error.response.data;
       const msg = extractErrorMessage(result);
-      emitToast('error', msg);
+      if (!silent) emitToast('error', msg);
       throw new ApiError(result.code, msg);
     }
     if (error.response?.status === 401) {
@@ -112,18 +121,18 @@ api.interceptors.response.use(
       throw new ApiError('401', 'Session expired.');
     }
     if (error.response?.status === 403) {
-      emitToast('error', 'You do not have permission for this action.');
+      if (!silent) emitToast('error', 'You do not have permission for this action.');
       throw new ApiError('403', 'You do not have permission for this action.');
     }
     if (error.code === 'ECONNABORTED') {
-      emitToast('warning', 'Request timed out.');
+      if (!silent) emitToast('warning', 'Request timed out.');
       throw new ApiError('408', 'Request timed out.');
     }
     if (!error.response) {
-      emitToast('error', 'Cannot connect to server. Check your internet connection.');
+      if (!silent) emitToast('error', 'Cannot connect to server. Check your internet connection.');
       throw new ApiError('0', 'Cannot connect to server.');
     }
-    emitToast('error', 'An unexpected error occurred.');
+    if (!silent) emitToast('error', 'An unexpected error occurred.');
     throw new ApiError(
       String(error.response?.status || 500),
       'An unexpected error occurred.'
@@ -137,6 +146,19 @@ api.interceptors.response.use(
 export async function apiGet<T>(url: string, params?: Record<string, unknown>): Promise<T> {
   const response = await api.get<ApiResult<T>>(url, { params });
   return response.data.data;
+}
+
+/**
+ * Silent GET — same as apiGet but suppresses error toasts.
+ * Returns null when the resource is not found (404) or any error occurs.
+ */
+export async function apiGetSilent<T>(url: string, params?: Record<string, unknown>): Promise<T | null> {
+  try {
+    const response = await api.get<ApiResult<T>>(url, { params, suppressToast: true } as any);
+    return response.data.data;
+  } catch {
+    return null;
+  }
 }
 
 export async function apiPost<T>(url: string, data?: unknown): Promise<T> {

@@ -1,8 +1,8 @@
 package com.thy.cloud.service.api.modules.policy.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.thy.cloud.service.dao.entity.policy.JourneyPolicyConstraints;
 import com.thy.cloud.service.dao.entity.policy.JourneyPolicySet;
 import com.thy.cloud.service.dao.enums.EnumPolicyScopeType;
@@ -11,6 +11,7 @@ import com.thy.cloud.service.dao.repository.policy.JourneyPolicyConstraintsRepos
 import com.thy.cloud.service.dao.repository.policy.JourneyPolicySetRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +39,11 @@ public class PolicyResolver {
     private final JourneyPolicySetRepository policySetRepository;
     private final JourneyPolicyConstraintsRepository constraintsRepository;
 
+    /** Self-injection for AOP proxy — required so @Cacheable works on internal calls */
+    @org.springframework.beans.factory.annotation.Autowired
+    @org.springframework.context.annotation.Lazy
+    private PolicyResolver self;
+
     /**
      * Resolve the constraints for a route between two airports.
      * Tries: AIRPORT_PAIR(origin-dest) → AIRPORT(origin) → AIRPORT(dest) → GLOBAL(*)
@@ -50,7 +56,7 @@ public class PolicyResolver {
         // 1. Try AIRPORT_PAIR (e.g. SAW-LHR)
         if (originIata != null && destIata != null) {
             String pairKey = originIata + "-" + destIata;
-            JourneyPolicyConstraints result = lookupConstraints(EnumPolicyScopeType.AIRPORT_PAIR, pairKey);
+            JourneyPolicyConstraints result = self.lookupConstraints(EnumPolicyScopeType.AIRPORT_PAIR, pairKey);
             if (result != null) {
                 log.debug("PolicyResolver: matched AIRPORT_PAIR={}", pairKey);
                 return result;
@@ -59,7 +65,7 @@ public class PolicyResolver {
 
         // 2. Try AIRPORT (origin side)
         if (originIata != null) {
-            JourneyPolicyConstraints result = lookupConstraints(EnumPolicyScopeType.AIRPORT, originIata);
+            JourneyPolicyConstraints result = self.lookupConstraints(EnumPolicyScopeType.AIRPORT, originIata);
             if (result != null) {
                 log.debug("PolicyResolver: matched AIRPORT={} (origin)", originIata);
                 return result;
@@ -68,7 +74,7 @@ public class PolicyResolver {
 
         // 3. Try AIRPORT (destination side)
         if (destIata != null) {
-            JourneyPolicyConstraints result = lookupConstraints(EnumPolicyScopeType.AIRPORT, destIata);
+            JourneyPolicyConstraints result = self.lookupConstraints(EnumPolicyScopeType.AIRPORT, destIata);
             if (result != null) {
                 log.debug("PolicyResolver: matched AIRPORT={} (dest)", destIata);
                 return result;
@@ -86,7 +92,7 @@ public class PolicyResolver {
     public JourneyPolicyConstraints resolveForAirport(String iataCode) {
         if (iataCode == null) return resolveGlobal();
 
-        JourneyPolicyConstraints result = lookupConstraints(EnumPolicyScopeType.AIRPORT, iataCode);
+        JourneyPolicyConstraints result = self.lookupConstraints(EnumPolicyScopeType.AIRPORT, iataCode);
         if (result != null) return result;
 
         return resolveGlobal();
@@ -116,7 +122,7 @@ public class PolicyResolver {
      * Resolve the global fallback policy.
      */
     public JourneyPolicyConstraints resolveGlobal() {
-        JourneyPolicyConstraints result = lookupConstraints(EnumPolicyScopeType.GLOBAL, "*");
+        JourneyPolicyConstraints result = self.lookupConstraints(EnumPolicyScopeType.GLOBAL, "*");
         if (result != null) {
             log.debug("PolicyResolver: using GLOBAL fallback");
         }
@@ -125,7 +131,11 @@ public class PolicyResolver {
 
     // ─── Internal ──────────────────────────────────────────
 
-    private JourneyPolicyConstraints lookupConstraints(EnumPolicyScopeType scopeType, String scopeKey) {
+    @Cacheable(value = PolicyCacheKey.CACHE_NAME,
+              key = "#scopeType.name() + ':' + #scopeKey",
+              unless = "#result == null")
+    public JourneyPolicyConstraints lookupConstraints(EnumPolicyScopeType scopeType, String scopeKey) {
+        log.info("PolicyResolver CACHE MISS — querying DB for {}:{}", scopeType, scopeKey);
         List<JourneyPolicySet> sets = policySetRepository.findByScopeTypeAndScopeKeyAndStatus(
                 scopeType, scopeKey, EnumPolicyStatus.ACTIVE);
 
@@ -145,7 +155,7 @@ public class PolicyResolver {
             JsonNode node = MAPPER.readTree(json);
             JsonNode value = node.get(field);
             if (value != null && value.isInt()) return value.intValue();
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             log.warn("Failed to parse constraints_json: {}", e.getMessage());
         }
         return defaultValue;

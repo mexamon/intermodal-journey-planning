@@ -35,6 +35,10 @@
             <groupId>com.thy.cloud</groupId>
             <artifactId>airway-data-jpa</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.thy.cloud</groupId>
+            <artifactId>airway-data-cache</artifactId>
+        </dependency>
 
         <!-- ═══ Spring Boot Starters ═══ -->
         <dependency>

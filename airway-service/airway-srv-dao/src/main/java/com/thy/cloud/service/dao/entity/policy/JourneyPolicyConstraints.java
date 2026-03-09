@@ -4,6 +4,8 @@ import com.thy.cloud.data.jpa.entity.AbstractAuditionGuidKeyEntity;
 import lombok.*;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @AllArgsConstructor
@@ -11,11 +13,12 @@ import jakarta.persistence.*;
 @Getter
 @Setter
 @ToString
-@Table(name = "journey_policy_constraints")
+@Table(name = "journey_policy_constraints",
+       uniqueConstraints = @UniqueConstraint(name = "uk_constraints_policy_set", columnNames = "policy_set_id"))
 public class JourneyPolicyConstraints extends AbstractAuditionGuidKeyEntity {
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "policy_set_id", referencedColumnName = "id", insertable = false, updatable = false)
+    @JoinColumn(name = "policy_set_id", referencedColumnName = "id")
     @ToString.Exclude
     private JourneyPolicySet policySet;
 
@@ -46,9 +49,11 @@ public class JourneyPolicyConstraints extends AbstractAuditionGuidKeyEntity {
     @Column(name = "max_total_co2_grams")
     private Integer maxTotalCo2Grams;
 
-    @Column(name = "preferred_modes_json", columnDefinition = "JSONB")
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "preferred_modes_json", columnDefinition = "jsonb")
     private String preferredModesJson;
 
-    @Column(name = "constraints_json", columnDefinition = "JSONB")
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "constraints_json", columnDefinition = "jsonb")
     private String constraintsJson;
 }

@@ -18,7 +18,7 @@ import java.util.Map;
 @ConfigurationProperties(prefix = CacheProperties.PREFIX)
 public class CacheProperties {
 
-    public static final String PREFIX = "boilerrum.cache.redis";
+    public static final String PREFIX = "thy.cache.redis";
 
     /**
      * Whether to enable

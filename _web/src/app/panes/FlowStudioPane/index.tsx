@@ -158,14 +158,15 @@ export const FlowStudioPane: React.FC = () => {
     try {
       const page = await searchPolicySets({}, 0, 100);
       setPolicyList(page.content);
+      return page.content;
     } catch (e) {
       console.error('Failed to fetch policy list:', e);
+      return [];
     } finally {
       setPolicyListLoading(false);
     }
   }, []);
 
-  useEffect(() => { fetchPolicyList(); }, [fetchPolicyList]);
 
   // ── Debounced airport search ──
   const airportSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -207,23 +208,25 @@ export const FlowStudioPane: React.FC = () => {
         constraints: { ...defaultPolicySet.constraints },
         lastSaved: policy.lastModifiedDate || policy.createdDate || 'never',
       });
-      // Load constraints
+      // Load constraints (silently skip if not saved yet)
       try {
         const c = await getConstraints(policy.id);
-        setPolicySet(prev => ({
-          ...prev,
-          constraints: {
-            maxLegs: c.maxLegs,
-            minFlights: c.minFlights,
-            maxFlights: c.maxFlights,
-            maxTransfers: c.maxTransfers,
-            maxWalkingTotalM: c.maxWalkingTotalM ?? 2000,
-            maxTotalDurationMin: c.maxTotalDurationMin ?? 720,
-            minConnectionMin: c.minConnectionMinutes ?? 60,
-            maxTotalCo2Grams: c.maxTotalCo2Grams,
-          },
-        }));
-      } catch { /* constraints may not exist yet */ }
+        if (c) {
+          setPolicySet(prev => ({
+            ...prev,
+            constraints: {
+              maxLegs: c.maxLegs,
+              minFlights: c.minFlights,
+              maxFlights: c.maxFlights,
+              maxTransfers: c.maxTransfers,
+              maxWalkingTotalM: c.maxWalkingTotalM ?? 2000,
+              maxTotalDurationMin: c.maxTotalDurationMin ?? 720,
+              minConnectionMin: c.minConnectionMinutes ?? 60,
+              maxTotalCo2Grams: c.maxTotalCo2Grams,
+            },
+          }));
+        }
+      } catch { /* constraints may not exist yet — 404 is expected */ }
       // Load nodes → convert to React Flow nodes
       try {
         // Map backend nodeKey → frontend JourneyPhase
@@ -279,6 +282,18 @@ export const FlowStudioPane: React.FC = () => {
       emitToast('error', 'Failed to load policy');
     }
   }, [setNodes, setEdges]);
+
+  // ── Auto-load GLOBAL policy on initial mount ──
+  const initialLoadDone = useRef(false);
+  useEffect(() => {
+    if (initialLoadDone.current) return;
+    initialLoadDone.current = true;
+    (async () => {
+      const list = await fetchPolicyList();
+      const globalPolicy = list.find(p => p.scopeType.value === 'GLOBAL');
+      if (globalPolicy) { await loadPolicy(globalPolicy); }
+    })();
+  }, []);
 
   // ── Save policy to backend ──
   const handleSave = useCallback(async () => {
@@ -543,7 +558,16 @@ export const FlowStudioPane: React.FC = () => {
                 <div className={styles.airportList}>
                   <button
                     className={`${styles.airportItem} ${policySet.scopeKey === '*' ? styles.airportActive : ''}`}
-                    onClick={() => { setPolicySet(p => ({ ...p, scopeKey: '*', scope: 'GLOBAL' })); setShowAirportDropdown(false); }}
+                    onClick={async () => {
+                      setPolicySet(p => ({ ...p, scopeKey: '*', scope: 'GLOBAL', name: 'GLOBAL_DEFAULT', code: 'GLOBAL_DEFAULT' }));
+                      setShowAirportDropdown(false);
+                      // Auto-load matching GLOBAL policy from backend
+                      try {
+                        const page = await searchPolicySets({ scopeType: 'GLOBAL', scopeKey: '*' }, 0, 1);
+                        if (page.content.length > 0) { await loadPolicy(page.content[0]); }
+                        else { setActivePolicyId(null); }
+                      } catch { /* ignore */ }
+                    }}
                   >
                     <strong>*</strong><span>Global (All Airports)</span><span className={styles.airportCity}>Worldwide</span>
                   </button>
@@ -566,10 +590,24 @@ export const FlowStudioPane: React.FC = () => {
                     <button
                       key={a.iata}
                       className={`${styles.airportItem} ${a.iata === policySet.scopeKey ? styles.airportActive : ''}`}
-                      onClick={() => {
-                        setPolicySet(p => ({ ...p, scopeKey: a.iata, scope: 'AIRPORT' }));
+                      onClick={async () => {
+                        const newCode = `AIRPORT_${a.iata}`;
+                        const newName = `${a.iata} — ${a.name}`;
+                        setPolicySet(p => ({ ...p, scopeKey: a.iata, scope: 'AIRPORT', name: newCode, code: newCode }));
                         setShowAirportDropdown(false);
                         setAirportSearch('');
+                        // Auto-load matching AIRPORT policy from backend
+                        try {
+                          const page = await searchPolicySets({ scopeType: 'AIRPORT', scopeKey: a.iata }, 0, 1);
+                          if (page.content.length > 0) { await loadPolicy(page.content[0]); }
+                          else {
+                            setActivePolicyId(null);
+                            setPolicySet(p => ({ ...p, status: 'DRAFT', name: newCode, code: newCode }));
+                            setNodes(initialNodes as any);
+                            setEdges(initialEdges as any);
+                            emitToast('info', `No policy for ${a.iata} — will be created as DRAFT on save`);
+                          }
+                        } catch { /* ignore */ }
                       }}
                     >
                       <strong>{a.iata}</strong>

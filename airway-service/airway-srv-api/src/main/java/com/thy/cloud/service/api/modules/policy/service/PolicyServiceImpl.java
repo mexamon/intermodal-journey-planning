@@ -17,6 +17,7 @@ import com.thy.cloud.service.dao.repository.policy.JourneyPolicyTransitionReposi
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -61,6 +62,7 @@ public class PolicyServiceImpl implements PolicyService {
 
     @Override
     @Transactional
+    @CacheEvict(value = PolicyCacheKey.CACHE_NAME, allEntries = true)
     public JourneyPolicySet createPolicySet(PolicySetRequest request) {
         if (request.getCode() == null || request.getCode().isBlank()) {
             throw new IllegalArgumentException("Policy set code is required");
@@ -94,6 +96,7 @@ public class PolicyServiceImpl implements PolicyService {
 
     @Override
     @Transactional
+    @CacheEvict(value = PolicyCacheKey.CACHE_NAME, allEntries = true)
     public JourneyPolicySet updatePolicySet(UUID id, PolicySetRequest request) {
         JourneyPolicySet existing = getPolicySet(id);
         if (request.getCode() != null && !existing.getCode().equals(request.getCode())) {
@@ -126,6 +129,7 @@ public class PolicyServiceImpl implements PolicyService {
 
     @Override
     @Transactional
+    @CacheEvict(value = PolicyCacheKey.CACHE_NAME, allEntries = true)
     public void deletePolicySet(UUID id) {
         JourneyPolicySet existing = getPolicySet(id);
         transitionRepository.deleteAll(transitionRepository.findByPolicySetId(id));
@@ -139,12 +143,12 @@ public class PolicyServiceImpl implements PolicyService {
 
     @Override
     public JourneyPolicyConstraints getConstraints(UUID policySetId) {
-        return constraintsRepository.findById(policySetId)
-                .orElseThrow(() -> new EntityNotFoundException("Constraints not found for policy set: " + policySetId));
+        return constraintsRepository.findByPolicySetId(policySetId).orElse(null);
     }
 
     @Override
     @Transactional
+    @CacheEvict(value = PolicyCacheKey.CACHE_NAME, allEntries = true)
     public JourneyPolicyConstraints saveConstraints(UUID policySetId, ConstraintsRequest request) {
         if (request.getMaxLegs() != null && request.getMaxLegs() < 1) {
             throw new IllegalArgumentException("Max legs must be >= 1");
@@ -156,11 +160,14 @@ public class PolicyServiceImpl implements PolicyService {
                 && request.getMinFlights() > request.getMaxFlights()) {
             throw new IllegalArgumentException("Min flights cannot exceed max flights");
         }
-        getPolicySet(policySetId);
+        JourneyPolicySet policySet = getPolicySet(policySetId);
 
-        JourneyPolicyConstraints entity = constraintsRepository.findById(policySetId)
+        JourneyPolicyConstraints entity = constraintsRepository.findByPolicySetId(policySetId)
                 .orElse(new JourneyPolicyConstraints());
-        entity.setId(policySetId);
+        if (entity.getId() == null) {
+            entity.setId(policySetId);
+        }
+        entity.setPolicySet(policySet);
         entity.setMaxLegs(request.getMaxLegs() != null ? request.getMaxLegs() : 5);
         entity.setMinFlights(request.getMinFlights() != null ? request.getMinFlights() : 1);
         entity.setMaxFlights(request.getMaxFlights() != null ? request.getMaxFlights() : 2);
@@ -186,6 +193,7 @@ public class PolicyServiceImpl implements PolicyService {
 
     @Override
     @Transactional
+    @CacheEvict(value = PolicyCacheKey.CACHE_NAME, allEntries = true)
     public List<JourneyPolicyNode> saveNodes(UUID policySetId, List<NodeRequest> requests) {
         JourneyPolicySet policySet = getPolicySet(policySetId);
         nodeRepository.deleteAll(nodeRepository.findByPolicySetId(policySetId));
@@ -217,6 +225,7 @@ public class PolicyServiceImpl implements PolicyService {
 
     @Override
     @Transactional
+    @CacheEvict(value = PolicyCacheKey.CACHE_NAME, allEntries = true)
     public List<JourneyPolicyTransition> saveTransitions(UUID policySetId, List<TransitionRequest> requests) {
         JourneyPolicySet policySet = getPolicySet(policySetId);
         transitionRepository.deleteAll(transitionRepository.findByPolicySetId(policySetId));
