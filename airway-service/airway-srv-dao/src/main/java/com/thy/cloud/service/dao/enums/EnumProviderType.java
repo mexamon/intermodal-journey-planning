@@ -1,7 +1,7 @@
 package com.thy.cloud.service.dao.enums;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import com.thy.cloud.base.core.enums.IEnum;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -10,8 +10,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
-@JsonFormat(shape = JsonFormat.Shape.OBJECT)
 @Schema(description = "Transport service provider type")
+@JsonFormat(shape = JsonFormat.Shape.OBJECT)
 public enum EnumProviderType implements IEnum<String> {
 
     AIRLINE("AIRLINE", "Airline operator"),

@@ -1,7 +1,7 @@
 package com.thy.cloud.service.dao.enums;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import com.thy.cloud.base.core.enums.IEnum;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -10,8 +10,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
-@JsonFormat(shape = JsonFormat.Shape.OBJECT)
 @Schema(description = "Edge schedule type — how the edge resolves its timetable")
+@JsonFormat(shape = JsonFormat.Shape.OBJECT)
 public enum EnumScheduleType implements IEnum<String> {
 
     FIXED("FIXED", "Named departures (flights, ICE trains) — see edge_trip"),
