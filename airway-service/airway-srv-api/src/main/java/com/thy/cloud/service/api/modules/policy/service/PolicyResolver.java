@@ -11,7 +11,9 @@ import com.thy.cloud.service.dao.repository.policy.JourneyPolicyConstraintsRepos
 import com.thy.cloud.service.dao.repository.policy.JourneyPolicySetRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,8 +42,8 @@ public class PolicyResolver {
     private final JourneyPolicyConstraintsRepository constraintsRepository;
 
     /** Self-injection for AOP proxy — required so @Cacheable works on internal calls */
-    @org.springframework.beans.factory.annotation.Autowired
-    @org.springframework.context.annotation.Lazy
+    @Autowired
+    @Lazy
     private PolicyResolver self;
 
     /**
