@@ -843,29 +843,42 @@ export const PlannerPane: React.FC = () => {
                 </div>
 
                 {/* Timeline */}
-                <div className={s.segmentTimeline}>
-                  {journey.segments.map((seg, i) => (
-                    <React.Fragment key={i}>
-                      <div className={s.segmentDot} style={{ borderColor: modeMeta(seg.mode).color, backgroundColor: modeMeta(seg.mode).color }} />
-                      <div className={s.segmentLine} style={{ backgroundColor: modeMeta(seg.mode).color, flex: seg.durationMin || 1 }} />
-                    </React.Fragment>
-                  ))}
-                  <div className={s.segmentDot} style={{ borderColor: '#6d7c8a', backgroundColor: '#6d7c8a' }} />
-                </div>
+                {(() => {
+                  // Square-root scaling with minimum flex for balanced proportions
+                  // Linear: 180min vs 4min = 45:1 ratio (4min invisible)
+                  // Sqrt:   √180 vs √4 = 6.7:1 ratio (balanced, readable)
+                  const MIN_FLEX = 1.5;
+                  const flexValues = journey.segments.map(seg =>
+                    Math.max(Math.sqrt(seg.durationMin || 1), MIN_FLEX)
+                  );
+                  return (
+                    <>
+                      <div className={s.segmentTimeline}>
+                        {journey.segments.map((seg, i) => (
+                          <React.Fragment key={i}>
+                            <div className={s.segmentDot} style={{ borderColor: modeMeta(seg.mode).color, backgroundColor: modeMeta(seg.mode).color }} />
+                            <div className={s.segmentLine} style={{ backgroundColor: modeMeta(seg.mode).color, flex: flexValues[i] }} />
+                          </React.Fragment>
+                        ))}
+                        <div className={s.segmentDot} style={{ borderColor: '#6d7c8a', backgroundColor: '#6d7c8a' }} />
+                      </div>
 
-                {/* Segment Labels */}
-                <div className={s.segmentDetails}>
-                  {journey.segments.map((seg, i) => (
-                    <div key={i} className={s.segmentInfo}>
-                      <span className={s.segmentModeIcon} style={{ color: modeMeta(seg.mode).color }}>
-                        {modeMeta(seg.mode).icon}
-                      </span>
-                      <span className={s.segmentLabel}>{seg.originCode}→{seg.destinationCode}</span>
-                      <span className={s.segmentDuration}>{formatDuration(seg.durationMin)}</span>
-                      {seg.provider && <span className={s.providerTag}>{seg.provider}</span>}
-                    </div>
-                  ))}
-                </div>
+                      {/* Segment Labels — aligned to bars via same flex ratios */}
+                      <div className={s.segmentDetails}>
+                        {journey.segments.map((seg, i) => (
+                          <div key={i} className={s.segmentInfo} style={{ flex: flexValues[i] }}>
+                            <span className={s.segmentModeIcon} style={{ color: modeMeta(seg.mode).color }}>
+                              {modeMeta(seg.mode).icon}
+                            </span>
+                            <span className={s.segmentLabel}>{seg.originCode}→{seg.destinationCode}</span>
+                            <span className={s.segmentDuration}>{formatDuration(seg.durationMin)}</span>
+                            {seg.provider && <span className={s.providerTag}>{seg.provider}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
 
               {/* Expanded Details — NOT clickable for toggle */}
