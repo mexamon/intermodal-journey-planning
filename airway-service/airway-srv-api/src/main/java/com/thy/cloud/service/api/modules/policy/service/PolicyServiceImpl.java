@@ -85,7 +85,7 @@ public class PolicyServiceImpl implements PolicyService {
                 request.getSegment() != null ? request.getSegment() : "DEFAULT"));
         entity.setStatus(EnumPolicyStatus.valueOf(
                 request.getStatus() != null ? request.getStatus() : "DRAFT"));
-        entity.setDescription(request.getDescription());
+        entity.setDescription(request.getDescription());""
         entity.setEffectiveFrom(request.getEffectiveFrom());
         entity.setEffectiveTo(request.getEffectiveTo());
 
